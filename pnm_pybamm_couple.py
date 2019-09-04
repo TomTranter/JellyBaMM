@@ -476,7 +476,7 @@ pnm.setup()
 spm = spm_runner()
 spm.setup(I_app=1.0, T0=T0, cc_cond_neg=1.0e4, cc_cond_pos=1.0e4)
 t_final = 0.1  # non-dim
-n_steps = 20
+n_steps = 10
 time_step = t_final/n_steps
 jelly_potentials = []
 for i in range(n_steps):
