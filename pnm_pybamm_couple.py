@@ -31,7 +31,7 @@ Ncat = 6  # cathode
 Ncc = 2  # current collector
 Nsep = 3  # separator
 # Number of unit cells
-Nlayers = 10  # number of windings
+Nlayers = 3  # number of windings
 dtheta = 10  # arc angle between nodes
 Narc = np.int(360/dtheta)  # number of nodes in a wind/layer
 Nunit = np.int(Nlayers*Narc)  # total number of unit cells
@@ -282,7 +282,7 @@ class spm_runner:
     def __init__(self):
         pass
 
-    def setup(self, I_app, T0):
+    def setup(self, I_app, T0, cc_cond_neg, cc_cond_pos):
         # set logging level
         pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
@@ -295,7 +295,9 @@ class spm_runner:
         # load parameter values and process model and geometry
         self.param = self.model.default_parameter_values
         self.param.update({"Typical current [A]": I_app,
-                           'Initial temperature [K]': T0})
+                           'Initial temperature [K]': T0,
+                           'Negative current collector conductivity [S.m-1]': cc_cond_neg,
+                           'Positive current collector conductivity [S.m-1]': cc_cond_pos})
         self.param.process_model(self.model)
         self.param.process_geometry(self.geometry)
         # set mesh
@@ -407,7 +409,8 @@ class spm_runner:
             sols = [self.solution]
         pvs = {"X-averaged total heating [A.V.m-3]": [],
                "X-averaged positive particle surface concentration [mol.m-3]": [],
-               "X-averaged cell temperature [K]":[]}
+               "X-averaged cell temperature [K]": [],
+               "Positive current collector potential": []}
         for key in pvs.keys():
             for sol in sols:
                 proc = pybamm.ProcessedVariable(self.model.variables[key],
@@ -434,7 +437,6 @@ class spm_runner:
 
     def get_heat_source(self):
         z = np.linspace(0, 1, Nunit)
-        heat_source = np.zeros(Nunit)
         var = 'X-averaged total heating [A.V.m-3]'
         proc = pybamm.ProcessedVariable(self.model.variables[var],
                                         self.solution.t,
@@ -443,6 +445,19 @@ class spm_runner:
         heat_source = proc(self.solution.t, z=z)
         return heat_source[:, -1]
 
+    def get_potentials(self):
+        z = np.linspace(0, 1, Nunit)
+        potential_vars = ["Negative current collector potential [V]",
+                          "Positive current collector potential [V]"]
+        out = []
+        for var in potential_vars:
+            proc = pybamm.ProcessedVariable(self.model.variables[var],
+                                            self.solution.t,
+                                            self.solution.y,
+                                            mesh=self.mesh)
+            data = proc(self.solution.t, z=z)
+            out.append(data[:, -1])
+        return out
 
 # %% Main Loop
 #def main():
@@ -459,10 +474,11 @@ plt.close('all')
 pnm = pnm_runner()
 pnm.setup()
 spm = spm_runner()
-spm.setup(I_app=5.0, T0=T0)
+spm.setup(I_app=5.0, T0=T0, cc_cond_neg=1.0, cc_cond_pos=1.0)
 t_final = 0.1  # non-dim
 n_steps = 10
 time_step = t_final/n_steps
+jelly_potentials = []
 for i in range(n_steps):
     if i == 0:
         global_temperature = np.ones(Nunit)*T0
@@ -475,4 +491,8 @@ for i in range(n_steps):
     print('Global Temperature', np.mean(global_temperature))
 #    spm.update_external_potential(0, 3.4)
     spm.update_external_temperature(global_temperature)
+    jelly_potentials.append(spm.get_potentials()[-1])
 spm.plot()
+plt.figure()
+for i in range(len(jelly_potentials)):
+    plt.plot(jelly_potentials[i])
