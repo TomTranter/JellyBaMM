@@ -286,7 +286,7 @@ class spm_runner:
         # set logging level
         pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
-        options = {#"current collector": "set external potential",
+        options = {"current collector": "potential pair",
                    "dimensionality": 1,
                    "thermal": "set external temperature"}
         self.model = pybamm.lithium_ion.SPM(options)
@@ -474,7 +474,7 @@ plt.close('all')
 pnm = pnm_runner()
 pnm.setup()
 spm = spm_runner()
-spm.setup(I_app=5.0, T0=T0, cc_cond_neg=1.0e-6, cc_cond_pos=1.0e-6)
+spm.setup(I_app=5.0, T0=T0, cc_cond_neg=1.0e4, cc_cond_pos=1.0e4)
 t_final = 0.1  # non-dim
 n_steps = 10
 time_step = t_final/n_steps
@@ -496,3 +496,5 @@ spm.plot()
 plt.figure()
 for i in range(len(jelly_potentials)):
     plt.plot(jelly_potentials[i])
+plt.figure()
+plt.plot(jelly_potentials[0])
