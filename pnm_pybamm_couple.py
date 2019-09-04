@@ -1,0 +1,478 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Aug 22 13:28:34 2019
+
+@author: thomas
+"""
+
+import pybamm
+import sys
+import openpnm as op
+import matplotlib.pyplot as plt
+import numpy as np
+from openpnm.topotools import plot_connections as pconn
+from openpnm.topotools import plot_coordinates as pcoord
+from openpnm.models.physics.generic_source_term import linear
+
+
+# %% Set up domain in OpenPNM
+
+# Thermal Parameters
+Q_Pybamm_averaged = 2e6  # [W/m^3]
+cp = 1148
+rho = 5071.75
+K0 = 60  # 132.58
+T0 = 303
+alpha = K0/(cp*rho)
+# Number of nodes in each layer
+Nan = 6  # anode
+Ncat = 6  # cathode
+Ncc = 2  # current collector
+Nsep = 3  # separator
+# Number of unit cells
+Nlayers = 10  # number of windings
+dtheta = 10  # arc angle between nodes
+Narc = np.int(360/dtheta)  # number of nodes in a wind/layer
+Nunit = np.int(Nlayers*Narc)  # total number of unit cells
+# Number of nodes in the unit cell
+N1d = (Nan+Ncat+Ncc+Nsep)*2
+# 2D assembly
+assembly = np.zeros([Nunit, N1d], dtype=int)
+# Network spacing
+spacing = 1e-5  # 10 microns
+length_3d = 1e-4
+# %% Layer labels
+p1 = Nan
+p2 = Nan+Ncc
+p3 = Nan+Ncc+Nan
+p4 = Nan+Ncc+Nan+Nsep
+p5 = Nan+Ncc+Nan+Nsep+Ncat
+p6 = Nan+Ncc+Nan+Nsep+Ncat+Ncc
+p7 = Nan+Ncc+Nan+Nsep+Ncat+Ncc+Ncat
+p8 = Nan+Ncc+Nan+Nsep+Ncat+Ncc+Ncat+Nsep
+
+assembly[:, :p1] = 1
+assembly[:, p1:p2] = 2
+assembly[:, p2:p3] = 1
+assembly[:, p3:p4] = 5
+assembly[:, p4:p5] = 3
+assembly[:, p5:p6] = 4
+assembly[:, p6:p7] = 3
+assembly[:, p7:p8] = 5
+
+unit_id = np.tile(np.arange(0, Nunit), (N1d, 1)).T
+
+(fig, (ax1, ax2)) = plt.subplots(1, 2)
+ax1.imshow(assembly)
+ax2.imshow(unit_id)
+
+# %% Start OPENPNM
+
+
+class pnm_runner:
+
+    def __init__(self):
+        pass
+
+    def setup(self):
+        self.net = op.network.Cubic(shape=[Nunit, N1d, 1], spacing=spacing)
+        self.project = self.net.project
+        self.net['pore.region_id'] = assembly.flatten()
+        self.net['pore.cell_id'] = unit_id.flatten()
+        # Extend the connections in the cell repetition direction
+        self.net['pore.coords'][:, 0] *= 10
+#        self.plot()
+        inner_r = 185*spacing
+        # Update coords
+        self.net['pore.radial_position'] = 0.0
+        self.net['pore.arc_index'] = 0
+        r_start = self.net['pore.coords'][self.net['pore.cell_id'] == 0][:, 1]
+        dr = spacing*N1d
+        for i in range(N1d):
+            (x, y, rad, pos) = self.spiral(r_start[i]+inner_r, dr,
+                                           ntheta=Narc, n=Nlayers)
+            mask = self.net['pore.coords'][:, 1] == r_start[i]
+            coords = self.net['pore.coords'][mask]
+            coords[:, 0] = x[:-1]
+            coords[:, 1] = y[:-1]
+            self.net['pore.coords'][mask] = coords
+            self.net['pore.radial_position'][mask] = rad[:-1]
+            self.net['pore.arc_index'][mask] = pos[:-1]
+#        self.plot()
+        # Make interlayer connections after rolling
+        Ps_left = self.net.pores('left')
+        Ps_right = self.net.pores('right')
+        coords_left = self.net['pore.coords'][Ps_left]
+        coords_right = self.net['pore.coords'][Ps_right]
+        conns = []
+        # Identify pores in rolled layers that need new connections
+        # This represents the separator layer which is not explicitly resolved
+        for i_left, cl in enumerate(coords_left):
+            vec = coords_right - cl
+            dist = np.linalg.norm(vec, axis=1)
+            if np.any(dist < 2*spacing):
+                i_right = np.argwhere(dist < 2*spacing)[0][0]
+                conns.append([Ps_left[i_left], Ps_right[i_right]])
+        # Create new throats
+        op.topotools.extend(network=self.net,
+                            throat_conns=conns,
+                            labels=['separator'])
+#        self.plot()
+        Ts = self.net.find_neighbor_throats(pores=self.net['pore.region_id'] == 5)
+        self.net['throat.separator'][Ts] = True
+        # Identify inner boundary pores and outer boundary pores
+        # they are left and right, but not connected to each other
+        nbrs_left = self.net.find_neighbor_pores(pores=self.net.pores('left'),
+                                                 mode='union')
+        nbrs_right = self.net.find_neighbor_pores(pores=self.net.pores('right'),
+                                                  mode='union')
+        set_left = set(Ps_left)
+        set_right = set(Ps_right)
+        set_neighbors_left = set(nbrs_left)
+        set_neighors_right = set(nbrs_right)
+        inner_Ps = list(set_left.difference(set_neighors_right))
+        outer_Ps = list(set_right.difference(set_neighbors_left))
+        self.net['pore.inner'] = False
+        self.net['pore.outer'] = False
+        self.net['pore.inner'][inner_Ps] = True
+        self.net['pore.outer'][outer_Ps] = True
+        fig = pconn(self.net, throats=self.net.Ts)
+        fig = pcoord(self.net, pores=self.net.pores('inner'), c='r', fig=fig)
+        fig = pcoord(self.net, pores=self.net.pores('outer'), c='g', fig=fig)
+        # Free stream convection boundary nodes
+        # Make new network wrapping around the original domain and
+        # stitch together
+        free_rad = inner_r + (Nlayers+0.5)*dr
+        (x, y, rad, pos) = self.spiral(free_rad, dr, ntheta=Narc, n=1)
+        net_free = op.network.Cubic(shape=[Narc, 1, 1], spacing=spacing)
+        net_free['pore.radial_position'] = rad[:-1]
+        net_free['pore.arc_index'] = pos[:-1]
+        net_free['throat.trimmers'] = True
+        net_free['pore.free_stream'] = True
+        net_free['pore.coords'][:, 0] = x[:-1]
+        net_free['pore.coords'][:, 1] = y[:-1]
+        op.topotools.stitch(network=self.net, donor=net_free,
+                            P_network=self.net.pores('outer'),
+                            P_donor=net_free.Ps,
+                            len_max=dr, method='nearest')
+        op.topotools.trim(network=self.net,
+                          throats=self.net.throats('trimmers'))
+        self.plot_topology()
+        # Create Geometry based on circular arc segment
+        drad = (2*np.pi*dtheta/360)
+        geo = op.geometry.GenericGeometry(network=self.net,
+                                          pores=self.net.Ps,
+                                          throats=self.net.Ts)
+        geo['throat.radial_position'] = self.net.interpolate_data('pore.radial_position')
+        geo['pore.volume'] = self.net['pore.radial_position']*drad*spacing*length_3d
+        cn = self.net['throat.conns']
+        C1 = self.net['pore.coords'][cn[:, 0]]
+        C2 = self.net['pore.coords'][cn[:, 1]]
+        D = np.sqrt(((C1 - C2)**2).sum(axis=1))
+        geo['throat.length'] = D
+        # Work out if throat connects pores in same radial position
+        rPs = geo['pore.arc_index'][self.net['throat.conns']]
+        sameR = rPs[:, 0] == rPs[:, 1]
+        geo['throat.area'] = spacing*length_3d
+        geo['throat.area'][sameR] = geo['throat.radial_position'][sameR]*drad*length_3d
+        geo['throat.volume'] = 0.0
+        self.phase = op.phases.GenericPhase(network=self.net)
+        # Set up Phase and Physics
+        self.phase['pore.temperature'] = T0
+        self.phase['pore.thermal_conductivity'] = alpha  # [W/(m.K)]
+        self.phase['throat.conductance'] = alpha*geo['throat.area']/geo['throat.length']
+        # Reduce separator conductance
+        self.phase['throat.conductance'][self.net.throats('separator')] *= 0.5
+        # Free stream convective flux
+        self.phase['throat.conductance'][self.net.throats('stitched')] *= 0.05
+        self.phys = op.physics.GenericPhysics(network=self.net,
+                                              geometry=geo,
+                                              phase=self.phase)
+
+    def plot_topology(self):
+        an = self.net['pore.region_id'] == 1
+        an_cc = self.net['pore.region_id'] == 2
+        cat = self.net['pore.region_id'] == 3
+        cat_cc = self.net['pore.region_id'] == 4
+        sep = self.net['pore.region_id'] == 5
+        inner = self.net['pore.left']
+        outer = self.net['pore.right']
+        fig = pconn(self.net, throats=self.net.Ts)
+        fig = pcoord(self.net, pores=an, c='r', fig=fig)
+        fig = pcoord(self.net, pores=an_cc, c='y', fig=fig)
+        fig = pcoord(self.net, pores=cat, c='g', fig=fig)
+        fig = pcoord(self.net, pores=cat_cc, c='y', fig=fig)
+        fig = pcoord(self.net, pores=sep, c='k', fig=fig)
+        fig = pcoord(self.net, pores=inner, c='pink', fig=fig)
+        fig = pcoord(self.net, pores=outer, c='purple', fig=fig)
+        t_sep = self.net.throats('separator*')
+        if len(t_sep) > 0:
+            fig = pconn(self.net, throats=self.net.throats('separator*'),
+                        c='k', fig=fig)
+
+    def spiral(self, r, dr, ntheta=36, n=10):
+        theta = np.linspace(0, n*(2*np.pi), (n*ntheta)+1)
+        pos = (np.linspace(0, n*ntheta, (n*ntheta)+1) % ntheta).astype(int)
+        rad = r + np.linspace(0, n*dr, (n*ntheta)+1)
+        x = rad*np.cos(theta)
+        y = rad*np.sin(theta)
+        return (x, y, rad, pos)
+
+    def convert_heat_source(self, heat_source):
+        out_source = np.ones(self.net.Np)
+        for i in range(Nunit):
+            cell = self.net['pore.cell_id'] == i
+            out_source[cell] = heat_source[i]
+        return out_source
+
+    def run_step(self, heat_source, time_step, BC_value):
+        # To Do - test whether this needs to be transient
+        # Set Heat Source
+        Q_scaled = self.convert_heat_source(heat_source)/(cp*rho)
+        self.phys['pore.A1'] = 0.0
+        self.phys['pore.A2'] = Q_scaled*self.net['pore.volume']
+        # Heat Source
+        self.phys.add_model('pore.source', model=linear,
+                            X='pore.temperature',
+                            A1='pore.A1',
+                            A2='pore.A2')
+        # Run Heat Transport Algorithm
+        alg = op.algorithms.ReactiveTransport(network=self.net)
+        alg.setup(phase=self.phase, quantity='pore.temperature',
+                  conductance='throat.conductance',
+                  rxn_tolerance=1e-12, relaxation_source=0.9,
+                  relaxation_quantity=0.9)
+        bulk_Ps = self.net.pores('free_stream', mode='not')
+        alg.set_source('pore.source', bulk_Ps)
+        alg.set_value_BC(self.net.pores('free_stream'), values=BC_value)
+        alg.run()
+        print('Max Temp', alg['pore.temperature'].max(),
+              'Min Temp', alg['pore.temperature'].min())
+
+        self.phase.update(alg.results())
+
+    def plot_temperature_profile(self):
+        # Plot Results
+        bulk_Ps = self.net.pores('free_stream', mode='not')
+        plt.figure()
+        zero_y_Ps = np.around(self.net['pore.coords'][:, 1], 6) == 0.0
+        positive_x_Ps = np.around(self.net['pore.coords'][:, 0], 6) >= 0.0
+        line = np.logical_and(zero_y_Ps, positive_x_Ps)
+        plt.scatter(self.net['pore.radial_position'][line],
+                    self.phase['pore.temperature'][line])
+        pcoord(self.net, pores=self.net.Ps[bulk_Ps],
+               c=self.phase['pore.temperature'][bulk_Ps],
+               cmap='inferno')
+
+    def get_average_temperature(self):
+        temp = np.zeros(Nunit)
+        for i in range(Nunit):
+            cell = self.net['pore.cell_id'] == i
+            temp[i] = np.mean(self.phase['pore.temperature'][cell])
+        return temp
+
+# %% FINISH OPENPNM
+# %% START PYBAMM
+# %%
+
+
+class spm_runner:
+
+    def __init__(self):
+        pass
+
+    def setup(self, I_app, T0):
+        # set logging level
+        pybamm.set_logging_level("INFO")
+        # load (1+1D) SPM model
+        options = {#"current collector": "set external potential",
+                   "dimensionality": 1,
+                   "thermal": "set external temperature"}
+        self.model = pybamm.lithium_ion.SPM(options)
+        # create geometry
+        self.geometry = self.model.default_geometry
+        # load parameter values and process model and geometry
+        self.param = self.model.default_parameter_values
+        self.param.update({"Typical current [A]": I_app,
+                           'Initial temperature [K]': T0})
+        self.param.process_model(self.model)
+        self.param.process_geometry(self.geometry)
+        # set mesh
+        self.var = pybamm.standard_spatial_vars
+        self.var_pts = {self.var.x_n: 5, self.var.x_s: 5,
+                        self.var.x_p: 5, self.var.r_n: 5,
+                        self.var.r_p: 5, self.var.z: Nunit}
+        # depending on number of points in y-z plane
+        # may need to increase recursion depth...
+        sys.setrecursionlimit(10000)
+        self.mesh = pybamm.Mesh(self.geometry,
+                                self.model.default_submesh_types,
+                                self.var_pts)
+        # discretise model
+        self.disc = pybamm.Discretisation(self.mesh,
+                                          self.model.default_spatial_methods)
+        self.disc.process_model(self.model)
+        self.last_time = 0.0
+        self.solutions = []
+
+    def convert_time(self, non_dim_time, to='seconds'):
+        s_parms = pybamm.standard_parameters_lithium_ion
+        t_sec = self.param.process_symbol(s_parms.tau_discharge).evaluate()
+        t = non_dim_time*t_sec
+        if to == 'hours':
+            t *= (1/3600)
+        return t
+
+    def update_statevector(self, variables, statevector):
+        "takes in a dict of variable name and vector of updated state"
+        for name, new_vector in variables.items():
+            var_slice = self.model.variables[name].y_slices
+            statevector[var_slice] = new_vector
+        return statevector[:, np.newaxis]  # should be column vector
+
+    def non_dim_potential(self, phi_dim, domain):
+        # Define a method which takes a dimensional potential [V] and converts
+        # to the dimensionless potential used in pybamm
+        pot_scale = self.param.process_symbol(
+            pybamm.standard_parameters_lithium_ion.potential_scale
+        ).evaluate()  # potential scaled on thermal voltage
+        pot_ref = self.param.process_symbol(
+            pybamm.standard_parameters_lithium_ion.U_p_ref
+            - pybamm.standard_parameters_lithium_ion.U_n_ref
+        ).evaluate()  # positive potential measured with respect to reference OCV
+        if domain == "negative":
+            phi = phi_dim / pot_scale
+        elif domain == "positive":
+            phi = (phi_dim - pot_ref) / pot_scale
+        return phi
+
+    def non_dim_temperature(self, temperature):
+        temp_parms = self.model.submodels['thermal'].param
+        Delta_T = self.param.process_symbol(temp_parms.Delta_T).evaluate()
+        T_ref = self.param.process_symbol(temp_parms.T_ref).evaluate()
+        return (temperature - T_ref)/Delta_T
+
+    def run_step(self, time_step, n_subs=20):
+        self.param = self.model.default_parameter_values
+        # Solve model for one global time interval
+        # solve model -- replace with step
+        t_eval = np.linspace(self.last_time, self.last_time+time_step, n_subs)
+        self.solution = self.model.default_solver.solve(self.model, t_eval)
+        self.solutions.append(self.solution)
+        # Save Current State and update external variables from
+        # global calculation
+        self.current_state = self.solution.y[:, -1]
+#        self.plot()
+        self.last_time += time_step
+
+    def update_external_potential(self, phi_neg, phi_pos):
+        sf_cn = 1.0
+        vname = "Negative current collector potential"
+        phi_s_cn_dim_new = self.current_state[self.model.variables[vname].y_slices] * sf_cn
+        sf_cp = 5e-2
+        adj = sf_cp * np.linspace(0, 1, self.var_pts[self.var.z])
+        vname = "Positive current collector potential"
+        phi_s_cp_dim_new = self.current_state[self.model.variables[vname].y_slices] - adj
+#        phi_s_cn_dim_new = self.non_dim_potential(phi_neg, domain='negative')
+#        phi_s_cp_dim_new = self.non_dim_potential(phi_pos, domain='positive')
+        variables = {
+            "Negative current collector potential": phi_s_cn_dim_new,
+            "Positive current collector potential": phi_s_cp_dim_new,
+        }
+        new_state = self.update_statevector(variables, self.current_state)
+        self.model.concatenated_initial_conditions = new_state
+        self.current_state = new_state
+
+    def update_external_temperature(self, temperature):
+
+        non_dim_t_external = self.non_dim_temperature(temperature)
+        variables = {
+            "X-averaged cell temperature": non_dim_t_external,
+            "X-averaged negative electrode temperature": non_dim_t_external,
+            "X-averaged positive electrode temperature": non_dim_t_external,
+            "X-averaged separator temperature": non_dim_t_external,
+        }
+        new_state = self.update_statevector(variables, self.current_state)
+        self.model.concatenated_initial_conditions = new_state
+        self.current_state = new_state
+
+
+    def plot(self, concatenate=True):
+        # Plotting
+        z = np.linspace(0, 1, Nunit)
+        if concatenate:
+            sols = self.solutions
+        else:
+            sols = [self.solution]
+        pvs = {"X-averaged total heating [A.V.m-3]": [],
+               "X-averaged positive particle surface concentration [mol.m-3]": [],
+               "X-averaged cell temperature [K]":[]}
+        for key in pvs.keys():
+            for sol in sols:
+                proc = pybamm.ProcessedVariable(self.model.variables[key],
+                                                sol.t, sol.y, mesh=self.mesh)
+                pvs[key].append(proc)
+        for key in pvs.keys():
+            plt.figure()
+            for si, sol in enumerate(sols):
+                for bat_id in range(Nunit):
+                    plt.plot(self.convert_time(sol.t, to='hours'),
+                             pvs[key][si](sol.t, z=z)[bat_id, :])
+            plt.xlabel('t [hrs]')
+            plt.ylabel(key)
+            plt.show()
+
+#    def quick_plot(self):
+#        output_variables = ["Electrolyte concentration",
+#                            "Cell temperature [K]",
+#                            "X-averaged total heating [A.V.m-3]"]
+#        plot = pybamm.QuickPlot(self.model,
+#                                self.mesh,
+#                                self.solution, output_variables)
+#        plot.dynamic_plot()
+
+    def get_heat_source(self):
+        z = np.linspace(0, 1, Nunit)
+        heat_source = np.zeros(Nunit)
+        var = 'X-averaged total heating [A.V.m-3]'
+        proc = pybamm.ProcessedVariable(self.model.variables[var],
+                                        self.solution.t,
+                                        self.solution.y,
+                                        mesh=self.mesh)
+        heat_source = proc(self.solution.t, z=z)
+        return heat_source[:, -1]
+
+
+# %% Main Loop
+#def main():
+r'''
+Call OpenPNM to set up a global domain comprised of unit cells that have
+electrochemistry calculated by PyBAMM.
+Heat is generated in the unit cells which act as little batteries connected
+in parallel.
+The global heat equation is solved on the larger domain as well as the
+global potentials which are used as boundary conditions for PyBAMM and a
+lumped unit cell temperature is applied and updated over time
+'''
+plt.close('all')
+pnm = pnm_runner()
+pnm.setup()
+spm = spm_runner()
+spm.setup(I_app=5.0, T0=T0)
+t_final = 0.1  # non-dim
+n_steps = 10
+time_step = t_final/n_steps
+for i in range(n_steps):
+    if i == 0:
+        global_temperature = np.ones(Nunit)*T0
+    spm.run_step(time_step)
+#        spm.quick_plot()
+    heat_source = spm.get_heat_source()
+    print('Heat Source', np.mean(heat_source))
+    pnm.run_step(heat_source, time_step, BC_value=T0)
+    global_temperature = pnm.get_average_temperature()
+    print('Global Temperature', np.mean(global_temperature))
+#    spm.update_external_potential(0, 3.4)
+    spm.update_external_temperature(global_temperature)
+spm.plot()
