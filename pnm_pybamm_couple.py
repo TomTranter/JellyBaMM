@@ -356,7 +356,7 @@ class spm_runner:
         return (temperature - T_ref)/Delta_T
 
     def run_step(self, time_step, n_subs=20):
-        self.param = self.model.default_parameter_values
+#        self.param = self.model.default_parameter_values
         # Solve model for one global time interval
         # solve model -- replace with step
         t_eval = np.linspace(self.last_time, self.last_time+time_step, n_subs)
@@ -410,7 +410,7 @@ class spm_runner:
         pvs = {"X-averaged total heating [A.V.m-3]": [],
                "X-averaged positive particle surface concentration [mol.m-3]": [],
                "X-averaged cell temperature [K]": [],
-               "Positive current collector potential": []}
+               "Positive current collector potential [V]": []}
         for key in pvs.keys():
             for sol in sols:
                 proc = pybamm.ProcessedVariable(self.model.variables[key],
@@ -474,7 +474,7 @@ plt.close('all')
 pnm = pnm_runner()
 pnm.setup()
 spm = spm_runner()
-spm.setup(I_app=5.0, T0=T0, cc_cond_neg=1.0, cc_cond_pos=1.0)
+spm.setup(I_app=5.0, T0=T0, cc_cond_neg=1.0e-6, cc_cond_pos=1.0e-6)
 t_final = 0.1  # non-dim
 n_steps = 10
 time_step = t_final/n_steps
