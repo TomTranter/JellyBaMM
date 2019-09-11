@@ -305,7 +305,7 @@ class spm_runner:
         self.var_pts = {self.var.x_n: 5, self.var.x_s: 5,
                         self.var.x_p: 5, self.var.r_n: 5,
                         self.var.r_p: 5, self.var.z: Nunit}
-        # depending on number of points in y-z plane
+        # depending on number of points in z direction
         # may need to increase recursion depth...
         sys.setrecursionlimit(10000)
         self.mesh = pybamm.Mesh(self.geometry,
@@ -315,6 +315,8 @@ class spm_runner:
         self.disc = pybamm.Discretisation(self.mesh,
                                           self.model.default_spatial_methods)
         self.disc.process_model(self.model)
+        # set up solver
+        self.solver = self.model.default_solver
         self.last_time = 0.0
         self.solutions = []
 
@@ -331,7 +333,7 @@ class spm_runner:
         for name, new_vector in variables.items():
             var_slice = self.model.variables[name].y_slices
             statevector[var_slice] = new_vector
-        return statevector[:, np.newaxis]  # should be column vector
+        return statevector
 
     def non_dim_potential(self, phi_dim, domain):
         # Define a method which takes a dimensional potential [V] and converts
@@ -356,10 +358,18 @@ class spm_runner:
         return (temperature - T_ref)/Delta_T
 
     def run_step(self, time_step, n_subs=20):
-        # Solve model for one global time interval
-        # solve model -- replace with step
-        t_eval = np.linspace(self.last_time, self.last_time+time_step, n_subs)
-        self.solution = self.model.default_solver.solve(self.model, t_eval)
+        # Step model for one global time interval
+        # Note: In order to make the solver converge, we need to compute consistent
+        # initial values for the algebraic part of the model. Since the
+        # (dummy) equation for the external temperature is an ODE, the imposed
+        # change in temperature is unaffected by this process (i.e. the
+        # temperature is exactly that provided by the pnm model)
+        if self.last_time > 0.0:
+            self.solver.y0 = self.solver.calculate_consistent_initial_conditions(
+                self.solver.rhs, self.solver.algebraic, self.current_state
+            )
+        self.solution = self.solver.step(self.model, time_step, npts=n_subs)
+
         self.solutions.append(self.solution)
         # Save Current State and update external variables from
         # global calculation
@@ -382,22 +392,18 @@ class spm_runner:
             "Positive current collector potential": phi_s_cp_dim_new,
         }
         new_state = self.update_statevector(variables, self.current_state)
-        self.model.concatenated_initial_conditions = new_state
         self.current_state = new_state
 
     def update_external_temperature(self, temperature):
 
         non_dim_t_external = self.non_dim_temperature(temperature)
+        # Note: All of the variables "X-averaged ... temperature" point to the
+        # same y_slice of the statevector, so only need to update one.
         variables = {
             "X-averaged cell temperature": non_dim_t_external,
-            "X-averaged negative electrode temperature": non_dim_t_external,
-            "X-averaged positive electrode temperature": non_dim_t_external,
-            "X-averaged separator temperature": non_dim_t_external,
         }
         new_state = self.update_statevector(variables, self.current_state)
-        self.model.concatenated_initial_conditions = new_state
         self.current_state = new_state
-
 
     def plot(self, concatenate=True):
         # Plotting
