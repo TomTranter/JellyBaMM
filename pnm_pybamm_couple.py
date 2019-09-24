@@ -32,7 +32,7 @@ Ncat = 6  # cathode
 Ncc = 2  # current collector
 Nsep = 3  # separator
 # Number of unit cells
-Nlayers = 5  # number of windings
+Nlayers = 3  # number of windings
 dtheta = 10  # arc angle between nodes
 Narc = np.int(360/dtheta)  # number of nodes in a wind/layer
 Nunit = np.int(Nlayers*Narc)  # total number of unit cells
@@ -527,7 +527,7 @@ for i in range(n_steps):
 #    spm.update_external_potential(0, 3.4)
     spm.update_external_temperature(global_temperature)
     jelly_potentials.append(spm.get_potentials()[-1])
-#spm.plot()
+spm.plot()
 plt.figure()
 for i in range(len(jelly_potentials)):
     plt.plot(jelly_potentials[i])
