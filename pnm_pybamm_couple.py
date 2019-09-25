@@ -11,6 +11,7 @@ import sys
 import openpnm as op
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+from matplotlib.widgets import Slider
 import numpy as np
 from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
@@ -473,12 +474,13 @@ class spm_runner:
                                         mesh=self.mesh)
         data = proc(self.solution.t, z=z)
         if time_index is None:
-            time_index = -1
-        return data[:, time_index]
+            return data
+        else:
+            return data[:, time_index]
 
     def get_heat_source(self):
         var = 'X-averaged total heating [A.V.m-3]'
-        return self.get_processed_variable(var)
+        return self.get_processed_variable(var, time_index=-1)
 
     def get_potentials(self):
         z = np.linspace(0, 1, Nunit)
@@ -548,10 +550,40 @@ vars = ["X-averaged total heating [A.V.m-3]",
         "X-averaged negative particle surface concentration [mol.m-3]",
         "Negative current collector potential [V]",
         "Positive current collector potential [V]"]
+
 tind=0
 for var in vars:
     data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
     pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
 
-pnm.plot_temperature_profile()
+def plot_time_series(var):
+    all_time_data = spm.get_processed_variable(var, time_index=None)
+    data = pnm.convert_spm_data(all_time_data[:, 0])
+    fig, ax = plt.subplots(1)
+    fig.subplots_adjust(bottom=0.25)
+    bulk_Ps = pnm.net.pores('free_stream', mode='not')
+    coords = pnm.net['pore.coords'][bulk_Ps]
+    xmin = coords[:, 0].min()*1.05
+    ymin = coords[:, 1].min()*1.05
+    xmax = coords[:, 0].max()*1.05
+    ymax = coords[:, 1].max()*1.05
+    mappable = ax.scatter(coords[:, 0], coords[:, 1], c=data[bulk_Ps])
+    mappable.set_clim([all_time_data.min(), all_time_data.max()])
+    plt.xlim(xmin, xmax)
+    plt.ylim(ymin, ymax)
+    plt.colorbar(mappable)
+    plt.title(var)
+    ax1_pos = fig.add_axes([0.2, 0.1, 0.65, 0.03])
+    s1 = Slider(ax1_pos, 'time', valmin=0, valmax=len(spm.solution.t),
+                valinit=0, valfmt='%i')
 
+    def update1(v):
+        tind = np.int(np.floor(s1.val))
+        data = pnm.convert_spm_data(all_time_data[:, tind])
+        mappable.set_array(data[bulk_Ps])
+        plt.draw()
+
+    s1.on_changed(update1)
+    plt.show()
+
+plot_time_series(var="X-averaged positive particle surface concentration [mol.m-3]")
