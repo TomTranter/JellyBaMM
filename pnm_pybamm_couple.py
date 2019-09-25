@@ -10,6 +10,7 @@ import pybamm
 import sys
 import openpnm as op
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 import numpy as np
 from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
@@ -160,6 +161,9 @@ class pnm_runner:
         op.topotools.trim(network=self.net,
                           throats=self.net.throats('trimmers'))
         self.plot_topology()
+        self.net['pore.region_id'][self.net['pore.free_stream']] = -1
+        self.net['pore.cell_id'][self.net['pore.free_stream']] = -1
+        
         # Create Geometry based on circular arc segment
         drad = (2*np.pi*dtheta/360)
         geo = op.geometry.GenericGeometry(network=self.net,
@@ -338,7 +342,7 @@ class spm_runner:
         # set up solver
         self.solver = self.model.default_solver
         self.last_time = 0.0
-        self.solutions = []
+        self.solution = None
 
     def convert_time(self, non_dim_time, to='seconds'):
         s_parms = pybamm.standard_parameters_lithium_ion
@@ -388,9 +392,11 @@ class spm_runner:
             self.solver.y0 = self.solver.calculate_consistent_initial_conditions(
                 self.solver.rhs, self.solver.algebraic, self.current_state
             )
-        self.solution = self.solver.step(self.model, time_step, npts=n_subs)
-
-        self.solutions.append(self.solution)
+        current_solution = self.solver.step(self.model, time_step, npts=n_subs)
+        if self.solution is None:
+            self.solution = current_solution
+        else:
+            self.solution.append(current_solution)
         # Save Current State and update external variables from
         # global calculation
         self.current_state = self.solution.y[:, -1]
@@ -428,50 +434,47 @@ class spm_runner:
     def plot(self, concatenate=True):
         # Plotting
         z = np.linspace(0, 1, Nunit)
-        if concatenate:
-            sols = self.solutions
-        else:
-            sols = [self.solution]
-        pvs = {"X-averaged total heating [A.V.m-3]": [],
-               "X-averaged positive particle surface concentration [mol.m-3]": [],
-               "X-averaged negative particle surface concentration [mol.m-3]": [],
-               "X-averaged positive particle surface concentration": [],
-               "X-averaged negative particle surface concentration": [],
-               "X-averaged cell temperature [K]": [],
-               "Negative current collector potential [V]": [],
-               "Positive current collector potential [V]": []}
+        sol = self.solution
+        pvs = {"X-averaged total heating [A.V.m-3]": None,
+               "X-averaged positive particle surface concentration [mol.m-3]": None,
+               "X-averaged negative particle surface concentration [mol.m-3]": None,
+               "X-averaged positive particle surface concentration": None,
+               "X-averaged negative particle surface concentration": None,
+               "X-averaged cell temperature [K]": None,
+               "Negative current collector potential [V]": None,
+               "Positive current collector potential [V]": None}
         for key in pvs.keys():
-            for sol in sols:
-                proc = pybamm.ProcessedVariable(self.model.variables[key],
-                                                sol.t, sol.y, mesh=self.mesh)
-                pvs[key].append(proc)
+            proc = pybamm.ProcessedVariable(self.model.variables[key],
+                                            sol.t, sol.y, mesh=self.mesh)
+            pvs[key] = proc
+        hrs = self.convert_time(sol.t, to='hours')
         for key in pvs.keys():
-            plt.figure()
-            for si, sol in enumerate(sols):
-                for bat_id in range(Nunit):
-                    plt.plot(self.convert_time(sol.t, to='hours'),
-                             pvs[key][si](sol.t, z=z)[bat_id, :])
+            fig, ax = plt.subplots(1)
+            lines = []
+            data = pvs[key](sol.t, z=z)
+            for bat_id in range(Nunit):
+                lines.append(np.column_stack((hrs, data[bat_id, :])))
+            line_segments = LineCollection(lines)
+            line_segments.set_array(z)
+            ax.add_collection(line_segments)
+            axcb = fig.colorbar(line_segments)
+            axcb.set_label('Normalized Arc Position')
             plt.xlabel('t [hrs]')
             plt.ylabel(key)
+            plt.xlim(hrs.min(), hrs.max())
+            plt.ylim(data.min(), data.max())
             plt.show()
 
-#    def quick_plot(self):
-#        output_variables = ["Electrolyte concentration",
-#                            "Cell temperature [K]",
-#                            "X-averaged total heating [A.V.m-3]"]
-#        plot = pybamm.QuickPlot(self.model,
-#                                self.mesh,
-#                                self.solution, output_variables)
-#        plot.dynamic_plot()
-
-    def get_processed_variable(self, var):
+    def get_processed_variable(self, var, time_index=None):
         z = np.linspace(0, 1, Nunit)
         proc = pybamm.ProcessedVariable(self.model.variables[var],
                                         self.solution.t,
                                         self.solution.y,
                                         mesh=self.mesh)
         data = proc(self.solution.t, z=z)
-        return data[:, -1]
+        if time_index is None:
+            time_index = -1
+        return data[:, time_index]
 
     def get_heat_source(self):
         var = 'X-averaged total heating [A.V.m-3]'
@@ -521,6 +524,7 @@ for i in range(n_steps):
     print('Heat Source', np.mean(heat_source))
     pnm.run_step(heat_source, time_step, BC_value=T0)
     global_temperature = pnm.get_average_temperature()
+#    global_temperature = np.ones_like(global_temperature)*303.5
     print('Global Temperature', np.mean(global_temperature))
     T_diff = global_temperature.max()-global_temperature.min()
     print('Temperature Range', T_diff)
@@ -528,6 +532,7 @@ for i in range(n_steps):
     spm.update_external_temperature(global_temperature)
     jelly_potentials.append(spm.get_potentials()[-1])
 spm.plot()
+#spm.quick_plot()
 plt.figure()
 for i in range(len(jelly_potentials)):
     plt.plot(jelly_potentials[i])
@@ -543,8 +548,10 @@ vars = ["X-averaged total heating [A.V.m-3]",
         "X-averaged negative particle surface concentration [mol.m-3]",
         "Negative current collector potential [V]",
         "Positive current collector potential [V]"]
+tind=0
 for var in vars:
-    data = pnm.convert_spm_data(spm.get_processed_variable(var))
-    pnm.plot_pore_data(data, title=var)
+    data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
+    pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
 
 pnm.plot_temperature_profile()
+
