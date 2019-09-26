@@ -231,9 +231,7 @@ class pnm_runner:
 
     def convert_spm_data(self, spm_data):
         out_data = np.ones(self.net.Np)
-        for i in range(Nunit):
-            cell = self.net['pore.cell_id'] == i
-            out_data[cell] = spm_data[i]
+        out_data = spm_data[self.net['pore.cell_id']]
         return out_data
 
     def run_step(self, heat_source, time_step, BC_value):
@@ -261,19 +259,6 @@ class pnm_runner:
               'Min Temp', alg['pore.temperature'].min())
 
         self.phase.update(alg.results())
-
-#    def plot_temperature_profile(self):
-#        # Plot Results
-#        bulk_Ps = self.net.pores('free_stream', mode='not')
-#        plt.figure()
-#        zero_y_Ps = np.around(self.net['pore.coords'][:, 1], 6) == 0.0
-#        positive_x_Ps = np.around(self.net['pore.coords'][:, 0], 6) >= 0.0
-#        line = np.logical_and(zero_y_Ps, positive_x_Ps)
-#        plt.scatter(self.net['pore.radial_position'][line],
-#                    self.phase['pore.temperature'][line])
-#        pcoord(self.net, pores=self.net.Ps[bulk_Ps],
-#               c=self.phase['pore.temperature'][bulk_Ps],
-#               cmap='inferno')
 
     def plot_temperature_profile(self):
         data = self.phase['pore.temperature']
@@ -326,10 +311,13 @@ class spm_runner:
         self.param.update({"Typical current [A]": I_app,
                            "Initial temperature [K]": T0,
                            "Negative current collector conductivity [S.m-1]": cc_cond_neg,
-                           "Positive current collector conductivity [S.m-1]": cc_cond_pos,
+                           "Positive current collector conductivity [S.m-1]": cc_cond_pos, 
                            "Electrode height [m]": z_edges[-1],
+                           "Electrode width [m]": 0.065,
                            "Negative tab centre z-coordinate [m]": z_edges[0],
                            "Positive tab centre z-coordinate [m]": z_edges[-1],
+                           "Negative electrode conductivity [S.m-1]": 0.1,
+                           "Negative electrode conductivity [S.m-1]": 0.1,
                            })
         self.param.process_model(self.model)
         self.param.process_geometry(self.geometry)
@@ -478,6 +466,7 @@ class spm_runner:
             plt.ylabel(key)
             plt.xlim(hrs.min(), hrs.max())
             plt.ylim(data.min(), data.max())
+            plt.ticklabel_format(axis='x', style='sci')
             plt.show()
 
     def get_processed_variable(self, var, time_index=None):
@@ -526,9 +515,9 @@ plt.close('all')
 pnm = pnm_runner()
 pnm.setup()
 spm = spm_runner()
-spm.setup(I_app=1.0, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges)
-t_final = 0.1  # non-dim
-n_steps = 10
+spm.setup(I_app=3.0, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges)
+t_final = 0.05 # non-dim
+n_steps = 5
 time_step = t_final/n_steps
 jelly_potentials = []
 for i in range(n_steps):
@@ -588,17 +577,25 @@ def plot_time_series(var):
     plt.colorbar(mappable)
     plt.title(var)
     ax1_pos = fig.add_axes([0.2, 0.1, 0.65, 0.03])
-    s1 = Slider(ax1_pos, 'time', valmin=0, valmax=len(spm.solution.t),
-                valinit=0, valfmt='%i')
+#    s1 = Slider(ax1_pos, 'time', valmin=0, valmax=len(spm.solution.t),
+#                valinit=0, valfmt='%i')
+    s1 = Slider(ax1_pos, "Time", 0, spm.solution.t.max(), valinit=0)
 
     def update1(v):
-        tind = np.int(np.floor(s1.val))
+        tind = np.argwhere(spm.solution.t > s1.val).min()
         data = pnm.convert_spm_data(all_time_data[:, tind])
         mappable.set_array(data[bulk_Ps])
-        plt.draw()
+        fig.canvas.draw_idle()
 
     s1.on_changed(update1)
     plt.show()
 
-plot_time_series(var="X-averaged positive particle surface concentration [mol.m-3]")
-plot_time_series(var="X-averaged cell temperature [K]")
+#plot_time_series(var="X-averaged positive particle surface concentration [mol.m-3]")
+
+#var = "X-averaged cell temperature [K]"
+var = vars[2]
+tind = -1
+data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
+pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
+
+pnm.plot_temperature_profile()
