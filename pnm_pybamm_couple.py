@@ -106,7 +106,7 @@ class pnm_runner:
             if i == middle:
                 self.arc_edges = np.cumsum(np.deg2rad(dtheta)*rad)
                 self.arc_edges -= self.arc_edges[0]
-#        self.plot()       
+#        self.plot()
         # Make interlayer connections after rolling
         Ps_left = self.net.pores('left')
         Ps_right = self.net.pores('right')
@@ -151,7 +151,7 @@ class pnm_runner:
         # Make new network wrapping around the original domain and
         # stitch together
         free_rad = inner_r + (Nlayers+0.5)*dr
-        (x, y, rad, pos) = self.spiral(free_rad, dr, ntheta=Narc, n=1)        
+        (x, y, rad, pos) = self.spiral(free_rad, dr, ntheta=Narc, n=1)
         net_free = op.network.Cubic(shape=[Narc, 1, 1], spacing=spacing)
         net_free['pore.radial_position'] = rad[:-1]
         net_free['pore.arc_index'] = pos[:-1]
@@ -168,7 +168,7 @@ class pnm_runner:
         self.plot_topology()
         self.net['pore.region_id'][self.net['pore.free_stream']] = -1
         self.net['pore.cell_id'][self.net['pore.free_stream']] = -1
-        
+
         # Create Geometry based on circular arc segment
         drad = (2*np.pi*dtheta/360)
         geo = op.geometry.GenericGeometry(network=self.net,
@@ -328,6 +328,8 @@ class spm_runner:
                            "Negative current collector conductivity [S.m-1]": cc_cond_neg,
                            "Positive current collector conductivity [S.m-1]": cc_cond_pos,
                            "Electrode height [m]": z_edges[-1],
+                           "Negative tab centre z-coordinate [m]": z_edges[0],
+                           "Positive tab centre z-coordinate [m]": z_edges[-1],
                            })
         self.param.process_model(self.model)
         self.param.process_geometry(self.geometry)
