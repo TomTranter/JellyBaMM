@@ -92,6 +92,7 @@ class pnm_runner:
         self.net['pore.arc_index'] = 0
         r_start = self.net['pore.coords'][self.net['pore.cell_id'] == 0][:, 1]
         dr = spacing*N1d
+        middle = np.int(np.floor(N1d/2))
         for i in range(N1d):
             (x, y, rad, pos) = self.spiral(r_start[i]+inner_r, dr,
                                            ntheta=Narc, n=Nlayers)
@@ -102,7 +103,10 @@ class pnm_runner:
             self.net['pore.coords'][mask] = coords
             self.net['pore.radial_position'][mask] = rad[:-1]
             self.net['pore.arc_index'][mask] = pos[:-1]
-#        self.plot()
+            if i == middle:
+                self.arc_edges = np.cumsum(np.deg2rad(dtheta)*rad)
+                self.arc_edges -= self.arc_edges[0]
+#        self.plot()       
         # Make interlayer connections after rolling
         Ps_left = self.net.pores('left')
         Ps_right = self.net.pores('right')
@@ -147,7 +151,7 @@ class pnm_runner:
         # Make new network wrapping around the original domain and
         # stitch together
         free_rad = inner_r + (Nlayers+0.5)*dr
-        (x, y, rad, pos) = self.spiral(free_rad, dr, ntheta=Narc, n=1)
+        (x, y, rad, pos) = self.spiral(free_rad, dr, ntheta=Narc, n=1)        
         net_free = op.network.Cubic(shape=[Narc, 1, 1], spacing=spacing)
         net_free['pore.radial_position'] = rad[:-1]
         net_free['pore.arc_index'] = pos[:-1]
@@ -307,7 +311,7 @@ class spm_runner:
     def __init__(self):
         pass
 
-    def setup(self, I_app, T0, cc_cond_neg, cc_cond_pos):
+    def setup(self, I_app, T0, cc_cond_neg, cc_cond_pos, z_edges):
         # set logging level
         pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
@@ -320,9 +324,11 @@ class spm_runner:
         # load parameter values and process model and geometry
         self.param = self.model.default_parameter_values
         self.param.update({"Typical current [A]": I_app,
-                           'Initial temperature [K]': T0,
-                           'Negative current collector conductivity [S.m-1]': cc_cond_neg,
-                           'Positive current collector conductivity [S.m-1]': cc_cond_pos})
+                           "Initial temperature [K]": T0,
+                           "Negative current collector conductivity [S.m-1]": cc_cond_neg,
+                           "Positive current collector conductivity [S.m-1]": cc_cond_pos,
+                           "Electrode height [m]": z_edges[-1],
+                           })
         self.param.process_model(self.model)
         self.param.process_geometry(self.geometry)
         # set mesh
@@ -333,8 +339,11 @@ class spm_runner:
         # depending on number of points in z direction
         # may need to increase recursion depth...
         sys.setrecursionlimit(10000)
+        submesh_types = self.model.default_submesh_types
+        z_edges /= z_edges[-1]
+        submesh_types["current collector"] = pybamm.GetUserSupplied1DSubMesh(z_edges)
         self.mesh = pybamm.Mesh(self.geometry,
-                                self.model.default_submesh_types,
+                                submesh_types,
                                 self.var_pts)
         # discretise model
         self.disc = pybamm.Discretisation(self.mesh,
@@ -436,14 +445,17 @@ class spm_runner:
         # Plotting
         z = np.linspace(0, 1, Nunit)
         sol = self.solution
-        pvs = {"X-averaged total heating [A.V.m-3]": None,
-               "X-averaged positive particle surface concentration [mol.m-3]": None,
-               "X-averaged negative particle surface concentration [mol.m-3]": None,
-               "X-averaged positive particle surface concentration": None,
-               "X-averaged negative particle surface concentration": None,
-               "X-averaged cell temperature [K]": None,
-               "Negative current collector potential [V]": None,
-               "Positive current collector potential [V]": None}
+        pvs = {"X-averaged reversible heating [A.V.m-3]": None,
+               "X-averaged irreversible electrochemical heating [A.V.m-3]": None,
+               "X-averaged Ohmic heating [A.V.m-3]": None,
+               "X-averaged total heating [A.V.m-3]": None}
+#               "X-averaged positive particle surface concentration [mol.m-3]": None,
+#               "X-averaged negative particle surface concentration [mol.m-3]": None,
+#               "X-averaged positive particle surface concentration": None,
+#               "X-averaged negative particle surface concentration": None,
+#               "X-averaged cell temperature [K]": None,
+#               "Negative current collector potential [V]": None,
+#               "Positive current collector potential [V]": None}
         for key in pvs.keys():
             proc = pybamm.ProcessedVariable(self.model.variables[key],
                                             sol.t, sol.y, mesh=self.mesh)
@@ -512,7 +524,7 @@ plt.close('all')
 pnm = pnm_runner()
 pnm.setup()
 spm = spm_runner()
-spm.setup(I_app=1.0, T0=T0, cc_cond_neg=1.0e5, cc_cond_pos=1.0e5)
+spm.setup(I_app=1.0, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges)
 t_final = 0.1  # non-dim
 n_steps = 10
 time_step = t_final/n_steps
@@ -552,9 +564,9 @@ vars = ["X-averaged total heating [A.V.m-3]",
         "Positive current collector potential [V]"]
 
 tind=0
-for var in vars:
-    data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
-    pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
+#for var in vars:
+#    data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
+#    pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
 
 def plot_time_series(var):
     all_time_data = spm.get_processed_variable(var, time_index=None)
@@ -587,3 +599,4 @@ def plot_time_series(var):
     plt.show()
 
 plot_time_series(var="X-averaged positive particle surface concentration [mol.m-3]")
+plot_time_series(var="X-averaged cell temperature [K]")
