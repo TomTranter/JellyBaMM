@@ -10,6 +10,7 @@ import pybamm
 import sys
 import openpnm as op
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from matplotlib.collections import LineCollection
 from matplotlib.widgets import Slider
 import numpy as np
@@ -34,7 +35,7 @@ Ncat = 6  # cathode
 Ncc = 2  # current collector
 Nsep = 3  # separator
 # Number of unit cells
-Nlayers = 3  # number of windings
+Nlayers = 20  # number of windings
 dtheta = 10  # arc angle between nodes
 Narc = np.int(360/dtheta)  # number of nodes in a wind/layer
 Nunit = np.int(Nlayers*Narc)  # total number of unit cells
@@ -150,6 +151,8 @@ class pnm_runner:
         # Free stream convection boundary nodes
         # Make new network wrapping around the original domain and
         # stitch together
+#        free_rad = inner_r + (Nlayers+1.0)*dr
+#        (x, y, rad, pos) = self.spiral(free_rad, 0.0, ntheta=Narc, n=1)
         free_rad = inner_r + (Nlayers+0.5)*dr
         (x, y, rad, pos) = self.spiral(free_rad, dr, ntheta=Narc, n=1)
         net_free = op.network.Cubic(shape=[Narc, 1, 1], spacing=spacing)
@@ -193,9 +196,10 @@ class pnm_runner:
         self.phase['pore.thermal_conductivity'] = alpha  # [W/(m.K)]
         self.phase['throat.conductance'] = alpha*geo['throat.area']/geo['throat.length']
         # Reduce separator conductance
-        self.phase['throat.conductance'][self.net.throats('separator')] *= 0.5
+        self.phase['throat.conductance'][self.net.throats('separator')] *= 0.05
         # Free stream convective flux
-        self.phase['throat.conductance'][self.net.throats('stitched')] *= 0.05
+        free_Ts_cond = self.phase['throat.conductance'][self.net.throats('stitched')]
+        self.phase['throat.conductance'][self.net.throats('stitched')] = np.mean(free_Ts_cond)/2
         self.phys = op.physics.GenericPhysics(network=self.net,
                                               geometry=geo,
                                               phase=self.phase)
@@ -452,21 +456,22 @@ class spm_runner:
             pvs[key] = proc
         hrs = self.convert_time(sol.t, to='hours')
         for key in pvs.keys():
-            fig, ax = plt.subplots(1)
+            fig, ax = plt.subplots()
             lines = []
             data = pvs[key](sol.t, z=z)
             for bat_id in range(Nunit):
                 lines.append(np.column_stack((hrs, data[bat_id, :])))
             line_segments = LineCollection(lines)
             line_segments.set_array(z)
+            ax.yaxis.set_major_formatter(mpl.ticker.ScalarFormatter(useMathText=True, useOffset=False))
             ax.add_collection(line_segments)
-            axcb = fig.colorbar(line_segments)
-            axcb.set_label('Normalized Arc Position')
+#            axcb = fig.colorbar(line_segments)
+#            axcb.set_label('Normalized Arc Position')
             plt.xlabel('t [hrs]')
             plt.ylabel(key)
             plt.xlim(hrs.min(), hrs.max())
             plt.ylim(data.min(), data.max())
-            plt.ticklabel_format(axis='x', style='sci')
+#            plt.ticklabel_format(axis='y', style='sci')
             plt.show()
 
     def get_processed_variable(self, var, time_index=None):
@@ -514,88 +519,111 @@ start_time = time.time()
 plt.close('all')
 pnm = pnm_runner()
 pnm.setup()
-spm = spm_runner()
-spm.setup(I_app=3.0, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges)
-t_final = 0.05 # non-dim
-n_steps = 5
-time_step = t_final/n_steps
-jelly_potentials = []
-for i in range(n_steps):
-    if i == 0:
-        global_temperature = np.ones(Nunit)*T0
-    spm.run_step(time_step)
-#        spm.quick_plot()
+do_just_heat = True
+if do_just_heat:
+    heat_source = np.ones(Nunit)*5e6
+    time_step=0.01
+    pnm.run_step(heat_source, time_step, BC_value=T0)
+    pnm.plot_temperature_profile()
+else:
+    spm = spm_runner()
+    spm.setup(I_app=3.0, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges)
+    t_final = 0.05 # non-dim
+    n_steps = 5
+    time_step = t_final/n_steps
+    jelly_potentials = []
+    
+    # Initialize - Run through loop to get temperature then discard solution with small
+    #              time step
+    print('*'*30)
+    print('Initializing')
+    print('*'*30)
+    spm.run_step(time_step/1000)
     heat_source = spm.get_heat_source()
     print('Heat Source', np.mean(heat_source))
     pnm.run_step(heat_source, time_step, BC_value=T0)
     global_temperature = pnm.get_average_temperature()
-#    global_temperature = np.ones_like(global_temperature)*303.5
+    #    global_temperature = np.ones_like(global_temperature)*303.5
     print('Global Temperature', np.mean(global_temperature))
     T_diff = global_temperature.max()-global_temperature.min()
     print('Temperature Range', T_diff)
-#    spm.update_external_potential(0, 3.4)
     spm.update_external_temperature(global_temperature)
-    jelly_potentials.append(spm.get_potentials()[-1])
-spm.plot()
-#spm.quick_plot()
-plt.figure()
-for i in range(len(jelly_potentials)):
-    plt.plot(jelly_potentials[i])
-plt.figure()
-plt.plot(jelly_potentials[0])
-end_time = time.time()
-print('*'*30)
-print('Simulation Time', np.around(end_time-start_time, 2), 's')
-print('*'*30)
-vars = ["X-averaged total heating [A.V.m-3]",
-        "X-averaged cell temperature [K]",
-        "X-averaged positive particle surface concentration [mol.m-3]",
-        "X-averaged negative particle surface concentration [mol.m-3]",
-        "Negative current collector potential [V]",
-        "Positive current collector potential [V]"]
+    spm.solution = None
+    print('*'*30)
+    print('Running Steps')
+    print('*'*30)
+    for i in range(n_steps):
+        spm.run_step(time_step)
+        heat_source = spm.get_heat_source()
+        print('Heat Source', np.mean(heat_source))
+        pnm.run_step(heat_source, time_step, BC_value=T0)
+        global_temperature = pnm.get_average_temperature()
+        print('Global Temperature', np.mean(global_temperature))
+        T_diff = global_temperature.max()-global_temperature.min()
+        print('Temperature Range', T_diff)
+        spm.update_external_temperature(global_temperature)
+        jelly_potentials.append(spm.get_potentials()[-1])
+    
+    spm.plot()
+    #spm.quick_plot()
+    plt.figure()
+    for i in range(len(jelly_potentials)):
+        plt.plot(jelly_potentials[i])
+    plt.figure()
+    plt.plot(jelly_potentials[0])
+    end_time = time.time()
+    print('*'*30)
+    print('Simulation Time', np.around(end_time-start_time, 2), 's')
+    print('*'*30)
+    vars = ["X-averaged total heating [A.V.m-3]",
+            "X-averaged cell temperature [K]",
+            "X-averaged positive particle surface concentration [mol.m-3]",
+            "X-averaged negative particle surface concentration [mol.m-3]",
+            "Negative current collector potential [V]",
+            "Positive current collector potential [V]"]
+    
+    tind=0
+    #for var in vars:
+    #    data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
+    #    pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
+    
+    def plot_time_series(var):
+        all_time_data = spm.get_processed_variable(var, time_index=None)
+        data = pnm.convert_spm_data(all_time_data[:, 0])
+        fig, ax = plt.subplots(1)
+        fig.subplots_adjust(bottom=0.25)
+        bulk_Ps = pnm.net.pores('free_stream', mode='not')
+        coords = pnm.net['pore.coords'][bulk_Ps]
+        xmin = coords[:, 0].min()*1.05
+        ymin = coords[:, 1].min()*1.05
+        xmax = coords[:, 0].max()*1.05
+        ymax = coords[:, 1].max()*1.05
+        mappable = ax.scatter(coords[:, 0], coords[:, 1], c=data[bulk_Ps])
+        mappable.set_clim([all_time_data.min(), all_time_data.max()])
+        plt.xlim(xmin, xmax)
+        plt.ylim(ymin, ymax)
+        plt.colorbar(mappable)
+        plt.title(var)
+        ax1_pos = fig.add_axes([0.2, 0.1, 0.65, 0.03])
+    #    s1 = Slider(ax1_pos, 'time', valmin=0, valmax=len(spm.solution.t),
+    #                valinit=0, valfmt='%i')
+        s1 = Slider(ax1_pos, "Time", 0, spm.solution.t.max(), valinit=0)
+    
+        def update1(v):
+            tind = np.argwhere(spm.solution.t > s1.val).min()
+            data = pnm.convert_spm_data(all_time_data[:, tind])
+            mappable.set_array(data[bulk_Ps])
+            fig.canvas.draw_idle()
+    
+        s1.on_changed(update1)
+        plt.show()
+    
+    #plot_time_series(var="X-averaged positive particle surface concentration [mol.m-3]")
+    
+    #var = "X-averaged cell temperature [K]"
+    var = vars[2]
+    tind = -1
+    data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
+    pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
+    pnm.plot_temperature_profile()
 
-tind=0
-#for var in vars:
-#    data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
-#    pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
-
-def plot_time_series(var):
-    all_time_data = spm.get_processed_variable(var, time_index=None)
-    data = pnm.convert_spm_data(all_time_data[:, 0])
-    fig, ax = plt.subplots(1)
-    fig.subplots_adjust(bottom=0.25)
-    bulk_Ps = pnm.net.pores('free_stream', mode='not')
-    coords = pnm.net['pore.coords'][bulk_Ps]
-    xmin = coords[:, 0].min()*1.05
-    ymin = coords[:, 1].min()*1.05
-    xmax = coords[:, 0].max()*1.05
-    ymax = coords[:, 1].max()*1.05
-    mappable = ax.scatter(coords[:, 0], coords[:, 1], c=data[bulk_Ps])
-    mappable.set_clim([all_time_data.min(), all_time_data.max()])
-    plt.xlim(xmin, xmax)
-    plt.ylim(ymin, ymax)
-    plt.colorbar(mappable)
-    plt.title(var)
-    ax1_pos = fig.add_axes([0.2, 0.1, 0.65, 0.03])
-#    s1 = Slider(ax1_pos, 'time', valmin=0, valmax=len(spm.solution.t),
-#                valinit=0, valfmt='%i')
-    s1 = Slider(ax1_pos, "Time", 0, spm.solution.t.max(), valinit=0)
-
-    def update1(v):
-        tind = np.argwhere(spm.solution.t > s1.val).min()
-        data = pnm.convert_spm_data(all_time_data[:, tind])
-        mappable.set_array(data[bulk_Ps])
-        fig.canvas.draw_idle()
-
-    s1.on_changed(update1)
-    plt.show()
-
-#plot_time_series(var="X-averaged positive particle surface concentration [mol.m-3]")
-
-#var = "X-averaged cell temperature [K]"
-var = vars[2]
-tind = -1
-data = pnm.convert_spm_data(spm.get_processed_variable(var, time_index=tind))
-pnm.plot_pore_data(data, title=var + ' @ time ' + str(spm.solution.t[tind]))
-
-pnm.plot_temperature_profile()
