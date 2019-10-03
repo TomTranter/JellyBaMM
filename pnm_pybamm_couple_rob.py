@@ -384,6 +384,8 @@ class spm_runner:
         self.disc.process_model(self.model)
         # set up solver
         self.solver = pybamm.KLU()
+        self.solver.atol = 1e-8
+        self.solver.rtol = 1e-8
         # self.solver = self.model.default_solver
         self.last_time = 0.0
         self.solution = None
