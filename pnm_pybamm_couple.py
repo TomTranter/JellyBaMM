@@ -594,7 +594,7 @@ start_time = time.time()
 plt.close('all')
 pnm = pnm_runner()
 pnm.setup()
-do_just_heat = True
+do_just_heat = False
 if do_just_heat:
     C_rate = 2.0
     heat_source = np.ones(Nunit) * 25e3 * C_rate
@@ -604,11 +604,11 @@ if do_just_heat:
 else:
     spm = spm_runner()
     spm.setup(I_app=I_app_mag, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges)
-    spm.test_equivalent_capacity()
-    full = False
+#    spm.test_equivalent_capacity()
+    full = True
     if full:
-        t_final = 0.1 # non-dim
-        n_steps = 10
+        t_final = 0.2 # non-dim
+        n_steps = 40
         time_step = t_final/n_steps
         jelly_potentials = []
         
@@ -713,5 +713,5 @@ def specific_cap(diam, height, cap):
     spec = cap/v
     return spec
 
-print('State of Art 18650', specific_cap(1.8, 6.5, 2500), 'mAh.cm-3')
+#print('State of Art 18650', specific_cap(1.8, 6.5, 2500), 'mAh.cm-3')
 
