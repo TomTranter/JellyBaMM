@@ -19,7 +19,7 @@ from openpnm.topotools import plot_coordinates as pcoord
 from openpnm.models.physics.generic_source_term import linear
 import time
 
-
+pybamm.set_logging_level(10)
 # %% Set up domain in OpenPNM
 
 # Thermal Parameters
@@ -39,7 +39,7 @@ Ncc = 2  # current collector
 Nsep = 3  # separator
 # Number of unit cells
 Nlayers = 2  # number of windings
-dtheta = 10  # arc angle between nodes
+dtheta = 20  # arc angle between nodes
 Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
 Nunit = np.int(Nlayers * Narc)  # total number of unit cells
 # Number of nodes in the unit cell
@@ -383,8 +383,8 @@ class spm_runner:
         self.disc = pybamm.Discretisation(self.mesh, self.model.default_spatial_methods)
         self.disc.process_model(self.model)
         # set up solver
+#        self.solver = self.model.default_solver
         self.solver = pybamm.KLU()
-        # self.solver = self.model.default_solver
         self.last_time = 0.0
         self.solution = None
 
@@ -656,23 +656,21 @@ if do_just_heat:
     pnm.plot_temperature_profile()
 else:
     spm = spm_runner()
-    spm.setup(
-        I_app=I_app_mag, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges
-    )
-    spm.test_equivalent_capacity()
+    spm.setup(I_app=I_app_mag, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges)
+#    spm.test_equivalent_capacity()
     full = True
     if full:
-        t_final = 0.1  # non-dim
+        t_final = 0.1 # non-dim
         n_steps = 10
-        time_step = t_final / n_steps
+        time_step = t_final/n_steps
         jelly_potentials = []
 
         # Initialize - Run through loop to get temperature then discard solution with small
         #              time step
-        print("*" * 30)
-        print("Initializing")
-        print("*" * 30)
-        spm.run_step(time_step / 1000)
+        print('*'*30)
+        print('Initializing')
+        print('*'*30)
+        spm.run_step(time_step/1000, n_subs=10)
         heat_source = spm.get_heat_source()
         print("Heat Source", np.mean(heat_source))
         pnm.run_step(heat_source, time_step, BC_value=T0)
@@ -687,7 +685,7 @@ else:
         print("Running Steps")
         print("*" * 30)
         for i in range(n_steps):
-            spm.run_step(time_step)
+            spm.run_step(time_step, n_subs=10)
             heat_source = spm.get_heat_source()
             print("Heat Source", np.mean(heat_source))
             pnm.run_step(heat_source, time_step, BC_value=T0)
@@ -773,5 +771,5 @@ def specific_cap(diam, height, cap):
     spec = cap / v
     return spec
 
+#print('State of Art 18650', specific_cap(1.8, 6.5, 2500), 'mAh.cm-3')
 
-print("State of Art 18650", specific_cap(1.8, 6.5, 2500), "mAh.cm-3")
