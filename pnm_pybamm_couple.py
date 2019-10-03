@@ -38,7 +38,7 @@ Ncat = 6  # cathode
 Ncc = 2  # current collector
 Nsep = 3  # separator
 # Number of unit cells
-Nlayers = 20  # number of windings
+Nlayers = 2  # number of windings
 dtheta = 10  # arc angle between nodes
 Narc = np.int(360/dtheta)  # number of nodes in a wind/layer
 Nunit = np.int(Nlayers*Narc)  # total number of unit cells
@@ -312,7 +312,7 @@ class spm_runner:
         # set logging level
         pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
-        options = {"current collector": "jelly roll",
+        options = {"current collector": "potential pair",
                    "dimensionality": 1,
                    "thermal": "set external temperature"}
         self.model = pybamm.lithium_ion.SPM(options)
@@ -353,7 +353,8 @@ class spm_runner:
                                           self.model.default_spatial_methods)
         self.disc.process_model(self.model)
         # set up solver
-        self.solver = self.model.default_solver
+#        self.solver = self.model.default_solver
+        self.solver = pybamm.KLU()
         self.last_time = 0.0
         self.solution = None
 
@@ -617,7 +618,7 @@ else:
         print('*'*30)
         print('Initializing')
         print('*'*30)
-        spm.run_step(time_step/1000)
+        spm.run_step(time_step/1000, n_subs=10)
         heat_source = spm.get_heat_source()
         print('Heat Source', np.mean(heat_source))
         pnm.run_step(heat_source, time_step, BC_value=T0)
@@ -632,7 +633,7 @@ else:
         print('Running Steps')
         print('*'*30)
         for i in range(n_steps):
-            spm.run_step(time_step)
+            spm.run_step(time_step, n_subs=10)
             heat_source = spm.get_heat_source()
             print('Heat Source', np.mean(heat_source))
             pnm.run_step(heat_source, time_step, BC_value=T0)
