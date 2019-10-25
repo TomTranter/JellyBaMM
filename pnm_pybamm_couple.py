@@ -38,7 +38,7 @@ Ncat = 6  # cathode
 Ncc = 2  # current collector
 Nsep = 3  # separator
 # Number of unit cells
-Nlayers = 2  # number of windings
+Nlayers = 19  # number of windings
 dtheta = 20  # arc angle between nodes
 Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
 Nunit = np.int(Nlayers * Narc)  # total number of unit cells
@@ -670,7 +670,7 @@ else:
         print('*'*30)
         print('Initializing')
         print('*'*30)
-        spm.run_step(time_step/1000, n_subs=10)
+        spm.run_step(time_step, n_subs=10)
         heat_source = spm.get_heat_source()
         print("Heat Source", np.mean(heat_source))
         pnm.run_step(heat_source, time_step, BC_value=T0)
