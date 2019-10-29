@@ -23,6 +23,8 @@ plt.close('all')
 from scipy.spatial import Delaunay, Voronoi, voronoi_plot_2d
 import openpnm as op
 import openpnm.topotools as tt
+import pandas as pd
+
 wrk = op.Workspace()
 
 # Get File list
@@ -286,6 +288,9 @@ def plot_domain(net):
         fig = tt.plot_coordinates(net, pores=net.pores('outer'), s=100, c='pink', fig=fig)
     if 'pore.free_stream' in net.labels():
         fig = tt.plot_coordinates(net, pores=net.pores('free_stream'), s=100, c='green', fig=fig)
+    for i in range(20):
+        if 'pore.layer_'+str(i) in net.labels():
+            fig = tt.plot_coordinates(net, pores=net.pores('pore.layer_'+str(i)), s=10, c='orange', fig=fig)
 #    fig = tt.plot_coordinates(net, pores=net.pores('terminal_neighbor'), s=100, c='pink', fig=fig)
 
 cc_a_Ts = net.find_neighbor_throats(pores=net.pores('cc_a'), mode='xnor')
@@ -384,6 +389,25 @@ for start in inner_terminals:
 
 tt.plot_coordinates(net, net.Ps, c=net['pore.cell_id'])
 
+def split_interconnection(net, layer=0):
+    print('Np', net.Np, 'Nt', net.Nt)
+    Ts = net.throats('interconnection')
+    P1 = net['throat.conns'][Ts][:, 0]
+    P2 = net['throat.conns'][Ts][:, 1]
+    new_coords = (net['pore.coords'][P1] + net['pore.coords'][P2])/2
+    new_pore_index = np.arange(0, len(P1)) + net.Np
+    new_conns1 = np.vstack((P1, new_pore_index)).T
+    new_conns2 = np.vstack((P2, new_pore_index)).T
+    tt.extend(net, pore_coords=new_coords, labels='layer_'+str(layer))
+    tt.extend(net, throat_conns=new_conns1, labels='interconnection')
+    tt.extend(net, throat_conns=new_conns2, labels='interconnection')
+    tt.trim(net, throats=Ts)
+    print('Np', net.Np, 'Nt', net.Nt)
+
+#for i in range(4):
+#    split_interconnection(net, layer=i)
+
+
 
 #net_coords_2d = np.vstack((net['pore.coords'][:, 0], net['pore.coords'][:, 1])).T
 #vor = Voronoi(net_coords_2d)
@@ -440,3 +464,14 @@ net['pore.cell_id'][net.pores('free_stream')] = -1
 
 prj = wrk['sim_01']
 wrk.save_project(project=prj, filename='MJ141-mid-top')
+#max_id = net['pore.cell_id'][net.pores('cc_b')].max()
+#data_a = pd.DataFrame({'cell_id': net['pore.cell_id'][net.pores('cc_a')],
+#                       'pore_index': net.pores('cc_a')})
+#data_b = pd.DataFrame({'cell_id': net['pore.cell_id'][net.pores('cc_b')],
+#                       'pore_index': net.pores('cc_b')})
+#data_a = data_a.sort_values(by=['cell_id'])
+#data_b = data_b.sort_values(by=['cell_id'])
+#
+#interconns = np.vstack((list(data_a.pore_index), list(data_b.pore_index))).T
+#new_coords = (net['pore.coords'][interconns[:, 0]] + net['pore.coords'][interconns[:, 1]])/2
+
