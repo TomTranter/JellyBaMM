@@ -18,7 +18,10 @@ from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
 from openpnm.models.physics.generic_source_term import linear
 import time
+import os
 
+wrk = op.Workspace()
+input_dir = os.path.join(os.getcwd(), 'input')
 pybamm.set_logging_level(10)
 # %% Set up domain in OpenPNM
 
@@ -39,7 +42,7 @@ Ncc = 2  # current collector
 Nsep = 3  # separator
 # Number of unit cells
 Nlayers = 19  # number of windings
-dtheta = 20  # arc angle between nodes
+dtheta = 10  # arc angle between nodes
 Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
 Nunit = np.int(Nlayers * Narc)  # total number of unit cells
 # Number of nodes in the unit cell
@@ -47,7 +50,6 @@ N1d = (Nan + Ncat + Ncc + Nsep) * 2
 # 2D assembly
 assembly = np.zeros([Nunit, N1d], dtype=int)
 # Network spacing
-spacing = 1e-5  # 10 microns
 length_3d = 0.065
 I_app_mag = 2.5  # A
 
@@ -83,7 +85,7 @@ class pnm_runner:
     def __init__(self):
         pass
 
-    def setup(self):
+    def setup(self, spacing=None):
         self.net = op.network.Cubic(shape=[Nunit, N1d, 1], spacing=spacing)
         self.project = self.net.project
         self.net["pore.region_id"] = assembly.flatten()
@@ -182,7 +184,20 @@ class pnm_runner:
         self.plot_topology()
         self.net["pore.region_id"][self.net["pore.free_stream"]] = -1
         self.net["pore.cell_id"][self.net["pore.free_stream"]] = -1
+        self.setup_geometry(spacing)
 
+    def setup_from_tomo(self, pixel_size=10.4e-6):
+        wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top.pnm'))
+        sim_name = list(wrk.keys())[0]
+        prj = wrk[sim_name]
+        self.net = prj.network
+        self.net['pore.coords'] *= pixel_size
+        mean = np.mean(pnm.net['pore.coords'], axis=0)
+        self.net['pore.coords'] -= mean
+        self.net['pore.radial_position'] = np.linalg.norm(self.net['pore.coords'], axis=1)
+        self.setup_geometry(spacing=1e-5)
+
+    def setup_geometry(self, spacing):
         # Create Geometry based on circular arc segment
         drad = 2 * np.pi * dtheta / 360
         geo = op.geometry.GenericGeometry(
@@ -207,6 +222,11 @@ class pnm_runner:
             geo["throat.radial_position"][sameR] * drad * length_3d
         )
         geo["throat.volume"] = 0.0
+        fig, (ax1, ax2) = plt.subplots(2, 2)
+        ax1[0].hist(geo["throat.area"])
+        ax1[1].hist(geo["throat.length"])
+        ax2[0].hist(geo["pore.radial_position"])
+        ax2[1].hist(geo["pore.volume"])
         self.phase = op.phases.GenericPhase(network=self.net)
         # Set up Phase and Physics
         self.phase["pore.temperature"] = T0
@@ -215,13 +235,19 @@ class pnm_runner:
             alpha * geo["throat.area"] / geo["throat.length"]
         )
         # Reduce separator conductance
-        self.phase["throat.conductance"][self.net.throats("separator")] *= 0.1
+        if "throat.separator" in self.net.labels():
+            Ts = self.net.throats("separator")
+        else:
+            Ts = self.net.throats("layer_5")
+        self.phase["throat.conductance"][Ts] *= 0.1
         # Free stream convective flux
         Ts = self.net.throats("stitched")
         self.phase["throat.conductance"][Ts] = geo["throat.area"][Ts] * hc
         self.phys = op.physics.GenericPhysics(
             network=self.net, geometry=geo, phase=self.phase
         )
+        print('Mean throat conductance', np.mean(self.phase['throat.conductance']))
+        print('Mean throat conductance Boundary', np.mean(self.phase['throat.conductance'][Ts]))
 
     def plot_topology(self):
         an = self.net["pore.region_id"] == 1
@@ -646,9 +672,18 @@ lumped unit cell temperature is applied and updated over time
 start_time = time.time()
 plt.close("all")
 pnm = pnm_runner()
-pnm.setup()
-do_just_heat = False
+spacing = 1e-5  # 10 microns
+#pnm.setup(spacing)
+pnm.setup_from_tomo()
+print('Battery Volume', np.sum(pnm.net['pore.volume']))
+print('18650 Volume', 65e-3*np.pi*(18e-3/2)**2)
+print('Np', pnm.net.Np, 'Nt', pnm.net.Nt)
+print('Middle', np.mean(pnm.net['pore.coords'], axis=0))
+print('Min', np.min(pnm.net['pore.coords'], axis=0))
+print('Max', np.max(pnm.net['pore.coords'], axis=0))
+do_just_heat = True
 if do_just_heat:
+    pass
     C_rate = 2.0
     heat_source = np.ones(Nunit) * 25e3 * C_rate
     time_step = 0.01

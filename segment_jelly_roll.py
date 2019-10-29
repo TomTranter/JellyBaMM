@@ -26,18 +26,19 @@ import openpnm.topotools as tt
 import pandas as pd
 
 wrk = op.Workspace()
+path = os.path.join(os.getcwd(), 'input')
 
 # Get File list
-path = 'D:\\MJ141\\recon-manual-Mid-top'
+#path = os.path.join(input_dir, 'recon-manual-Mid-top')
 files = []
 for file in os.listdir(path):
     if file.split('.')[-1] == 'tiff':
         files.append(file)
 # Pick subset
-files = np.asarray(files)
-start = 800
-finish = 801
-files = files[start:finish]
+#files = np.asarray(files)
+#start = 800
+#finish = 801
+#files = files[start:finish]
 # Load files
 ims = [io.imread(os.path.join(path, file)) for file in files]
 masks = []
@@ -281,7 +282,7 @@ def plot_domain(net):
     cc_b_Ts = net.find_neighbor_throats(pores=net.pores('cc_b'), mode='xnor')
     fig = tt.plot_connections(net, throats=cc_a_Ts, c='r', fig=fig)
     fig = tt.plot_connections(net, throats=cc_b_Ts, c='b', fig=fig)
-    fig = tt.plot_connections(net, throats=net.throats('interconnection'), c='g', fig=fig)
+    fig = tt.plot_connections(net, throats=net.throats('interconnection'), c='k', fig=fig)
     fig = tt.plot_coordinates(net, pores=net.pores('terminal'), s=100, c='k', fig=fig)
     if 'pore.inner' in net.labels():
         fig = tt.plot_coordinates(net, pores=net.pores('inner'), s=100, c='purple', fig=fig)
@@ -290,8 +291,10 @@ def plot_domain(net):
         fig = tt.plot_coordinates(net, pores=net.pores('free_stream'), s=100, c='green', fig=fig)
     for i in range(20):
         if 'pore.layer_'+str(i) in net.labels():
-            fig = tt.plot_coordinates(net, pores=net.pores('pore.layer_'+str(i)), s=10, c='orange', fig=fig)
-#    fig = tt.plot_coordinates(net, pores=net.pores('terminal_neighbor'), s=100, c='pink', fig=fig)
+            fig = tt.plot_coordinates(net, pores=net.pores('layer_'+str(i)), s=10, c='orange', fig=fig)
+            fig = tt.plot_connections(net, throats=net.throats('layer_'+str(i)), c='orange', fig=fig)
+    if 'throat.stitched' in net.labels():
+        fig = tt.plot_connections(net, throats=net.throats('stitched'), c='g', fig=fig)
 
 cc_a_Ts = net.find_neighbor_throats(pores=net.pores('cc_a'), mode='xnor')
 cc_b_Ts = net.find_neighbor_throats(pores=net.pores('cc_b'), mode='xnor')
@@ -445,8 +448,8 @@ for ai in np.unique(net['pore.arc_index']):
     net['pore.outer'][outer] = True
 
 free_theta = np.linspace(0, 2*np.pi, 37)
-free_x = mhs*(1+np.sin(free_theta))
-free_y = mhs*(1+np.cos(free_theta))
+free_x = mhs*(1+0.975*np.sin(free_theta))
+free_y = mhs*(1+0.975*np.cos(free_theta))
 plt.scatter(free_x, free_y, c='pink', s=100)
 free_coords = np.vstack((free_x, free_y, np.zeros(len(free_x)))).T
 free_conns = np.asarray([[i, i+1] for i in range(36)])
@@ -454,24 +457,88 @@ net_free = op.network.GenericNetwork(coords=free_coords, conns=free_conns)
 net_free['throat.trim'] = True
 net_free['pore.free_stream'] = True
 net_free['pore.radial_position'] = mhs
-net_free['pore.arc_index'] = np.arange(0, 37)
 net_free['pore.theta'] = free_theta
-tt.stitch(net, net_free, P_network=net.pores('outer'), P_donor=net_free.Ps, len_max=100, method='nearest')
-net['throat.interconnection'][-37:] = True
+tt.stitch(net, net_free, P_network=net.pores('outer'), P_donor=net_free.Ps, len_max=80, method='nearest')
+#net['throat.interconnection'][-37:] = True
 tt.trim(network=net, throats=net.throats('trim'))
+Ps = net.pores('free_stream')
+nPs = np.asarray(net.find_neighbor_pores(Ps, flatten=False)).flatten()
+net['pore.arc_index'][Ps] = net['pore.arc_index'][nPs]
 plot_domain(net)
 net['pore.cell_id'][net.pores('free_stream')] = -1
 
-prj = wrk['sim_01']
-wrk.save_project(project=prj, filename='MJ141-mid-top')
-#max_id = net['pore.cell_id'][net.pores('cc_b')].max()
-#data_a = pd.DataFrame({'cell_id': net['pore.cell_id'][net.pores('cc_a')],
-#                       'pore_index': net.pores('cc_a')})
-#data_b = pd.DataFrame({'cell_id': net['pore.cell_id'][net.pores('cc_b')],
-#                       'pore_index': net.pores('cc_b')})
-#data_a = data_a.sort_values(by=['cell_id'])
-#data_b = data_b.sort_values(by=['cell_id'])
+#wrk.clear()
+#wrk.load_project(filename=os.path.join(path, 'MJ141-mid-top'))
+#prj = wrk['sim_01']
+#net = prj.network
+max_id = net['pore.cell_id'][net.pores('cc_b')].max()
+data_a = pd.DataFrame({'cell_id': net['pore.cell_id'][net.pores('cc_a')],
+                       'pore_index': net.pores('cc_a')})
+data_b = pd.DataFrame({'cell_id': net['pore.cell_id'][net.pores('cc_b')],
+                       'pore_index': net.pores('cc_b')})
+data_a = data_a.sort_values(by=['cell_id'])
+data_b = data_b.sort_values(by=['cell_id'])
 #
 #interconns = np.vstack((list(data_a.pore_index), list(data_b.pore_index))).T
 #new_coords = (net['pore.coords'][interconns[:, 0]] + net['pore.coords'][interconns[:, 1]])/2
+#all_Ts = net.find_neighbor_throats(net.Ps, flatten=False)
+#for i, pore in enumerate(data_b.pore_index[:37]):
+#    Ts = all_Ts[pore]
+#    inter_Ts = Ts[net['throat.interconnection'][Ts]]
+#    print(net['pore.cell_id'][pore], net['pore.cell_id'][net['throat.conns'][Ts]] - i)
 
+Ts = net.throats('interconnection')
+tt.trim(network=net, throats=Ts)
+
+num_new_layers = 20
+for nlayer in range(num_new_layers):
+    new_layer = []
+    frac = (nlayer+1)/(num_new_layers+1)
+    Np0 = net.Np
+    vec = net['pore.coords'][data_a.pore_index] - net['pore.coords'][data_b.pore_index]
+    new_coords = net['pore.coords'][data_b.pore_index] + vec*frac
+    tt.extend(net, pore_coords=new_coords, labels='layer_'+str(nlayer))
+    net['pore.arc_index'][-len(new_coords):] = net['pore.arc_index'][data_b.pore_index]
+    net['pore.theta'][-len(new_coords):] = net['pore.theta'][data_b.pore_index]
+    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
+    # Same cell conns
+    if nlayer == num_new_layers - 1:
+        new_conns = np.vstack((data_a.pore_index, np.arange(0, len(new_coords), dtype=int)+Np0)).T
+        tt.extend(net, throat_conns=new_conns, labels='interconnection')
+    new_layer = new_layer + list(np.arange(0, len(new_coords), dtype=int)+Np0)
+    # Back-layer conns
+    if nlayer == 0:
+        new_conns = np.vstack((data_b.pore_index, np.arange(0, len(new_coords), dtype=int)+Np0)).T
+        tt.extend(net, throat_conns=new_conns, labels='interconnection')
+    new_conns = np.vstack((np.arange(0, len(new_coords)-1, dtype=int)+Np0, np.arange(1, len(new_coords), dtype=int)+Np0)).T
+    tt.extend(net, throat_conns=new_conns, labels='layer_'+str(nlayer))
+    tmp_b = data_b.pore_index[36:]
+    tmp_a = np.roll(data_a.pore_index, 36)[36:]
+    Np0 = net.Np
+    vec = net['pore.coords'][tmp_a] - net['pore.coords'][tmp_b]
+    vnorm = np.linalg.norm(vec, axis=1)
+    new_coords = net['pore.coords'][tmp_b] + vec*frac
+    tt.extend(net, pore_coords=new_coords, labels='layer_'+str(nlayer))
+    net['pore.arc_index'][-len(new_coords):] = net['pore.arc_index'][tmp_b]
+    net['pore.theta'][-len(new_coords):] = net['pore.theta'][tmp_b]
+    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
+    # Same cell conns
+    if nlayer == num_new_layers - 1:
+        new_conns = np.vstack((tmp_a, np.arange(0, len(new_coords), dtype=int)+Np0)).T
+        tt.extend(net, throat_conns=new_conns, labels='interconnection')
+    # Back-layer conns
+    if nlayer == 0:
+        new_conns = np.vstack((tmp_b, np.arange(0, len(new_coords), dtype=int)+Np0)).T
+        tt.extend(net, throat_conns=new_conns, labels='interconnection')
+    new_conns = np.vstack((np.arange(0, len(new_coords)-1, dtype=int)+Np0, np.arange(1, len(new_coords), dtype=int)+Np0)).T
+    tt.extend(net, throat_conns=new_conns, labels='layer_'+str(nlayer))
+    new_layer = new_layer + list(np.arange(0, len(new_coords), dtype=int)+Np0)
+    # Inter layer conns
+    if nlayer > 0:
+        new_layer = np.asarray(new_layer)
+        new_conns = np.vstack((new_layer, new_layer-len(new_layer))).T
+        tt.extend(net, throat_conns=new_conns, labels='interconnection')
+    
+plot_domain(net)
+prj = wrk['sim_01']
+wrk.save_project(project=prj, filename=os.path.join(path, 'MJ141-mid-top'))
