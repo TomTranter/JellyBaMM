@@ -25,6 +25,7 @@ import openpnm as op
 import openpnm.topotools as tt
 import pandas as pd
 
+pixel_size=10.4e-6
 wrk = op.Workspace()
 path = os.path.join(os.getcwd(), 'input')
 
@@ -390,7 +391,6 @@ for start in inner_terminals:
         cell_id +=1
         net['pore.cell_id'][nbr[0]] = cell_id
 
-tt.plot_coordinates(net, net.Ps, c=net['pore.cell_id'])
 
 def split_interconnection(net, layer=0):
     print('Np', net.Np, 'Nt', net.Nt)
@@ -498,9 +498,10 @@ for nlayer in range(num_new_layers):
     vec = net['pore.coords'][data_a.pore_index] - net['pore.coords'][data_b.pore_index]
     new_coords = net['pore.coords'][data_b.pore_index] + vec*frac
     tt.extend(net, pore_coords=new_coords, labels='layer_'+str(nlayer))
+    net['pore.cell_id'][-len(new_coords):] = data_b.cell_id
     net['pore.arc_index'][-len(new_coords):] = net['pore.arc_index'][data_b.pore_index]
     net['pore.theta'][-len(new_coords):] = net['pore.theta'][data_b.pore_index]
-    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
+#    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
     # Same cell conns
     if nlayer == num_new_layers - 1:
         new_conns = np.vstack((data_a.pore_index, np.arange(0, len(new_coords), dtype=int)+Np0)).T
@@ -519,9 +520,10 @@ for nlayer in range(num_new_layers):
     vnorm = np.linalg.norm(vec, axis=1)
     new_coords = net['pore.coords'][tmp_b] + vec*frac
     tt.extend(net, pore_coords=new_coords, labels='layer_'+str(nlayer))
+    net['pore.cell_id'][-len(new_coords):] = data_b.cell_id[36:]
     net['pore.arc_index'][-len(new_coords):] = net['pore.arc_index'][tmp_b]
     net['pore.theta'][-len(new_coords):] = net['pore.theta'][tmp_b]
-    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
+#    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
     # Same cell conns
     if nlayer == num_new_layers - 1:
         new_conns = np.vstack((tmp_a, np.arange(0, len(new_coords), dtype=int)+Np0)).T
@@ -541,4 +543,13 @@ for nlayer in range(num_new_layers):
     
 plot_domain(net)
 prj = wrk['sim_01']
+net['pore.coords'] *= pixel_size
+mean = np.mean(net['pore.coords'], axis=0)
+net['pore.coords'] -= mean
+net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
 wrk.save_project(project=prj, filename=os.path.join(path, 'MJ141-mid-top'))
+
+tt.plot_coordinates(net, net.Ps, c=net['pore.cell_id'])
+
+show_Ps = np.in1d(net['pore.cell_id'], np.arange(0, 650, 10))
+tt.plot_coordinates(net, net.Ps[show_Ps], c=net['pore.cell_id'][show_Ps])

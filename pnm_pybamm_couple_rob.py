@@ -10,8 +10,8 @@ import pybamm
 import sys
 import openpnm as op
 import matplotlib.pyplot as plt
-from matplotlib import cm
 import matplotlib as mpl
+from matplotlib import cm
 from matplotlib.collections import LineCollection
 from matplotlib.widgets import Slider
 import numpy as np
@@ -19,11 +19,8 @@ from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
 from openpnm.models.physics.generic_source_term import linear
 import time
-import os
 
-wrk = op.Workspace()
-input_dir = os.path.join(os.getcwd(), 'input')
-pybamm.set_logging_level(10)
+
 # %% Set up domain in OpenPNM
 
 # Thermal Parameters
@@ -36,8 +33,49 @@ alpha = K0 / (cp * rho)
 heat_transfer_coefficient = 10
 hc = heat_transfer_coefficient / (cp * rho)
 
+# Number of nodes in each layer
+Nan = 9  # anode
+Ncat = 6  # cathode
+Ncc = 2  # current collector
+Nsep = 3  # separator
+# Number of unit cells
+Nlayers = 19  # number of windings
+dtheta = 10  # arc angle between nodes
+Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
+Nunit = np.int(Nlayers * Narc)  # total number of unit cells
+# Number of nodes in the unit cell
+N1d = (Nan + Ncat + Ncc + Nsep) * 2
+# 2D assembly
+assembly = np.zeros([Nunit, N1d], dtype=int)
+# Network spacing
+spacing = 1e-5  # 10 microns
 length_3d = 0.065
-I_app_mag = 2.5  # A
+I_app_mag = 2.5*(Nlayers/20)  # A
+
+# %% Layer labels
+p1 = Nan
+p2 = Nan + Ncc
+p3 = Nan + Ncc + Nan
+p4 = Nan + Ncc + Nan + Nsep
+p5 = Nan + Ncc + Nan + Nsep + Ncat
+p6 = Nan + Ncc + Nan + Nsep + Ncat + Ncc
+p7 = Nan + Ncc + Nan + Nsep + Ncat + Ncc + Ncat
+p8 = Nan + Ncc + Nan + Nsep + Ncat + Ncc + Ncat + Nsep
+
+assembly[:, :p1] = 1
+assembly[:, p1:p2] = 2
+assembly[:, p2:p3] = 1
+assembly[:, p3:p4] = 5
+assembly[:, p4:p5] = 3
+assembly[:, p5:p6] = 4
+assembly[:, p6:p7] = 3
+assembly[:, p7:p8] = 5
+
+unit_id = np.tile(np.arange(0, Nunit), (N1d, 1)).T
+
+(fig, (ax1, ax2)) = plt.subplots(1, 2)
+ax1.imshow(assembly)
+ax2.imshow(unit_id)
 
 # %% Start OPENPNM
 
@@ -46,44 +84,8 @@ class pnm_runner:
     def __init__(self):
         pass
 
-    def setup_jelly(self, Nlayers=19, dtheta=10, spacing=1e-5):
-        # Number of nodes in each layer
-        Nan = 9  # anode
-        Ncat = 6  # cathode
-        Ncc = 2  # current collector
-        Nsep = 3  # separator
-        # Number of unit cells
-#        Nlayers = 19  # number of windings
-#        dtheta = 10  # arc angle between nodes
-        Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
-        self.Nunit = np.int(Nlayers * Narc)  # total number of unit cells
-        # Number of nodes in the unit cell
-        N1d = (Nan + Ncat + Ncc + Nsep) * 2
-        # 2D assembly
-        assembly = np.zeros([self.Nunit, N1d], dtype=int)
-        # %% Layer labels
-        p1 = Nan
-        p2 = Nan + Ncc
-        p3 = Nan + Ncc + Nan
-        p4 = Nan + Ncc + Nan + Nsep
-        p5 = Nan + Ncc + Nan + Nsep + Ncat
-        p6 = Nan + Ncc + Nan + Nsep + Ncat + Ncc
-        p7 = Nan + Ncc + Nan + Nsep + Ncat + Ncc + Ncat
-        p8 = Nan + Ncc + Nan + Nsep + Ncat + Ncc + Ncat + Nsep
-        assembly[:, :p1] = 1
-        assembly[:, p1:p2] = 2
-        assembly[:, p2:p3] = 1
-        assembly[:, p3:p4] = 5
-        assembly[:, p4:p5] = 3
-        assembly[:, p5:p6] = 4
-        assembly[:, p6:p7] = 3
-        assembly[:, p7:p8] = 5
-        unit_id = np.tile(np.arange(0, self.Nunit), (N1d, 1)).T
-        (fig, (ax1, ax2)) = plt.subplots(1, 2)
-        ax1.imshow(assembly)
-        ax2.imshow(unit_id)
-
-        self.net = op.network.Cubic(shape=[self.Nunit, N1d, 1], spacing=spacing)
+    def setup(self):
+        self.net = op.network.Cubic(shape=[Nunit, N1d, 1], spacing=spacing)
         self.project = self.net.project
         self.net["pore.region_id"] = assembly.flatten()
         self.net["pore.cell_id"] = unit_id.flatten()
@@ -181,31 +183,7 @@ class pnm_runner:
         self.plot_topology()
         self.net["pore.region_id"][self.net["pore.free_stream"]] = -1
         self.net["pore.cell_id"][self.net["pore.free_stream"]] = -1
-        self.setup_geometry(dtheta, spacing)
 
-    def setup_tomo(self, dtheta, spacing):
-        wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top.pnm'))
-        sim_name = list(wrk.keys())[0]
-        prj = wrk[sim_name]
-        self.net = prj.network
-        
-        self.arc_edges = [0.0]
-        Ps = self.net.pores('cc_b')
-        self.Nunit = self.net['pore.cell_id'][Ps].max() + 1
-        old_coord = None
-        for cell_id in range(self.Nunit):
-            P = Ps[self.net['pore.cell_id'][Ps] == cell_id]
-            coord = self.net['pore.coords'][P]
-            if old_coord is not None:
-                d = np.linalg.norm(coord-old_coord)
-                self.arc_edges.append(self.arc_edges[-1] + d)
-            old_coord = coord
-        # Add 1 more
-        self.arc_edges.append(self.arc_edges[-1] + d)
-        self.arc_edges = np.asarray(self.arc_edges)
-        self.setup_geometry(dtheta, spacing)
-
-    def setup_geometry(self, dtheta, spacing):
         # Create Geometry based on circular arc segment
         drad = 2 * np.pi * dtheta / 360
         geo = op.geometry.GenericGeometry(
@@ -230,11 +208,6 @@ class pnm_runner:
             geo["throat.radial_position"][sameR] * drad * length_3d
         )
         geo["throat.volume"] = 0.0
-        fig, (ax1, ax2) = plt.subplots(2, 2)
-        ax1[0].hist(geo["throat.area"])
-        ax1[1].hist(geo["throat.length"])
-        ax2[0].hist(geo["pore.radial_position"])
-        ax2[1].hist(geo["pore.volume"])
         self.phase = op.phases.GenericPhase(network=self.net)
         # Set up Phase and Physics
         self.phase["pore.temperature"] = T0
@@ -243,19 +216,13 @@ class pnm_runner:
             alpha * geo["throat.area"] / geo["throat.length"]
         )
         # Reduce separator conductance
-        if "throat.separator" in self.net.labels():
-            Ts = self.net.throats("separator")
-        else:
-            Ts = self.net.throats("layer_5")
-        self.phase["throat.conductance"][Ts] *= 0.1
+        self.phase["throat.conductance"][self.net.throats("separator")] *= 0.1
         # Free stream convective flux
         Ts = self.net.throats("stitched")
         self.phase["throat.conductance"][Ts] = geo["throat.area"][Ts] * hc
         self.phys = op.physics.GenericPhysics(
             network=self.net, geometry=geo, phase=self.phase
         )
-        print('Mean throat conductance', np.mean(self.phase['throat.conductance']))
-        print('Mean throat conductance Boundary', np.mean(self.phase['throat.conductance'][Ts]))
 
     def plot_topology(self):
         an = self.net["pore.region_id"] == 1
@@ -349,8 +316,8 @@ class pnm_runner:
             plt.title(title)
 
     def get_average_temperature(self):
-        temp = np.zeros(self.Nunit)
-        for i in range(self.Nunit):
+        temp = np.zeros(Nunit)
+        for i in range(Nunit):
             cell = self.net["pore.cell_id"] == i
             temp[i] = np.mean(self.phase["pore.temperature"][cell])
         return temp
@@ -366,7 +333,6 @@ class spm_runner:
         pass
 
     def setup(self, I_app, T0, cc_cond_neg, cc_cond_pos, z_edges):
-        self.Nunit = len(z_edges)-1
         # set logging level
         pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
@@ -407,7 +373,7 @@ class spm_runner:
             self.var.x_p: 5,
             self.var.r_n: 5,
             self.var.r_p: 5,
-            self.var.z: self.Nunit,
+            self.var.z: Nunit,
         }
         # depending on number of points in z direction
         # may need to increase recursion depth...
@@ -423,6 +389,7 @@ class spm_runner:
         self.solver = pybamm.KLU()
         self.solver.atol = 1e-8
         self.solver.rtol = 1e-8
+        # self.solver = self.model.default_solver
         self.last_time = 0.0
         self.solution = None
 
@@ -497,6 +464,8 @@ class spm_runner:
         phi_s_cp_dim_new = (
             self.current_state[self.model.variables[vname].y_slices] - adj
         )
+        #        phi_s_cn_dim_new = self.non_dim_potential(phi_neg, domain='negative')
+        #        phi_s_cp_dim_new = self.non_dim_potential(phi_pos, domain='positive')
         variables = {
             "Negative current collector potential": phi_s_cn_dim_new,
             "Positive current collector potential": phi_s_cp_dim_new,
@@ -515,7 +484,7 @@ class spm_runner:
 
     def plot(self, concatenate=True):
         # Plotting
-        z = np.linspace(0, 1, self.Nunit)
+        z = np.linspace(0, 1, Nunit)
         sol = self.solution
         pvs = {
             "X-averaged reversible heating [A.V.m-3]": None,
@@ -525,6 +494,8 @@ class spm_runner:
             "Current collector current density [A.m-2]": None,
             "X-averaged positive particle surface concentration [mol.m-3]": None,
             "X-averaged negative particle surface concentration [mol.m-3]": None,
+            #               "X-averaged positive particle surface concentration": None,
+            #               "X-averaged negative particle surface concentration": None,
             "X-averaged cell temperature [K]": None,
             "Negative current collector potential [V]": None,
             "Positive current collector potential [V]": None,
@@ -539,7 +510,7 @@ class spm_runner:
             fig, ax = plt.subplots()
             lines = []
             data = pvs[key](sol.t, z=z)
-            for bat_id in range(self.Nunit):
+            for bat_id in range(Nunit):
                 lines.append(np.column_stack((hrs, data[bat_id, :])))
             line_segments = LineCollection(lines)
             line_segments.set_array(z)
@@ -547,6 +518,8 @@ class spm_runner:
                 mpl.ticker.ScalarFormatter(useMathText=True, useOffset=False)
             )
             ax.add_collection(line_segments)
+            #            axcb = fig.colorbar(line_segments)
+            #            axcb.set_label('Normalized Arc Position')
             plt.xlabel("t [hrs]")
             plt.ylabel(key)
             plt.xlim(hrs.min(), hrs.max())
@@ -555,10 +528,9 @@ class spm_runner:
             plt.show()
 
     def get_processed_variable(self, var, time_index=None):
-        z = np.linspace(0, 1, self.Nunit)
+        z = np.linspace(0, 1, Nunit)
         proc = pybamm.ProcessedVariable(
-            self.model.variables[var], self.solution.t,
-            self.solution.y, mesh=self.mesh
+            self.model.variables[var], self.solution.t, self.solution.y, mesh=self.mesh
         )
         data = proc(self.solution.t, z=z)
         if time_index is None:
@@ -571,7 +543,7 @@ class spm_runner:
         return self.get_processed_variable(var, time_index=-1)
 
     def get_potentials(self):
-        z = np.linspace(0, 1, self.Nunit)
+        z = np.linspace(0, 1, Nunit)
         potential_vars = [
             "Negative current collector potential [V]",
             "Positive current collector potential [V]",
@@ -634,7 +606,7 @@ class spm_runner:
             # solve model
             t_eval = np.linspace(0, 1.0, 101)
             # solver = pybamm.KLU()
-            solver = model.default_solver
+            solver = pybamm.KLU()
             sol = solver.solve(model, t_eval)
             time = pybamm.ProcessedVariable(
                 model.variables["Time [h]"], sol.t, sol.y, mesh=mesh
@@ -664,8 +636,8 @@ class spm_runner:
         print("Total Volume", (vol_b * 1e6), "cm3")
         print("Specific Capacity", tot_cap / (vol_b * 1e6), "mAh.cm-3")
 
-    def plot_3d(self, var='Current collector current density [A.m-2]'):
-        data = self.get_processed_variable(var)
+    def plot_3d(var='Current collector current density [A.m-2]'):
+        data = spm.get_processed_variable(var)
         X, Y = np.meshgrid(np.arange(0, data.shape[1], 1),
                            np.arange(0, data.shape[0], 1))
         fig = plt.figure()
@@ -692,39 +664,33 @@ lumped unit cell temperature is applied and updated over time
 start_time = time.time()
 plt.close("all")
 pnm = pnm_runner()
-#pnm.setup_jelly(Nlayers=19, dtheta=10, spacing=1e-5)
-pnm.setup_tomo(dtheta=10, spacing=1e-5)
-print('Battery Volume', np.sum(pnm.net['pore.volume']))
-print('18650 Volume', 65e-3*np.pi*(18e-3/2)**2)
-print('Np', pnm.net.Np, 'Nt', pnm.net.Nt)
-print('Middle', np.mean(pnm.net['pore.coords'], axis=0))
-print('Min', np.min(pnm.net['pore.coords'], axis=0))
-print('Max', np.max(pnm.net['pore.coords'], axis=0))
+pnm.setup()
 do_just_heat = False
 if do_just_heat:
     C_rate = 2.0
-    heat_source = np.ones(pnm.Nunit) * 25e3 * C_rate
+    heat_source = np.ones(Nunit) * 25e3 * C_rate
     time_step = 0.01
     pnm.run_step(heat_source, time_step, BC_value=T0)
     pnm.plot_temperature_profile()
 else:
     spm = spm_runner()
-    spm.setup(I_app=I_app_mag, T0=T0, cc_cond_neg=3e7,
-              cc_cond_pos=3e7, z_edges=pnm.arc_edges)
-#    spm.test_equivalent_capacity()
+    spm.setup(
+        I_app=I_app_mag, T0=T0, cc_cond_neg=3e7, cc_cond_pos=3e7, z_edges=pnm.arc_edges
+    )
+    spm.test_equivalent_capacity()
     full = True
     if full:
-#        t_final = 0.1 # non-dim
+        t_final = 0.01  # non-dim
         n_steps = 2
-        time_step = 0.01
+        time_step = t_final / n_steps
         jelly_potentials = []
 
         # Initialize - Run through loop to get temperature then discard solution with small
         #              time step
-        print('*'*30)
-        print('Initializing')
-        print('*'*30)
-        spm.run_step(time_step, n_subs=10)
+        print("*" * 30)
+        print("Initializing")
+        print("*" * 30)
+        spm.run_step(time_step / 1000)
         heat_source = spm.get_heat_source()
         print("Heat Source", np.mean(heat_source))
         pnm.run_step(heat_source, time_step, BC_value=T0)
@@ -739,7 +705,7 @@ else:
         print("Running Steps")
         print("*" * 30)
         for i in range(n_steps):
-            spm.run_step(time_step, n_subs=10)
+            spm.run_step(time_step)
             heat_source = spm.get_heat_source()
             print("Heat Source", np.mean(heat_source))
             pnm.run_step(heat_source, time_step, BC_value=T0)
@@ -772,11 +738,11 @@ else:
         ]
 
         tind = -1
-#        for var in vars:
-#            data = pnm.convert_spm_data(
-#                spm.get_processed_variable(var, time_index=tind)
-#            )
-#            pnm.plot_pore_data(data, title=var + " @ time " + str(spm.solution.t[tind]))
+        for var in vars:
+            data = pnm.convert_spm_data(
+                spm.get_processed_variable(var, time_index=tind)
+            )
+            pnm.plot_pore_data(data, title=var + " @ time " + str(spm.solution.t[tind]))
 
         def plot_time_series(var):
             all_time_data = spm.get_processed_variable(var, time_index=None)
@@ -825,5 +791,5 @@ def specific_cap(diam, height, cap):
     spec = cap / v
     return spec
 
-#print('State of Art 18650', specific_cap(1.8, 6.5, 2500), 'mAh.cm-3')
 spm.plot_3d()
+print("State of Art 18650", specific_cap(1.8, 6.5, 2500), "mAh.cm-3")
