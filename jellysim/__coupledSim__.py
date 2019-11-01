@@ -118,4 +118,3 @@ class coupledSim(object):
     def save(self, name):
         for key in self.runners.keys():
             js.save_obj(name+'_'+key, self.runners[key])
-        

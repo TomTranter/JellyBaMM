@@ -24,15 +24,15 @@ input_dir = os.path.join(os.getcwd(), 'input')
 pybamm.set_logging_level(10)
 
 # Simulation options
-opt = {'domain': 'tomography',
-       'Nlayers': 19,
+opt = {'domain': 'model',
+       'Nlayers': 5,
        'cp': 1148,
        'rho': 5071.75,
        'K0': 1,
        'T0': 303,
        'heat_transfer_coefficient': 10,
        'length_3d': 0.065,
-       'I_app_mag': 2.5,
+       'I_app_mag': 0.5,
        'cc_cond_neg': 3e7,
        'cc_cond_pos': 3e7,
        'dtheta': 10,
@@ -43,5 +43,15 @@ sim.setup(opt)
 #sim.run_thermal()
 #sim.runners['spm'].test_equivalent_capacity()
 sim.run(n_steps=2, time_step=0.01)
-#sim.plots()
-sim.save('test')
+sim.plots()
+#sim.save('test')
+spm = sim.runners['spm']
+#js.save_obj('test_save_spm', spm)  # N Can't pickle local object 'primitive.<locals>.f_wrapped'
+#js.save_obj('test_save_spm_param', spm.param)  # N Can't pickle local object 'primitive.<locals>.f_wrapped'
+#js.save_obj('test_save_spm_model', spm.model)  # N Can't pickle local object 'primitive.<locals>.f_wrapped'
+#js.save_obj('test_save_spm_geometry', spm.geometry)  # Y
+#js.save_obj('test_save_spm_var', spm.var)  # N can't pickle module objects
+#js.save_obj('test_save_spm_mesh', spm.mesh)  # Y
+#js.save_obj('test_save_spm_disc', spm.disc)  # N Can't pickle local object 'primitive.<locals>.f_wrapped'
+#js.save_obj('test_save_spm_solver', spm.solver)  # N Can't pickle local object 'DaeSolver.set_up.<locals>.rhs'
+#js.save_obj('test_save_spm_solution', spm.solution)  # Y
