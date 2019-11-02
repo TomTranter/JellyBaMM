@@ -39,8 +39,8 @@ Ncat = 6  # cathode
 Ncc = 2  # current collector
 Nsep = 3  # separator
 # Number of unit cells
-Nlayers = 19  # number of windings
-dtheta = 10  # arc angle between nodes
+Nlayers = 10  # number of windings
+dtheta = 20  # arc angle between nodes
 Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
 Nunit = np.int(Nlayers * Narc)  # total number of unit cells
 # Number of nodes in the unit cell
@@ -50,7 +50,7 @@ assembly = np.zeros([Nunit, N1d], dtype=int)
 # Network spacing
 spacing = 1e-5  # 10 microns
 length_3d = 0.065
-I_app_mag = 2.5*(Nlayers/20)  # A
+I_app_mag = 2.5 * (Nlayers / 20)  # A
 
 # %% Layer labels
 p1 = Nan
@@ -342,8 +342,6 @@ class spm_runner:
             "thermal": "set external temperature",
         }
         self.model = pybamm.lithium_ion.SPM(options)
-        self.model.use_simplify = False
-        self.model.use_to_python = False
         # create geometry
         self.geometry = self.model.default_geometry
         # load parameter values and process model and geometry
@@ -380,15 +378,18 @@ class spm_runner:
         sys.setrecursionlimit(10000)
         submesh_types = self.model.default_submesh_types
         pts = z_edges / z_edges[-1]
-        submesh_types["current collector"] = pybamm.GetUserSupplied1DSubMesh(pts)
+        submesh_types["current collector"] = pybamm.MeshGenerator(
+            pybamm.UserSupplied1DSubMesh, submesh_params={"edges": pts}
+        )
         self.mesh = pybamm.Mesh(self.geometry, submesh_types, self.var_pts)
         # discretise model
         self.disc = pybamm.Discretisation(self.mesh, self.model.default_spatial_methods)
         self.disc.process_model(self.model)
         # set up solver
-        self.solver = pybamm.KLU()
-        self.solver.atol = 1e-8
-        self.solver.rtol = 1e-8
+        self.model.convert_to_format = (
+            "casadi"
+        )  # Use casadi for fast jacobian calculation
+        self.solver = pybamm.IDAKLUSolver(atol=1e-8, rtol=1e-8)
         # self.solver = self.model.default_solver
         self.last_time = 0.0
         self.solution = None
@@ -487,10 +488,10 @@ class spm_runner:
         z = np.linspace(0, 1, Nunit)
         sol = self.solution
         pvs = {
-            "X-averaged reversible heating [A.V.m-3]": None,
-            "X-averaged irreversible electrochemical heating [A.V.m-3]": None,
-            "X-averaged Ohmic heating [A.V.m-3]": None,
-            "X-averaged total heating [A.V.m-3]": None,
+            "X-averaged reversible heating [W.m-3]": None,
+            "X-averaged irreversible electrochemical heating [W.m-3]": None,
+            "X-averaged Ohmic heating [W.m-3]": None,
+            "X-averaged total heating [W.m-3]": None,
             "Current collector current density [A.m-2]": None,
             "X-averaged positive particle surface concentration [mol.m-3]": None,
             "X-averaged negative particle surface concentration [mol.m-3]": None,
@@ -539,7 +540,7 @@ class spm_runner:
             return data[:, time_index]
 
     def get_heat_source(self):
-        var = "X-averaged total heating [A.V.m-3]"
+        var = "X-averaged total heating [W.m-3]"
         return self.get_processed_variable(var, time_index=-1)
 
     def get_potentials(self):
@@ -605,8 +606,7 @@ class spm_runner:
             disc.process_model(model)
             # solve model
             t_eval = np.linspace(0, 1.0, 101)
-            # solver = pybamm.KLU()
-            solver = pybamm.KLU()
+            solver = model.default_solver
             sol = solver.solve(model, t_eval)
             time = pybamm.ProcessedVariable(
                 model.variables["Time [h]"], sol.t, sol.y, mesh=mesh
@@ -636,19 +636,22 @@ class spm_runner:
         print("Total Volume", (vol_b * 1e6), "cm3")
         print("Specific Capacity", tot_cap / (vol_b * 1e6), "mAh.cm-3")
 
-    def plot_3d(var='Current collector current density [A.m-2]'):
+    def plot_3d(var="Current collector current density [A.m-2]"):
         data = spm.get_processed_variable(var)
-        X, Y = np.meshgrid(np.arange(0, data.shape[1], 1),
-                           np.arange(0, data.shape[0], 1))
+        X, Y = np.meshgrid(
+            np.arange(0, data.shape[1], 1), np.arange(0, data.shape[0], 1)
+        )
         fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        surf = ax.plot_surface(X, Y, data, cmap=cm.viridis,
-                               linewidth=0, antialiased=False)
+        ax = fig.gca(projection="3d")
+        surf = ax.plot_surface(
+            X, Y, data, cmap=cm.viridis, linewidth=0, antialiased=False
+        )
         fig.colorbar(surf, shrink=0.5, aspect=5)
-        ax.set_xlabel('$Time$', rotation=150)
-        ax.set_ylabel('$Arc Position$')
+        ax.set_xlabel("$Time$", rotation=150)
+        ax.set_ylabel("$Arc Position$")
         ax.set_zlabel(var, rotation=60)
         plt.show()
+
 
 # %% Main Loop
 # def main():
@@ -728,7 +731,7 @@ else:
         print("Simulation Time", np.around(end_time - start_time, 2), "s")
         print("*" * 30)
         vars = [
-            "X-averaged total heating [A.V.m-3]",
+            "X-averaged total heating [W.m-3]",
             "X-averaged cell temperature [K]",
             "X-averaged positive particle surface concentration [mol.m-3]",
             "X-averaged negative particle surface concentration [mol.m-3]",
@@ -790,6 +793,7 @@ def specific_cap(diam, height, cap):
     v = a * height
     spec = cap / v
     return spec
+
 
 spm.plot_3d()
 print("State of Art 18650", specific_cap(1.8, 6.5, 2500), "mAh.cm-3")
