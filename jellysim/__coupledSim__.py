@@ -56,6 +56,7 @@ class coupledSim(object):
         spm = self.runners['spm']
         options = self.options
         start_time = time.time()
+        spm.setup_mesh(z_edges=pnm.arc_edges.copy())
         if initialize:
             # Initialize - Run through loop to get temperature then discard
             # solution with small time step

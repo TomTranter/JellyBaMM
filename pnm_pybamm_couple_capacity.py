@@ -17,7 +17,7 @@ plt.close("all")
 use_tomo = True
 wrk = op.Workspace()
 input_dir = os.path.join(os.getcwd(), 'input')
-pybamm.set_logging_level(10)
+pybamm.set_logging_level(60)
 
 # Simulation options
 opt = {'domain': 'model',
@@ -37,6 +37,9 @@ opt = {'domain': 'model',
 sim = js.coupledSim()
 sim.setup(opt)
 spm = sim.runners['spm']
-spm.test_equivalent_capacity(I_app_mag=1.0)
-spm.test_equivalent_capacity(I_app_mag=1.0)
-spm.test_equivalent_capacity(I_app_mag=2.0)
+for I_app_mag in [3.0, 2.0, 1.0]:
+    print('*'*30)
+    print('I app', I_app_mag)
+    spm.test_equivalent_capacity(I_app_mag=I_app_mag)
+    print('*'*30)
+

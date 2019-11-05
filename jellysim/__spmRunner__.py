@@ -51,11 +51,6 @@ class spm_runner(object):
                 "Negative electrode conductivity [S.m-1]": 0.1,
             }
         )
-        self.param_dict = {}
-        for key, value in self.param.items():
-            self.param_dict[key] = value
-        self.param.process_model(self.model)
-        self.param.process_geometry(self.geometry)
         # set mesh
         self.var = pybamm.standard_spatial_vars
         self.var_pts = {
@@ -66,6 +61,8 @@ class spm_runner(object):
             self.var.r_p: 5,
             self.var.z: self.Nunit,
         }
+        self.param.process_model(self.model)
+        self.param.process_geometry(self.geometry)
         # depending on number of points in z direction
         # may need to increase recursion depth...
         sys.setrecursionlimit(10000)
@@ -74,16 +71,18 @@ class spm_runner(object):
         tmp = pybamm.GetUserSupplied1DSubMesh(pts)
         submesh_types["current collector"] = tmp
         self.mesh = pybamm.Mesh(self.geometry, submesh_types, self.var_pts)
-        # discretise model
-        self.disc = pybamm.Discretisation(self.mesh,
-                                          self.model.default_spatial_methods)
-        self.disc.process_model(self.model)
         # set up solver
         self.solver = pybamm.KLU()
         self.solver.atol = 1e-8
         self.solver.rtol = 1e-8
         self.last_time = 0.0
         self.solution = None
+        self.disc = None
+
+    def _setup_discretization(self):
+        self.disc = pybamm.Discretisation(self.mesh,
+                                          self.model.default_spatial_methods)
+        self.disc.process_model(self.model)
 
     def convert_time(self, non_dim_time, to="seconds"):
         s_parms = pybamm.standard_parameters_lithium_ion
@@ -124,6 +123,8 @@ class spm_runner(object):
         return (temperature - T_ref) / Delta_T
 
     def run_step(self, time_step, n_subs=20):
+        if self.disc is None:
+            self._setup_discretization()
         # Step model for one global time interval
         # Note: In order to make the solver converge, we need to compute
         # consistent initial values for the algebraic part of the model.
@@ -252,7 +253,7 @@ class spm_runner(object):
         return out
 
     def get_cell_volumes(self):
-        cc_lens = self.mesh["current collector"][0].d_edges
+        cc_lens = self.mesh["current collector"][0].d_edges.copy()
         cc_lens *= self.param["Electrode height [m]"]
         len_3d = self.param["Electrode width [m]"]
         l_x_p = self.param["Positive electrode thickness [m]"]
@@ -278,7 +279,7 @@ class spm_runner(object):
                 "Positive tab centre z-coordinate [m]",
             ]
             save_dict = {k: param[k] for k in save_ps}
-            param.update(self.param_dict)
+            param.update(self.param.copy())
             param.update(save_dict)
             param["Typical current [A]"] = I_app
             param.process_model(model)
