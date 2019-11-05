@@ -267,6 +267,7 @@ class spm_runner(object):
 
     def test_equivalent_capacity(self, I_app_mag=1.0):
         tot_cap = 0.0
+        sim_time_hrs = 0.0
         for I_app in [-1.0, 1.0]:
             I_app *= I_app_mag
             model = pybamm.lithium_ion.SPM()
@@ -281,7 +282,7 @@ class spm_runner(object):
             save_dict = {k: param[k] for k in save_ps}
             param.update(self.param.copy())
             param.update(save_dict)
-            param["Typical current [A]"] = I_app
+            param.update({"Typical current [A]": I_app})
             param.process_model(model)
             param.process_geometry(geometry)
             s_var = pybamm.standard_spatial_vars
@@ -318,6 +319,7 @@ class spm_runner(object):
             tot_cap += np.absolute(I_app * 1000 * dc_time)
             plt.figure()
             plt.plot(time(sol.t), xpsurf(sol.t))
+            sim_time_hrs += dc_time
         vol_a = np.sum(self.get_cell_volumes())
         l_y = param["Electrode width [m]"]
         l_z = param["Electrode height [m]"]
@@ -329,6 +331,7 @@ class spm_runner(object):
         l_x = l_x_p + l_x_n + l_x_s + l_x_ccp + l_x_ccn
         vol_b = l_x * l_y * l_z
         print("vols", vol_a, vol_b)
+        print("Total Charge/Discharge Time [hrs]", sim_time_hrs)
         print("Total Capacity", tot_cap, "mAh")
         print("Total Volume", (vol_b * 1e6), "cm3")
         print("Specific Capacity", tot_cap / (vol_b * 1e6), "mAh.cm-3")
