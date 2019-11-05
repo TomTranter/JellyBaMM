@@ -12,6 +12,7 @@ from matplotlib import cm
 import matplotlib as mpl
 from matplotlib.collections import LineCollection
 import numpy as np
+from scipy import io
 
 
 class spm_runner(object):
@@ -50,6 +51,9 @@ class spm_runner(object):
                 "Negative electrode conductivity [S.m-1]": 0.1,
             }
         )
+        self.param_dict = {}
+        for key, value in self.param.items():
+            self.param_dict[key] = value
         self.param.process_model(self.model)
         self.param.process_geometry(self.geometry)
         # set mesh
@@ -274,7 +278,7 @@ class spm_runner(object):
                 "Positive tab centre z-coordinate [m]",
             ]
             save_dict = {k: param[k] for k in save_ps}
-            param.update(self.param)
+            param.update(self.param_dict)
             param.update(save_dict)
             param["Typical current [A]"] = I_app
             param.process_model(model)
@@ -341,3 +345,10 @@ class spm_runner(object):
         ax.set_ylabel('$Arc Position$')
         ax.set_zlabel(var, rotation=60)
         plt.show()
+
+    def export_3d_mat(self, var='Current collector current density [A.m-2]',
+                      fname='data.mat'):
+        data = self.get_processed_variable(var)
+        if '.mat' not in fname:
+            fname = fname + '.mat'
+        io.savemat(fname, mdict={'data': data})

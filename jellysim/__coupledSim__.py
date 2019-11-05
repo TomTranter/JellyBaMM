@@ -35,6 +35,12 @@ class coupledSim(object):
 
         self.runners = {'pnm': pnm,
                         'spm': spm}
+        spm.setup(I_app=options['I_app_mag'],
+                  T0=options['T0'],
+                  cc_cond_neg=options['cc_cond_neg'],
+                  cc_cond_pos=options['cc_cond_pos'],
+                  z_edges=pnm.arc_edges.copy(),
+                  length_3d=options['length_3d'])
 
     def run_thermal(self):
         pnm = self.runners['pnm']
@@ -45,37 +51,17 @@ class coupledSim(object):
         pnm.run_step(heat_source, time_step, BC_value=T0)
         pnm.plot_temperature_profile()
 
-    def run(self, n_steps, time_step):
+    def run(self, n_steps, time_step, initialize=True):
         pnm = self.runners['pnm']
         spm = self.runners['spm']
         options = self.options
-        spm.setup(I_app=options['I_app_mag'],
-                  T0=options['T0'],
-                  cc_cond_neg=options['cc_cond_neg'],
-                  cc_cond_pos=options['cc_cond_pos'],
-                  z_edges=pnm.arc_edges.copy(),
-                  length_3d=options['length_3d'])
         start_time = time.time()
-        # Initialize - Run through loop to get temperature then discard
-        # solution with small time step
-        print('*'*30)
-        print('Initializing')
-        print('*'*30)
-        spm.run_step(time_step, n_subs=10)
-        heat_source = spm.get_heat_source()
-        print("Heat Source", np.mean(heat_source))
-        pnm.run_step(heat_source, time_step, BC_value=options['T0'])
-        global_temperature = pnm.get_average_temperature()
-        #    global_temperature = np.ones_like(global_temperature)*303.5
-        print("Global Temperature", np.mean(global_temperature))
-        T_diff = global_temperature.max() - global_temperature.min()
-        print("Temperature Range", T_diff)
-        spm.update_external_temperature(global_temperature)
-        spm.solution = None
-        print("*" * 30)
-        print("Running Steps")
-        print("*" * 30)
-        for i in range(n_steps):
+        if initialize:
+            # Initialize - Run through loop to get temperature then discard
+            # solution with small time step
+            print('*'*30)
+            print('Initializing')
+            print('*'*30)
             spm.run_step(time_step, n_subs=10)
             heat_source = spm.get_heat_source()
             print("Heat Source", np.mean(heat_source))
@@ -85,7 +71,25 @@ class coupledSim(object):
             T_diff = global_temperature.max() - global_temperature.min()
             print("Temperature Range", T_diff)
             spm.update_external_temperature(global_temperature)
-#            jelly_potentials.append(spm.get_potentials()[-1])
+            spm.solution = None
+        print("*" * 30)
+        print("Running Steps")
+        print("*" * 30)
+        termination = False
+        i = 0
+        while i < n_steps and not termination:
+            spm.run_step(time_step, n_subs=10)
+            heat_source = spm.get_heat_source()
+            print("Heat Source", np.mean(heat_source))
+            pnm.run_step(heat_source, time_step, BC_value=options['T0'])
+            global_temperature = pnm.get_average_temperature()
+            print("Global Temperature", np.mean(global_temperature))
+            T_diff = global_temperature.max() - global_temperature.min()
+            print("Temperature Range", T_diff)
+            spm.update_external_temperature(global_temperature)
+            i += 1
+            if spm.solution.termination != 'final time':
+                termination = True
         end_time = time.time()
         print("*" * 30)
         print("Simulation Time", np.around(end_time - start_time, 2), "s")
