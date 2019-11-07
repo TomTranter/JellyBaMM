@@ -22,17 +22,17 @@ use_tomo = True
 wrk = op.Workspace()
 input_dir = os.path.join(os.getcwd(), 'input')
 pybamm.set_logging_level(10)
-
+I_app = 4
 # Simulation options
-opt = {'domain': 'model',
-       'Nlayers': 19,
+opt = {'domain': 'tomography',
+       'Nlayers': 5,
        'cp': 1148,
        'rho': 5071.75,
        'K0': 1,
        'T0': 303,
        'heat_transfer_coefficient': 10,
        'length_3d': 0.065,
-       'I_app_mag': 2.5,
+       'I_app_mag': I_app*1.0,
        'cc_cond_neg': 3e7,
        'cc_cond_pos': 3e7,
        'dtheta': 10,
@@ -40,25 +40,32 @@ opt = {'domain': 'model',
 
 sim = js.coupledSim()
 sim.setup(opt)
+j_dir = 'journal_tomo_'+str(I_app)+'amp'
 #sim.run_thermal()
 #sim.runners['spm'].test_equivalent_capacity()
-sim.run(n_steps=20, time_step=0.005)
+sim.run(n_steps=30, time_step=0.0025, journal=j_dir)
 sim.plots()
 #sim.save('test')
 spm = sim.runners['spm']
 spm.export_3d_mat(var='Current collector current density [A.m-2]',
-                  fname='current_density.mat')
+                  fname='./'+j_dir+'/current_density.mat')
 var = "X-averaged negative particle surface concentration [mol.m-3]"
 spm.export_3d_mat(var=var,
-                  fname='neg_particle_conc.mat')
+                  fname='./'+j_dir+'/neg_particle_conc.mat')
 var = "X-averaged positive particle surface concentration [mol.m-3]"
 spm.export_3d_mat(var=var,
-                  fname='pos_particle_conc.mat')
+                  fname='./'+j_dir+'/pos_particle_conc.mat')
+var = "Positive current collector potential [V]"
+spm.export_3d_mat(var=var,
+                  fname='./'+j_dir+'/pos_cc_potential.mat')
+var = "Negative current collector potential [V]"
+spm.export_3d_mat(var=var,
+                  fname='./'+j_dir+'/neg_cc_potential.mat')
 
-post = pybamm.post_process_variables(variables=spm.model.variables,
-                              t_sol=spm.solution.t,
-                              u_sol=spm.solution.y,
-                              mesh=spm.mesh)
+#post = pybamm.post_process_variables(variables=spm.model.variables,
+#                              t_sol=spm.solution.t,
+#                              u_sol=spm.solution.y,
+#                              mesh=spm.mesh)
 #js.save_obj('test_save_spm', spm)  # N Can't pickle local object 'primitive.<locals>.f_wrapped'
 #js.save_obj('test_save_spm_param', spm.param)  # N Can't pickle local object 'primitive.<locals>.f_wrapped'
 #js.save_obj('test_save_spm_model', spm.model)  # N Can't pickle local object 'primitive.<locals>.f_wrapped'

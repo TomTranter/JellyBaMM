@@ -8,6 +8,8 @@ Created on Wed Oct 30 16:42:06 2019
 import jellysim as js
 import time
 import numpy as np
+import os
+import pickle
 
 
 class coupledSim(object):
@@ -51,12 +53,23 @@ class coupledSim(object):
         pnm.run_step(heat_source, time_step, BC_value=T0)
         pnm.plot_temperature_profile()
 
-    def run(self, n_steps, time_step, initialize=True):
+    def run(self, n_steps, time_step, initialize=True, journal=None):
+        if journal is not None:
+            j_path = os.path.join(os.getcwd(), journal)
+            if os.path.isdir(j_path):
+                # check files
+                files = os.listdir(j_path)
+                if len(files) > 0:
+                    for file in files:
+                        fp = os.path.join(j_path, file)
+                        os.remove(fp)
+            else:
+                os.mkdir(os.path.join(os.getcwd(), journal))
+
         pnm = self.runners['pnm']
         spm = self.runners['spm']
         options = self.options
         start_time = time.time()
-        spm.setup_mesh(z_edges=pnm.arc_edges.copy())
         if initialize:
             # Initialize - Run through loop to get temperature then discard
             # solution with small time step
@@ -76,21 +89,28 @@ class coupledSim(object):
         print("*" * 30)
         print("Running Steps")
         print("*" * 30)
-        termination = False
+        keep_going = True
         i = 0
-        while i < n_steps and not termination:
-            spm.run_step(time_step, n_subs=10)
-            heat_source = spm.get_heat_source()
-            print("Heat Source", np.mean(heat_source))
-            pnm.run_step(heat_source, time_step, BC_value=options['T0'])
-            global_temperature = pnm.get_average_temperature()
-            print("Global Temperature", np.mean(global_temperature))
-            T_diff = global_temperature.max() - global_temperature.min()
-            print("Temperature Range", T_diff)
-            spm.update_external_temperature(global_temperature)
-            i += 1
-            if spm.solution.termination != 'final time':
-                termination = True
+        while np.logical_and((i < n_steps), keep_going):
+            step_sol = spm.run_step(time_step, n_subs=10)
+            if step_sol.termination == 'final time':
+                heat_source = spm.get_heat_source()
+                print("Heat Source", np.mean(heat_source))
+                pnm.run_step(heat_source, time_step, BC_value=options['T0'])
+                global_temperature = pnm.get_average_temperature()
+                print("Global Temperature", np.mean(global_temperature))
+                T_diff = global_temperature.max() - global_temperature.min()
+                print("Temperature Range", T_diff)
+                spm.update_external_temperature(global_temperature)
+                i += 1
+            else:
+                keep_going = False
+                print(step_sol.termination)
+            if journal is not None:
+                self.journal_sol(step_sol, j_path, i)
+            print(' ')
+            print(' -'+('[>]'*i)+('[ ]'*(n_steps-i))+'+')
+            print(' ')
         end_time = time.time()
         print("*" * 30)
         print("Simulation Time", np.around(end_time - start_time, 2), "s")
@@ -123,3 +143,30 @@ class coupledSim(object):
     def save(self, name):
         for key in self.runners.keys():
             js.save_obj(name+'_'+key, self.runners[key])
+
+    def journal_sol(self, solution, journal_dir, step):
+        save_name = str(step).zfill(4) + '.sol'
+        fname = os.path.join(journal_dir, save_name)
+        with open(fname, 'wb') as f:
+            pickle.dump(solution, f)
+
+    def load_journal(self, journal=None):
+        if journal is not None:
+            j_path = os.path.join(os.getcwd(), journal)
+            solution = None
+            if os.path.isdir(j_path):
+                # check files
+                files = os.listdir(j_path)
+                if len(files) > 0:
+                    files.sort()
+                    for file in files:
+                        fname = os.path.join(j_path, file)
+                        with open(fname, 'rb') as f:
+                            obj = pickle.load(f)
+                            if solution is None:
+                                solution = obj
+                            else:
+                                solution.append(obj)
+            else:
+                print('Journal folder', journal, 'does not exist!!!')
+            return solution

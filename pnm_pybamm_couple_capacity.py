@@ -11,17 +11,18 @@ import openpnm as op
 import matplotlib.pyplot as plt
 import os
 import jellysim as js
+import numpy as np
 
 
 plt.close("all")
 use_tomo = True
 wrk = op.Workspace()
 input_dir = os.path.join(os.getcwd(), 'input')
-pybamm.set_logging_level(60)
+pybamm.set_logging_level(10)
 
 # Simulation options
-opt = {'domain': 'model',
-       'Nlayers': 19,
+opt = {'domain': 'tomography',
+       'Nlayers': 17,
        'cp': 1148,
        'rho': 5071.75,
        'K0': 1,
@@ -36,10 +37,22 @@ opt = {'domain': 'model',
 
 sim = js.coupledSim()
 sim.setup(opt)
+pnm = sim.runners['pnm']
 spm = sim.runners['spm']
-for I_app_mag in [3.0, 2.0, 1.0]:
+#pnm.export_pnm(filename=opt['domain'])
+for I_app_mag in [1.0]:
     print('*'*30)
     print('I app', I_app_mag)
     spm.test_equivalent_capacity(I_app_mag=I_app_mag)
     print('*'*30)
 
+
+def specific_cap(diam, height, cap):
+    a = np.pi * (diam / 2) ** 2
+    v = a * height
+    spec = cap / v
+    print('Volume', v, 'cm-3', 'Specific Capacity', spec, 'mAh.cm-3')
+
+
+print('State of Art 18650')
+specific_cap(1.8, 6.5, 2500)

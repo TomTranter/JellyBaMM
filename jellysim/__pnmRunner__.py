@@ -154,10 +154,10 @@ class pnm_runner(object):
         self.net["pore.cell_id"][self.net["pore.free_stream"]] = -1
 
     def setup_tomo(self):
-        wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top.pnm'))
+        wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top_m.pnm'))
         sim_name = list(wrk.keys())[0]
-        prj = wrk[sim_name]
-        self.net = prj.network
+        self.project = wrk[sim_name]
+        self.net = self.project.network
         self.arc_edges = [0.0]
         Ps = self.net.pores('cc_b')
         self.Nunit = self.net['pore.cell_id'][Ps].max() + 1
@@ -217,10 +217,7 @@ class pnm_runner(object):
             alpha * self.geo["throat.area"] / self.geo["throat.length"]
         )
         # Reduce separator conductance
-        if "throat.separator" in self.net.labels():
-            Ts = self.net.throats("separator")
-        else:
-            Ts = self.net.throats("layer_5")
+        Ts = self.net.throats("separator")
         self.phase["throat.conductance"][Ts] *= 0.1
         # Free stream convective flux
         Ts = self.net.throats("stitched")
@@ -332,3 +329,6 @@ class pnm_runner(object):
             cell = self.net["pore.cell_id"] == i
             temp[i] = np.mean(self.phase["pore.temperature"][cell])
         return temp
+
+    def export_pnm(self, filename='jelly_pnm'):
+        self.project.export_data(filename=filename)

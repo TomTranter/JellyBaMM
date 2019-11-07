@@ -36,6 +36,7 @@ class spm_runner(object):
         self.geometry = self.model.default_geometry
         # load parameter values and process model and geometry
         self.param = self.model.default_parameter_values
+        pixel_size = 10.4e-6
         self.param.update(
             {
                 "Typical current [A]": I_app,
@@ -44,13 +45,20 @@ class spm_runner(object):
                 "Positive current collector conductivity [S.m-1]": cc_cond_pos,
                 "Electrode height [m]": z_edges[-1],
                 "Electrode width [m]": length_3d,
-                "Negative electrode thickness [m]": 1.5e-4,
+                "Negative electrode thickness [m]": 6.0*pixel_size,
+                "Positive electrode thickness [m]": 9.0*pixel_size,
+                "Separator thickness [m]": 1.0*pixel_size,
+                "Positive current collector thickness [m]": 1.0*pixel_size,
+                "Negative current collector thickness [m]": 1.0*pixel_size,
                 "Negative tab centre z-coordinate [m]": z_edges[0],
                 "Positive tab centre z-coordinate [m]": z_edges[-1],
                 "Positive electrode conductivity [S.m-1]": 0.1,
                 "Negative electrode conductivity [S.m-1]": 0.1,
+                "Lower voltage cut-off [V]": 3.45,
+                "Upper voltage cut-off [V]": 4.7,
             }
         )
+        self.param["Current function"] = pybamm.GetConstantCurrent()
         # set mesh
         self.var = pybamm.standard_spatial_vars
         self.var_pts = {
@@ -146,6 +154,7 @@ class spm_runner(object):
         self.current_state = self.solution.y[:, -1]
         #        self.plot()
         self.last_time += time_step
+        return current_solution
 
     def update_external_potential(self, phi_neg, phi_pos):
         sf_cn = 1.0
@@ -283,6 +292,7 @@ class spm_runner(object):
             param.update(self.param.copy())
             param.update(save_dict)
             param.update({"Typical current [A]": I_app})
+            param["Current function"] = pybamm.GetConstantCurrent()
             param.process_model(model)
             param.process_geometry(geometry)
             s_var = pybamm.standard_spatial_vars
@@ -305,7 +315,7 @@ class spm_runner(object):
             solver.atol = 1e-8
             solver.rtol = 1e-8
             sol = solver.solve(model, t_eval)
-            time = pybamm.ProcessedVariable(
+            time_h = pybamm.ProcessedVariable(
                 model.variables["Time [h]"], sol.t, sol.y, mesh=mesh
             )
             var = ("X-averaged positive particle " +
@@ -313,12 +323,13 @@ class spm_runner(object):
             xpsurf = pybamm.ProcessedVariable(
                 model.variables[var], sol.t, sol.y, mesh=mesh
             )
-            time_hours = time(sol.t)
-            dc_time = np.around(time_hours[-1], 3)
+            time_hours = time_h(sol.t)
+            dc_time = np.around(time_hours[-1], 5)
+#            dc_time = model.variables["Time [h]"].evaluate(t=1.0)
             # Capacity mAh
             tot_cap += np.absolute(I_app * 1000 * dc_time)
             plt.figure()
-            plt.plot(time(sol.t), xpsurf(sol.t))
+            plt.plot(time_h(sol.t), xpsurf(sol.t))
             sim_time_hrs += dc_time
         vol_a = np.sum(self.get_cell_volumes())
         l_y = param["Electrode width [m]"]
