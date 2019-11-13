@@ -304,6 +304,48 @@ class pnm_runner(object):
 
         self.phase.update(alg.results())
 
+    def run_step_transient(self, heat_source, time_step, BC_value):
+        # To Do - test whether this needs to be transient
+        # Set Heat Source
+        Q_scaled = self.convert_spm_data(heat_source) / (self.cp * self.rho)
+        self.phys["pore.A1"] = 0.0
+        self.phys["pore.A2"] = Q_scaled * self.net["pore.volume"]
+        # Heat Source
+        T0 = self.phase['pore.temperature']
+        t_step = float(time_step/10)
+        self.phys.add_model(
+            "pore.source",
+            model=linear,
+            X="pore.temperature",
+            A1="pore.A1",
+            A2="pore.A2",
+        )
+        # Run Transient Heat Transport Algorithm
+        alg = op.algorithms.TransientReactiveTransport(network=self.net)
+        alg.setup(phase=self.phase,
+                  conductance='throat.conductance',
+                  quantity='pore.temperature',
+                  t_initial=0.0,
+                  t_final=time_step,
+                  t_step=t_step,
+                  t_output=t_step,
+                  t_tolerance=1e-9,
+                  t_precision=12,
+                  rxn_tolerance=1e-9,
+                  t_scheme='implicit')
+        alg.set_IC(values=T0)
+        bulk_Ps = self.net.pores("free_stream", mode="not")
+        alg.set_source("pore.source", bulk_Ps)
+        alg.set_value_BC(self.net.pores("free_stream"), values=BC_value)
+        alg.run()
+        print(
+            "Max Temp",
+            alg["pore.temperature"].max(),
+            "Min Temp",
+            alg["pore.temperature"].min(),
+        )
+        self.phase["pore.temperature"] = alg["pore.temperature"]
+
     def plot_temperature_profile(self):
         data = self.phase["pore.temperature"]
         self.plot_pore_data(data, title="Temperature [K]")

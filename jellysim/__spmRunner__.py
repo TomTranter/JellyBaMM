@@ -31,7 +31,6 @@ class spm_runner(object):
         }
         self.model = pybamm.lithium_ion.SPM(options)
         self.model.use_simplify = False
-        self.model.use_to_python = False
         # create geometry
         self.geometry = self.model.default_geometry
         # load parameter values and process model and geometry
@@ -58,7 +57,7 @@ class spm_runner(object):
                 "Upper voltage cut-off [V]": 4.7,
             }
         )
-        self.param["Current function"] = pybamm.GetConstantCurrent()
+#        self.param["Current function"] = pybamm.GetConstantCurrent()
         # set mesh
         self.var = pybamm.standard_spatial_vars
         self.var_pts = {
@@ -76,13 +75,16 @@ class spm_runner(object):
         sys.setrecursionlimit(10000)
         submesh_types = self.model.default_submesh_types
         pts = z_edges / z_edges[-1]
-        tmp = pybamm.GetUserSupplied1DSubMesh(pts)
-        submesh_types["current collector"] = tmp
+        submesh_types["current collector"] = pybamm.MeshGenerator(
+            pybamm.UserSupplied1DSubMesh, submesh_params={"edges": pts}
+        )
         self.mesh = pybamm.Mesh(self.geometry, submesh_types, self.var_pts)
         # set up solver
-        self.solver = pybamm.KLU()
-        self.solver.atol = 1e-8
-        self.solver.rtol = 1e-8
+#        self.solver = pybamm.IDAKLUSolver(atol=1e-8, root_tol=1e-8)
+        self.solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8)
+#        self.solver = pybamm.KLU()
+#        self.solver.atol = 1e-8
+#        self.solver.rtol = 1e-8
         self.last_time = 0.0
         self.solution = None
         self.disc = None
@@ -189,10 +191,10 @@ class spm_runner(object):
         z = np.linspace(0, 1, self.Nunit)
         sol = self.solution
         pvs = {
-            "X-averaged reversible heating [A.V.m-3]": None,
-            "X-averaged irreversible electrochemical heating [A.V.m-3]": None,
-            "X-averaged Ohmic heating [A.V.m-3]": None,
-            "X-averaged total heating [A.V.m-3]": None,
+            "X-averaged reversible heating [W.m-3]": None,
+            "X-averaged irreversible electrochemical heating [W.m-3]": None,
+            "X-averaged Ohmic heating [W.m-3]": None,
+            "X-averaged total heating [W.m-3]": None,
             "Current collector current density [A.m-2]": None,
             "X-averaged positive particle " +
             "surface concentration [mol.m-3]": None,
@@ -240,7 +242,7 @@ class spm_runner(object):
             return data[:, time_index]
 
     def get_heat_source(self):
-        var = "X-averaged total heating [A.V.m-3]"
+        var = "X-averaged total heating [W.m-3]"
         return self.get_processed_variable(var, time_index=-1)
 
     def get_potentials(self):
@@ -280,8 +282,7 @@ class spm_runner(object):
         for I_app in [-1.0, 1.0]:
             I_app *= I_app_mag
             model = pybamm.lithium_ion.SPM()
-#            model.use_simplify = False
-#            model.use_to_python = False
+            model.use_simplify = False
             geometry = model.default_geometry
             param = model.default_parameter_values
             save_ps = [
@@ -310,10 +311,8 @@ class spm_runner(object):
             disc.process_model(model)
             # solve model
             t_eval = np.linspace(0, 1.0, 101)
-            # solver = pybamm.KLU()
-            solver = pybamm.KLU()
-            solver.atol = 1e-8
-            solver.rtol = 1e-8
+#            solver = pybamm.IDAKLUSolver(atol=1e-8, rtol=1e-8)
+            solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8)
             sol = solver.solve(model, t_eval)
             time_h = pybamm.ProcessedVariable(
                 model.variables["Time [h]"], sol.t, sol.y, mesh=mesh

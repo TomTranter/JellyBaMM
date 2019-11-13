@@ -482,11 +482,11 @@ class spm_runner:
         z = np.linspace(0, 1, Nunit)
         sol = self.solution
         pvs = {
-            "X-averaged reversible heating [A.V.m-3]": None,
-            "X-averaged irreversible electrochemical heating [A.V.m-3]": None,
-            "X-averaged Ohmic heating [A.V.m-3]": None,
-            "X-averaged total heating [A.V.m-3]": None,
-            "Current collector current density [A.m-2]": None,
+            "X-averaged reversible heating [W.m-3]": None,
+            "X-averaged irreversible electrochemical heating [W.m-3]": None,
+            "X-averaged Ohmic heating [W.m-3]": None,
+            "X-averaged total heating [W.m-3]": None,
+            "Current collector current density [W-2]": None,
             "X-averaged positive particle surface concentration [mol.m-3]": None,
             "X-averaged negative particle surface concentration [mol.m-3]": None,
             #               "X-averaged positive particle surface concentration": None,
@@ -534,7 +534,7 @@ class spm_runner:
             return data[:, time_index]
 
     def get_heat_source(self):
-        var = "X-averaged total heating [A.V.m-3]"
+        var = "X-averaged total heating [W.m-3]"
         return self.get_processed_variable(var, time_index=-1)
 
     def get_potentials(self):
@@ -708,7 +708,7 @@ else:
         print("Simulation Time", np.around(end_time - start_time, 2), "s")
         print("*" * 30)
         vars = [
-            "X-averaged total heating [A.V.m-3]",
+            "X-averaged total heating [W.m-3]",
             "X-averaged cell temperature [K]",
             "X-averaged positive particle surface concentration [mol.m-3]",
             "X-averaged negative particle surface concentration [mol.m-3]",

@@ -53,7 +53,7 @@ class coupledSim(object):
         pnm.run_step(heat_source, time_step, BC_value=T0)
         pnm.plot_temperature_profile()
 
-    def run(self, n_steps, time_step, initialize=True, journal=None):
+    def run(self, n_steps, n_subs, time_step, initialize=False, journal=None):
         if journal is not None:
             j_path = os.path.join(os.getcwd(), journal)
             if os.path.isdir(j_path):
@@ -68,6 +68,7 @@ class coupledSim(object):
 
         pnm = self.runners['pnm']
         spm = self.runners['spm']
+        dim_time_step = spm.convert_time(time_step, to='seconds')
         options = self.options
         start_time = time.time()
         if initialize:
@@ -76,7 +77,7 @@ class coupledSim(object):
             print('*'*30)
             print('Initializing')
             print('*'*30)
-            spm.run_step(time_step, n_subs=10)
+            spm.run_step(time_step, n_subs=n_subs)
             heat_source = spm.get_heat_source()
             print("Heat Source", np.mean(heat_source))
             pnm.run_step(heat_source, time_step, BC_value=options['T0'])
@@ -92,11 +93,13 @@ class coupledSim(object):
         keep_going = True
         i = 0
         while np.logical_and((i < n_steps), keep_going):
-            step_sol = spm.run_step(time_step, n_subs=10)
+            step_sol = spm.run_step(time_step, n_subs=n_subs)
             if step_sol.termination == 'final time':
                 heat_source = spm.get_heat_source()
                 print("Heat Source", np.mean(heat_source))
-                pnm.run_step(heat_source, time_step, BC_value=options['T0'])
+                pnm.run_step_transient(heat_source=heat_source,
+                                       time_step=dim_time_step,
+                                       BC_value=options['T0'])
                 global_temperature = pnm.get_average_temperature()
                 print("Global Temperature", np.mean(global_temperature))
                 T_diff = global_temperature.max() - global_temperature.min()
@@ -121,7 +124,7 @@ class coupledSim(object):
         spm = self.runners['spm']
         spm.plot()
         vars = [
-            "X-averaged total heating [A.V.m-3]",
+            "X-averaged total heating [W.m-3]",
             "X-averaged cell temperature [K]",
             "X-averaged positive particle surface concentration [mol.m-3]",
             "X-averaged negative particle surface concentration [mol.m-3]",

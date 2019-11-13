@@ -14,7 +14,7 @@ import matplotlib as mpl
 from matplotlib.collections import LineCollection
 
 #plt.close('all')
-Nunit = 20
+Nunit = 8
 pixel_size = 10.4e-6
 # load model
 pybamm.set_logging_level("INFO")
@@ -24,7 +24,6 @@ options = {"thermal": "x-lumped",
            "current collector": "potential pair"}
 model = pybamm.lithium_ion.SPM(options)
 model.use_simplify = False
-model.use_to_python = False
 
 # load parameter values and process models and geometry
 param = model.default_parameter_values
@@ -52,7 +51,11 @@ param.update(
         "Heat transfer coefficient [W.m-2.K-1]": 0.1,
     }
 )
-param["Current function"] = pybamm.GetConstantCurrent()
+
+thermal_bc_key = list(model.submodels['thermal'].boundary_conditions.keys())[0]
+thermal_bc = model.submodels['thermal'].boundary_conditions[thermal_bc_key]
+thermal_bc['negative tab'] = (pybamm.Scalar(0), "Neumann")
+#param["Current function"] = pybamm.GetConstantCurrent()
 
 param.process_model(model)
 # set mesh
@@ -69,9 +72,7 @@ disc.process_model(model)
 
 # solve model
 t_eval = np.linspace(0, 0.17, 100)
-solver = pybamm.KLU()
-solver.atol = 1e-8
-solver.rtol = 1e-8
+solver = pybamm.IDAKLUSolver(atol=1e-8, root_tol=1e-8)
 solution = solver.solve(model, t_eval)
 
 
@@ -89,10 +90,10 @@ def plot(concatenate=True):
     z = np.linspace(0, 1, Nunit)
     pvs = {
         "X-averaged cell temperature [K]": None,
-        "X-averaged reversible heating [A.V.m-3]": None,
-        "X-averaged irreversible electrochemical heating [A.V.m-3]": None,
-        "X-averaged Ohmic heating [A.V.m-3]": None,
-        "X-averaged total heating [A.V.m-3]": None,
+        "X-averaged reversible heating [W.m-3]": None,
+        "X-averaged irreversible electrochemical heating [W.m-3]": None,
+        "X-averaged Ohmic heating [W.m-3]": None,
+        "X-averaged total heating [W.m-3]": None,
         "Current collector current density [A.m-2]": None,
 #        "X-averaged positive particle " +
 #        "surface concentration [mol.m-3]": None,
