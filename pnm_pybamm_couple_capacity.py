@@ -18,7 +18,7 @@ plt.close("all")
 use_tomo = True
 wrk = op.Workspace()
 input_dir = os.path.join(os.getcwd(), 'input')
-pybamm.set_logging_level(10)
+#pybamm.set_logging_level(10)
 
 # Simulation options
 opt = {'domain': 'tomography',
@@ -40,7 +40,7 @@ sim.setup(opt)
 pnm = sim.runners['pnm']
 spm = sim.runners['spm']
 #pnm.export_pnm(filename=opt['domain'])
-for I_app_mag in [1.0]:
+for I_app_mag in [1.0, 2.0, 3.0]:
     print('*'*30)
     print('I app', I_app_mag)
     spm.test_equivalent_capacity(I_app_mag=I_app_mag)

@@ -293,7 +293,8 @@ class spm_runner(object):
             param.update(self.param.copy())
             param.update(save_dict)
             param.update({"Typical current [A]": I_app})
-            param["Current function"] = pybamm.GetConstantCurrent()
+#            param["Current function"] = pybamm.GetConstantCurrent()
+            param["Current function"] = pybamm.ConstantCurrent(current=I_app)
             param.process_model(model)
             param.process_geometry(geometry)
             s_var = pybamm.standard_spatial_vars
