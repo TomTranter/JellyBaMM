@@ -22,9 +22,9 @@ use_tomo = True
 wrk = op.Workspace()
 input_dir = os.path.join(os.getcwd(), 'input')
 #pybamm.set_logging_level(10)
-I_app = 1.0
+I_app = 2.0
 # Simulation options
-opt = {'domain': 'tomography',
+opt = {'domain': 'model',
        'Nlayers': 17,
        'cp': 1399.0,
        'rho': 2055.0,
@@ -43,7 +43,7 @@ sim.setup(opt)
 j_dir = opt['domain']+'_journal_tomo_'+str(I_app)+'amp'
 #sim.run_thermal()
 #sim.runners['spm'].test_equivalent_capacity()
-sim.run(n_steps=30, time_step=0.005, n_subs=5, journal=j_dir)
+sim.run(n_steps=5, time_step=0.005, n_subs=5, journal=j_dir)
 sim.plots()
 #sim.save('test')
 spm = sim.runners['spm']

@@ -22,7 +22,7 @@ class spm_runner(object):
     def setup(self, I_app, T0, cc_cond_neg, cc_cond_pos, z_edges, length_3d):
         self.Nunit = len(z_edges)-1
         # set logging level
-        pybamm.set_logging_level("INFO")
+#        pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
         options = {
             "current collector": "potential pair",
@@ -81,7 +81,7 @@ class spm_runner(object):
         self.mesh = pybamm.Mesh(self.geometry, submesh_types, self.var_pts)
         # set up solver
 #        self.solver = pybamm.IDAKLUSolver(atol=1e-8, root_tol=1e-8)
-        self.solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8)
+        self.solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8, mode='fast')
 #        self.solver = pybamm.KLU()
 #        self.solver.atol = 1e-8
 #        self.solver.rtol = 1e-8
@@ -313,7 +313,7 @@ class spm_runner(object):
             # solve model
             t_eval = np.linspace(0, 1.0, 101)
 #            solver = pybamm.IDAKLUSolver(atol=1e-8, rtol=1e-8)
-            solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8)
+            solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8, mode='fast')
             sol = solver.solve(model, t_eval)
             time_h = pybamm.ProcessedVariable(
                 model.variables["Time [h]"], sol.t, sol.y, mesh=mesh
