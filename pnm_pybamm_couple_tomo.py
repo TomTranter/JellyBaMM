@@ -22,10 +22,10 @@ use_tomo = True
 wrk = op.Workspace()
 input_dir = os.path.join(os.getcwd(), 'input')
 #pybamm.set_logging_level(10)
-I_app = 2.0
+I_app = 0.5
 # Simulation options
 opt = {'domain': 'model',
-       'Nlayers': 17,
+       'Nlayers': 3,
        'cp': 1399.0,
        'rho': 2055.0,
        'K0': 1.0,

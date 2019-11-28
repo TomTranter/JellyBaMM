@@ -6,7 +6,7 @@ import numpy as np
 options = {
     "current collector": "potential pair",
     "dimensionality": 1,
-    "thermal": "lumped",
+    "thermal": "set external temperature",
 }
 model = pybamm.lithium_ion.SPM(options)
 
