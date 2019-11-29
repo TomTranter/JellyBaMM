@@ -92,7 +92,7 @@ class spm_runner(object):
     def _setup_discretization(self):
         self.disc = pybamm.Discretisation(self.mesh,
                                           self.model.default_spatial_methods)
-        self.disc.process_model(self.model)
+        self.disc.process_model(self.model, check_model=False)
 
     def convert_time(self, non_dim_time, to="seconds"):
         s_parms = pybamm.standard_parameters_lithium_ion
@@ -229,17 +229,18 @@ class spm_runner(object):
             #            plt.ticklabel_format(axis='y', style='sci')
             plt.show()
 
-    def get_processed_variable(self, var, time_index=None):
+    def get_processed_variable(self, var, time_index=-1):
         z = np.linspace(0, 1, self.Nunit)
         proc = pybamm.ProcessedVariable(
-            self.model.variables[var], self.solution.t,
-            self.solution.y, mesh=self.mesh
+            self.model.variables[var], self.solution.t[time_index],
+            self.solution.y[:, time_index], mesh=self.mesh
         )
-        data = proc(self.solution.t, z=z)
-        if time_index is None:
-            return data
-        else:
-            return data[:, time_index]
+        data = proc(self.solution.t[time_index], z=z)
+#        if time_index is None:
+#            return data
+#        else:
+#            return data[:, time_index]
+        return data
 
     def get_heat_source(self):
         var = "X-averaged total heating [W.m-3]"

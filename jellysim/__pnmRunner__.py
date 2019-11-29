@@ -51,9 +51,9 @@ class pnm_runner(object):
         assembly[:, p6:p7] = 3
         assembly[:, p7:p8] = 5
         unit_id = np.tile(np.arange(0, self.Nunit), (N1d, 1)).T
-        (fig, (ax1, ax2)) = plt.subplots(1, 2)
-        ax1.imshow(assembly)
-        ax2.imshow(unit_id)
+#        (fig, (ax1, ax2)) = plt.subplots(1, 2)
+#        ax1.imshow(assembly)
+#        ax2.imshow(unit_id)
 
         self.net = op.network.Cubic(shape=[self.Nunit, N1d, 1],
                                     spacing=spacing)
@@ -123,9 +123,9 @@ class pnm_runner(object):
         self.net["pore.outer"] = False
         self.net["pore.inner"][inner_Ps] = True
         self.net["pore.outer"][outer_Ps] = True
-        fig = pconn(self.net, throats=self.net.Ts)
-        fig = pcoord(self.net, pores=self.net.pores("inner"), c="r", fig=fig)
-        fig = pcoord(self.net, pores=self.net.pores("outer"), c="g", fig=fig)
+#        fig = pconn(self.net, throats=self.net.Ts)
+#        fig = pcoord(self.net, pores=self.net.pores("inner"), c="r", fig=fig)
+#        fig = pcoord(self.net, pores=self.net.pores("outer"), c="g", fig=fig)
         # Free stream convection boundary nodes
         free_rad = inner_r + (Nlayers + 0.5) * dr
         (x, y, rad, pos) = self.spiral(free_rad, dr, ntheta=Narc, n=1)
@@ -149,7 +149,7 @@ class pnm_runner(object):
         self.net["pore.arc_index"][free_pores] = pos[:-1]
         op.topotools.trim(network=self.net,
                           throats=self.net.throats("trimmers"))
-        self.plot_topology()
+#        self.plot_topology()
         self.net["pore.region_id"][self.net["pore.free_stream"]] = -1
         self.net["pore.cell_id"][self.net["pore.free_stream"]] = -1
 
@@ -198,11 +198,11 @@ class pnm_runner(object):
                 self.geo["throat.radial_position"][sameR] * drad * length_3d
                 )
         self.geo["throat.volume"] = 0.0
-        fig, (ax1, ax2) = plt.subplots(2, 2)
-        ax1[0].hist(self.geo["throat.area"])
-        ax1[1].hist(self.geo["throat.length"])
-        ax2[0].hist(self.geo["pore.radial_position"])
-        ax2[1].hist(self.geo["pore.volume"])
+#        fig, (ax1, ax2) = plt.subplots(2, 2)
+#        ax1[0].hist(self.geo["throat.area"])
+#        ax1[1].hist(self.geo["throat.length"])
+#        ax2[0].hist(self.geo["pore.radial_position"])
+#        ax2[1].hist(self.geo["pore.volume"])
 
     def setup_thermal(self, T0, cp, rho, K0, heat_transfer_coefficient):
         self.phase = op.phases.GenericPhase(network=self.net)

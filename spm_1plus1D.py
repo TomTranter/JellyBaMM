@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 # set logging level
-pybamm.set_logging_level("INFO")
+#pybamm.set_logging_level("INFO")
 
 # load (1+1D) SPMe model
 options = {

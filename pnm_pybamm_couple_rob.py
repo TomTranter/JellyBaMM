@@ -334,7 +334,7 @@ class spm_runner:
 
     def setup(self, I_app, T0, cc_cond_neg, cc_cond_pos, z_edges):
         # set logging level
-        pybamm.set_logging_level("INFO")
+#        pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
         options = {
             "current collector": "potential pair",

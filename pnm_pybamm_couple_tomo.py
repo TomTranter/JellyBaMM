@@ -25,7 +25,7 @@ input_dir = os.path.join(os.getcwd(), 'input')
 I_app = 0.5
 # Simulation options
 opt = {'domain': 'model',
-       'Nlayers': 3,
+       'Nlayers': 2,
        'cp': 1399.0,
        'rho': 2055.0,
        'K0': 1.0,
@@ -35,7 +35,7 @@ opt = {'domain': 'model',
        'I_app_mag': I_app*1.0,
        'cc_cond_neg': 3e7,
        'cc_cond_pos': 3e7,
-       'dtheta': 10,
+       'dtheta': 20,
        'spacing': 1e-5}
 
 sim = js.coupledSim()
@@ -43,8 +43,8 @@ sim.setup(opt)
 j_dir = opt['domain']+'_journal_tomo_'+str(I_app)+'amp'
 #sim.run_thermal()
 #sim.runners['spm'].test_equivalent_capacity()
-sim.run(n_steps=5, time_step=0.005, n_subs=5, journal=j_dir)
-sim.plots()
+sim.run(n_steps=10, time_step=0.005, n_subs=5, journal=j_dir)
+#sim.plots()
 #sim.save('test')
 spm = sim.runners['spm']
 spm.export_3d_mat(var='Current collector current density [A.m-2]',
