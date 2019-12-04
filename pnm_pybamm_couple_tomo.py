@@ -15,6 +15,7 @@ import openpnm as op
 import matplotlib.pyplot as plt
 import os
 import jellysim as js
+import numpy as np
 
 
 plt.close("all")
@@ -46,7 +47,7 @@ model_dir = os.path.join(parent_dir, 'models')
 j_dir = opt['domain']+str(I_app)+'amp'
 out_dir = os.path.join(parent_dir, 'pybamm_pnm_data')
 out_sub_dir = os.path.join(out_dir, j_dir)
-save_path = os.path.join(model_dir, model_name)
+save_path = os.path.join(out_sub_dir, model_name)
 # Simulation
 sim = js.coupledSim()
 sim.setup(opt)
@@ -55,16 +56,33 @@ spm = sim['spm']
 #j_dir = opt['domain']+'_journal_tomo_'+str(I_app)+'amp'
 #sim.run_thermal()
 #sim.runners['spm'].test_equivalent_capacity()
-sim.run(n_steps=2, time_step=0.005, n_subs=5, journal=out_sub_dir)
+
+sim.run(n_steps=2, time_step=0.005, n_subs=5)
 
 
 
-sim.plots()
+#sim.plots()
 #sim.save('test')
 
 
-spm.plot_3d()
+#spm.plot_3d()
 
+#print('1', sim['spm'].solution.y.shape)
+
+#print('1', sim['spm'].solution.y.shape)
+sim.save(save_path)
+sim2 = js.coupledSim()
+sim2.load(save_path)
+#print('1', sim['spm'].solution.y.shape)
+#print('2', sim2['spm'].solution.y.shape)
+sim.run(n_steps=1, time_step=0.005, n_subs=5)
+#print('1', sim['spm'].solution.y.shape)
+sim2.run(n_steps=1, time_step=0.005, n_subs=5)
+# local sols
+print(np.allclose(sim['spm'].sim.solution.y[:, -1], sim2['spm'].sim.solution.y[:, -1]))
+# Amalgamated solutons
+print(np.allclose(sim['spm'].solution.y[:, -1], sim2['spm'].solution.y[:, -1]))
+#print('2', sim2['spm'].solution.y.shape)
 #spm.sim.save(save_path+'_post')
 
 #sim2 = pybamm.load_sim(save_path)

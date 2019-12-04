@@ -13,14 +13,16 @@ import matplotlib as mpl
 from matplotlib.collections import LineCollection
 import numpy as np
 from scipy import io
+import jellysim as js
 
 
 class spm_runner(object):
-    def __init__(self):
-        pass
+    def __init__(self, parent):
+        self.parent = parent
 
-    def setup(self, options, z_edges):
-        self.Nunit = len(z_edges)-1
+    def setup(self, z_edges):
+        options = self.parent.options
+#        self.Nunit = len(z_edges)-1
         # set logging level
 #        pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
@@ -29,14 +31,14 @@ class spm_runner(object):
             "dimensionality": 1,
             "thermal": "set external temperature",
         }
-        self.model = pybamm.lithium_ion.SPM(spm_options)
-        self.model.use_simplify = False
+        model = pybamm.lithium_ion.SPM(spm_options)
+        model.use_simplify = False
         # create geometry
-        self.geometry = self.model.default_geometry
+        geometry = model.default_geometry
         # load parameter values and process model and geometry
-        self.param = self.model.default_parameter_values
+        param = model.default_parameter_values
         pixel_size = 10.4e-6
-        self.param.update(
+        param.update(
             {
                 "Typical current [A]": options['I_app'],
                 "Initial temperature [K]": options['T0'],
@@ -59,21 +61,21 @@ class spm_runner(object):
         )
 #        self.param["Current function"] = pybamm.GetConstantCurrent()
         # set mesh
-        self.var = pybamm.standard_spatial_vars
-        self.var_pts = {
-            self.var.x_n: 5,
-            self.var.x_s: 5,
-            self.var.x_p: 5,
-            self.var.r_n: 5,
-            self.var.r_p: 5,
-            self.var.z: self.Nunit,
+        var = pybamm.standard_spatial_vars
+        var_pts = {
+            var.x_n: 5,
+            var.x_s: 5,
+            var.x_p: 5,
+            var.r_n: 5,
+            var.r_p: 5,
+            var.z: options['Nunit'],
         }
-        self.param.process_model(self.model)
+        param.process_model(model)
 #        self.param.process_geometry(self.geometry)
         # depending on number of points in z direction
         # may need to increase recursion depth...
         sys.setrecursionlimit(10000)
-        submesh_types = self.model.default_submesh_types
+        submesh_types = model.default_submesh_types
         pts = z_edges / z_edges[-1]
         submesh_types["current collector"] = pybamm.MeshGenerator(
             pybamm.UserSupplied1DSubMesh, submesh_params={"edges": pts}
@@ -81,21 +83,19 @@ class spm_runner(object):
 #        self.mesh = pybamm.Mesh(self.geometry, submesh_types, self.var_pts)
         # set up solver
 #        self.solver = pybamm.IDAKLUSolver(atol=1e-8, root_tol=1e-8)
-        self.solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8, mode='fast')
+        solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8, mode='fast')
 #        self.solver = pybamm.KLU()
 #        self.solver.atol = 1e-8
 #        self.solver.rtol = 1e-8
         self.last_time = 0.0
-        self.solution = None
-        self.disc = None
-        self.sim = pybamm.Simulation(model=self.model,
-                                     geometry=self.geometry,
-                                     parameter_values=self.param,
+        self.sim = pybamm.Simulation(model=model,
+                                     geometry=geometry,
+                                     parameter_values=param,
                                      submesh_types=submesh_types,
-                                     var_pts=self.var_pts,
-                                     spatial_methods=self.model.default_spatial_methods,
-                                     solver=self.solver)
-
+                                     var_pts=var_pts,
+                                     spatial_methods=model.default_spatial_methods,
+                                     solver=solver)
+        self.solution = None
 #    def _setup_discretization(self):
 #        self.disc = pybamm.Discretisation(self.mesh,
 #                                          self.model.default_spatial_methods)
@@ -112,7 +112,7 @@ class spm_runner(object):
     def update_statevector(self, variables, statevector):
         "takes in a dict of variable name and vector of updated state"
         for name, new_vector in variables.items():
-            var_slice = self.sim.built_model.variables[name].y_slices
+            var_slice = self.built_model.variables[name].y_slices
             statevector[var_slice] = new_vector
         return statevector
 
@@ -154,16 +154,19 @@ class spm_runner(object):
                     sol.rhs, sol.algebraic, self.current_state
                     )
 #        current_solution = sol.step(self.model, time_step, npts=n_subs)
-#        current_solution = self.sim.step(dt=time_step)
+#        current_solution = self.step(dt=time_step)
         self.sim.step(dt=time_step, save=False)
         current_solution = self.sim.solution
         if self.solution is None:
             self.solution = current_solution
+            
         else:
             self.solution.append(current_solution)
+        print('current solution shape', current_solution.y.shape)
+        print('total solution shape', self.solution.y.shape)
         # Save Current State and update external variables from
         # global calculation
-        self.current_state = self.solution.y[:, -1]
+        self.current_state = current_solution.y[:, -1]
         #        self.plot()
         self.last_time += time_step
         return current_solution
@@ -198,7 +201,8 @@ class spm_runner(object):
 
     def plot(self, concatenate=True):
         # Plotting
-        z = np.linspace(0, 1, self.Nunit)
+        options = self.parent.options
+        z = np.linspace(0, 1, options['Nunit'])
         sol = self.solution
         pvs = {
             "X-averaged reversible heating [W.m-3]": None,
@@ -216,7 +220,7 @@ class spm_runner(object):
         }
         for key in pvs.keys():
             proc = pybamm.ProcessedVariable(
-                self.sim.built_model.variables[key], sol.t, sol.y, mesh=self.sim.mesh
+                self.built_model.variables[key], sol.t, sol.y, mesh=self.mesh
             )
             pvs[key] = proc
         hrs = self.convert_time(sol.t, to="hours")
@@ -224,7 +228,7 @@ class spm_runner(object):
             fig, ax = plt.subplots()
             lines = []
             data = pvs[key](sol.t, z=z)
-            for bat_id in range(self.Nunit):
+            for bat_id in range(options['Nunit']):
                 lines.append(np.column_stack((hrs, data[bat_id, :])))
             line_segments = LineCollection(lines)
             line_segments.set_array(z)
@@ -240,10 +244,11 @@ class spm_runner(object):
             plt.show()
 
     def get_processed_variable(self, var, time_index=None):
-        z = np.linspace(0, 1, self.Nunit)
+        options = self.parent.options
+        z = np.linspace(0, 1, options['Nunit'])
         proc = pybamm.ProcessedVariable(
-            self.sim.built_model.variables[var], self.solution.t,
-            self.solution.y, mesh=self.sim._mesh
+            self.built_model.variables[var], self.solution.t,
+            self.solution.y, mesh=self.mesh
         )
         data = proc(self.solution.t, z=z)
         if time_index is None:
@@ -254,13 +259,14 @@ class spm_runner(object):
 
     def get_heat_source(self):
         var = "X-averaged total heating [W.m-3]"
-        Q = self.sim.built_model.variables[var].evaluate(self.sim.solution.t[-1],
-                                                         self.sim.solution.y[:, -1])
+        Q = self.built_model.variables[var].evaluate(self.solution.t[-1],
+                                                         self.solution.y[:, -1])
 #        return self.get_processed_variable(var, time_index=-1)
         return Q.flatten()
 
     def get_potentials(self):
-        z = np.linspace(0, 1, self.Nunit)
+        options = self.parent.options
+        z = np.linspace(0, 1, options['Nunit'])
         potential_vars = [
             "Negative current collector potential [V]",
             "Positive current collector potential [V]",
@@ -381,3 +387,37 @@ class spm_runner(object):
         if '.mat' not in fname:
             fname = fname + '.mat'
         io.savemat(fname, mdict={'data': data})
+
+    def save(self, filename):
+        self.sim.save(filename)
+        js.utils.save_obj(filename+'.sol', self.solution)
+
+    def load(self, filename):
+        self.sim = pybamm.load_sim(filename)
+        self.solution = js.utils.load_obj(filename+'.sol')
+        self.current_state = self.sim.solution.y[:, -1]
+        self.last_time = self.solution.t[-1]
+
+    @property
+    def geometry(self):
+        return self.sim.geometry
+
+    @property
+    def model(self):
+        return self.sim.model
+
+    @property
+    def built_model(self):
+        return self.sim.built_model
+
+    @property
+    def param(self):
+        return self.sim.parameter_values
+
+    @property
+    def solver(self):
+        return self.sim.solver
+
+    @property
+    def mesh(self):
+        return self.sim.mesh

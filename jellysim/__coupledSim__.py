@@ -14,13 +14,13 @@ import pickle
 
 class coupledSim(dict):
     def __init__(self):
-        self['pnm'] = js.pnm_runner()
-        self['spm'] = js.spm_runner()
+        self['pnm'] = js.pnm_runner(self)
+        self['spm'] = js.spm_runner(self)
 
     def setup(self, options):
         self.options = options.copy()
-        self['pnm'].setup(self.options)
-        self['spm'].setup(self.options, z_edges=self['pnm'].arc_edges.copy())
+        self['pnm'].setup()
+        self['spm'].setup(z_edges=self['pnm'].arc_edges.copy())
 #        pnm = js.pnm_runner()
 
 #        spm = js.spm_runner()
@@ -165,21 +165,19 @@ class coupledSim(dict):
             return solution
 
     def save(self, filename):
-        """Save simulation using pickle"""
-        if self['spm'].model.convert_to_format == "python":
-            # We currently cannot save models in the 'python'
-            raise NotImplementedError(
-                """
-                Cannot save simulation if model format is python.
-                Set model.convert_to_format = 'casadi' instead.
-                """
-            )
-        with open(filename, "wb") as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        r"""
+        Save simulation components using individual save methods. These don't save
+        the runner classes but the underlying simulation and project objects
+        """
+        self['spm'].save(filename+'.spm')
+        self['pnm'].save(filename+'.pnm')
+        js.utils.save_obj(filename+'.opt', self.options)
 
-
-def load_sim(filename):
-    """Load a saved simulation"""
-    with open(filename, "rb") as f:
-        sim = pickle.load(f)
-    return sim
+    def load(self, filename):
+        r"""
+        Load a saved simulation. Create fresh runner objects and save underlying files
+        """
+        self.__init__()
+        self.options = js.utils.load_obj(filename+'.opt')
+        self['spm'].load(filename+'.spm')
+        self['pnm'].load(filename+'.pnm')
