@@ -19,17 +19,17 @@ class spm_runner(object):
     def __init__(self):
         pass
 
-    def setup(self, I_app, T0, cc_cond_neg, cc_cond_pos, z_edges, length_3d):
+    def setup(self, options, z_edges):
         self.Nunit = len(z_edges)-1
         # set logging level
 #        pybamm.set_logging_level("INFO")
         # load (1+1D) SPM model
-        options = {
+        spm_options = {
             "current collector": "potential pair",
             "dimensionality": 1,
             "thermal": "set external temperature",
         }
-        self.model = pybamm.lithium_ion.SPM(options)
+        self.model = pybamm.lithium_ion.SPM(spm_options)
         self.model.use_simplify = False
         # create geometry
         self.geometry = self.model.default_geometry
@@ -38,12 +38,12 @@ class spm_runner(object):
         pixel_size = 10.4e-6
         self.param.update(
             {
-                "Typical current [A]": I_app,
-                "Initial temperature [K]": T0,
-                "Negative current collector conductivity [S.m-1]": cc_cond_neg,
-                "Positive current collector conductivity [S.m-1]": cc_cond_pos,
+                "Typical current [A]": options['I_app'],
+                "Initial temperature [K]": options['T0'],
+                "Negative current collector conductivity [S.m-1]": options['cc_cond_neg'],
+                "Positive current collector conductivity [S.m-1]": options['cc_cond_pos'],
                 "Electrode height [m]": z_edges[-1],
-                "Electrode width [m]": length_3d,
+                "Electrode width [m]": options['length_3d'],
                 "Negative electrode thickness [m]": 6.0*pixel_size,
                 "Positive electrode thickness [m]": 9.0*pixel_size,
                 "Separator thickness [m]": 1.0*pixel_size,
@@ -216,7 +216,7 @@ class spm_runner(object):
         }
         for key in pvs.keys():
             proc = pybamm.ProcessedVariable(
-                self.model.variables[key], sol.t, sol.y, mesh=self.mesh
+                self.sim.built_model.variables[key], sol.t, sol.y, mesh=self.sim.mesh
             )
             pvs[key] = proc
         hrs = self.convert_time(sol.t, to="hours")

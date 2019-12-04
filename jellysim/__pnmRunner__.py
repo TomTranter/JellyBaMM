@@ -21,6 +21,22 @@ class pnm_runner(object):
     def __init__(self):
         pass
 
+    def setup(self, options):
+        if options['domain'] == 'tomography':
+            self.setup_tomo()
+        else:
+            self.setup_jelly(Nlayers=options['Nlayers'],
+                             dtheta=options['dtheta'],
+                             spacing=options['spacing'])
+        self.setup_geometry(dtheta=options['dtheta'],
+                            spacing=options['spacing'],
+                            length_3d=options['length_3d'])
+        self.setup_thermal(options['T0'],
+                           options['cp'],
+                           options['rho'],
+                           options['K0'],
+                           options['heat_transfer_coefficient'])
+
     def setup_jelly(self, Nlayers=19, dtheta=10, spacing=1e-5):
         # Number of nodes in each layer
         Nan = 9  # anode

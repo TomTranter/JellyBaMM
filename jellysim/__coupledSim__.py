@@ -12,40 +12,30 @@ import os
 import pickle
 
 
-class coupledSim(object):
+class coupledSim(dict):
     def __init__(self):
-        pass
+        self['pnm'] = js.pnm_runner()
+        self['spm'] = js.spm_runner()
 
     def setup(self, options):
         self.options = options.copy()
-        pnm = js.pnm_runner()
-        if options['domain'] == 'tomography':
-            pnm.setup_tomo()
-        else:
-            pnm.setup_jelly(Nlayers=options['Nlayers'],
-                            dtheta=options['dtheta'],
-                            spacing=options['spacing'])
-        pnm.setup_geometry(dtheta=options['dtheta'],
-                           spacing=options['spacing'],
-                           length_3d=options['length_3d'])
-        pnm.setup_thermal(options['T0'],
-                          options['cp'],
-                          options['rho'],
-                          options['K0'],
-                          options['heat_transfer_coefficient'])
-        spm = js.spm_runner()
+        self['pnm'].setup(self.options)
+        self['spm'].setup(self.options, z_edges=self['pnm'].arc_edges.copy())
+#        pnm = js.pnm_runner()
 
-        self.runners = {'pnm': pnm,
-                        'spm': spm}
-        spm.setup(I_app=options['I_app_mag'],
-                  T0=options['T0'],
-                  cc_cond_neg=options['cc_cond_neg'],
-                  cc_cond_pos=options['cc_cond_pos'],
-                  z_edges=pnm.arc_edges.copy(),
-                  length_3d=options['length_3d'])
+#        spm = js.spm_runner()
+
+#        self.runners = {'pnm': self['pnm'],
+#                        'spm': self['spm']}
+#        spm.setup(I_app=options['I_app_mag'],
+#                  T0=options['T0'],
+#                  cc_cond_neg=options['cc_cond_neg'],
+#                  cc_cond_pos=options['cc_cond_pos'],
+#                  z_edges=pnm.arc_edges.copy(),
+#                  length_3d=options['length_3d'])
 
     def run_thermal(self):
-        pnm = self.runners['pnm']
+        pnm = self['pnm']
         T0 = self.options['T0']
         C_rate = 2.0
         heat_source = np.ones(pnm.Nunit) * 25e3 * C_rate
@@ -66,8 +56,8 @@ class coupledSim(object):
             else:
                 os.mkdir(os.path.join(os.getcwd(), journal))
 
-        pnm = self.runners['pnm']
-        spm = self.runners['spm']
+        pnm = self['pnm']
+        spm = self['spm']
         dim_time_step = spm.convert_time(time_step, to='seconds')
         options = self.options
         start_time = time.time()
@@ -120,8 +110,8 @@ class coupledSim(object):
         print("*" * 30)
 
     def plots(self):
-        pnm = self.runners['pnm']
-        spm = self.runners['spm']
+        pnm = self['pnm']
+        spm = self['spm']
         spm.plot()
         vars = [
             "X-averaged total heating [W.m-3]",
@@ -143,9 +133,9 @@ class coupledSim(object):
         var = "X-averaged positive particle surface concentration [mol.m-3]"
         js.utils.plot_time_series(var, pnm, spm)
 
-    def save(self, name):
-        for key in self.runners.keys():
-            js.save_obj(name+'_'+key, self.runners[key])
+#    def save(self, name):
+#        for key in self.runners.keys():
+#            js.save_obj(name+'_'+key, self.runners[key])
 
     def journal_sol(self, solution, journal_dir, step):
         save_name = str(step).zfill(4) + '.sol'
@@ -173,3 +163,23 @@ class coupledSim(object):
             else:
                 print('Journal folder', journal, 'does not exist!!!')
             return solution
+
+    def save(self, filename):
+        """Save simulation using pickle"""
+        if self['spm'].model.convert_to_format == "python":
+            # We currently cannot save models in the 'python'
+            raise NotImplementedError(
+                """
+                Cannot save simulation if model format is python.
+                Set model.convert_to_format = 'casadi' instead.
+                """
+            )
+        with open(filename, "wb") as f:
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+
+
+def load_sim(filename):
+    """Load a saved simulation"""
+    with open(filename, "rb") as f:
+        sim = pickle.load(f)
+    return sim

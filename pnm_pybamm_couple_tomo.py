@@ -20,10 +20,10 @@ import jellysim as js
 plt.close("all")
 use_tomo = True
 wrk = op.Workspace()
-input_dir = os.path.join(os.getcwd(), 'input')
-#pybamm.set_logging_level(10)
+# Options
 I_app = 1.0
 # Simulation options
+model_name = 'model_nlayer3_dtheta20'
 opt = {'domain': 'model',
        'Nlayers': 3,
        'cp': 1399.0,
@@ -32,26 +32,42 @@ opt = {'domain': 'model',
        'T0': 303,
        'heat_transfer_coefficient': 5,
        'length_3d': 0.065,
-       'I_app_mag': I_app*1.0,
+       'I_app': I_app,
        'cc_cond_neg': 3e7,
        'cc_cond_pos': 3e7,
        'dtheta': 20,
-       'spacing': 1e-5}
-
+       'spacing': 1e-5,
+       'model_name': model_name}
+# Directories
+cwd = os.getcwd()
+input_dir = os.path.join(cwd, 'input')
+parent_dir = os.path.dirname(cwd)
+model_dir = os.path.join(parent_dir, 'models')
+j_dir = opt['domain']+str(I_app)+'amp'
+out_dir = os.path.join(parent_dir, 'pybamm_pnm_data')
+out_sub_dir = os.path.join(out_dir, j_dir)
+save_path = os.path.join(model_dir, model_name)
+# Simulation
 sim = js.coupledSim()
 sim.setup(opt)
-j_dir = opt['domain']+'_journal_tomo_'+str(I_app)+'amp'
+spm = sim['spm']
+#spm.sim.save(save_path)
+#j_dir = opt['domain']+'_journal_tomo_'+str(I_app)+'amp'
 #sim.run_thermal()
 #sim.runners['spm'].test_equivalent_capacity()
-sim.run(n_steps=4, time_step=0.005, n_subs=5, journal=j_dir)
+sim.run(n_steps=2, time_step=0.005, n_subs=5, journal=out_sub_dir)
 
 
 
-#sim.plots()
+sim.plots()
 #sim.save('test')
 
-spm = sim.runners['spm']
+
 spm.plot_3d()
+
+#spm.sim.save(save_path+'_post')
+
+#sim2 = pybamm.load_sim(save_path)
 #spm.export_3d_mat(var='Current collector current density [A.m-2]',
 #                  fname='./'+j_dir+'/current_density.mat')
 #var = "X-averaged negative particle surface concentration [mol.m-3]"
