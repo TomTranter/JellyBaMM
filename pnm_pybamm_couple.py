@@ -710,8 +710,8 @@ else:
         vars = [
             "X-averaged total heating [W.m-3]",
             "X-averaged cell temperature [K]",
-            "X-averaged positive particle surface concentration [mol.m-3]",
-            "X-averaged negative particle surface concentration [mol.m-3]",
+            "X-averaged positive particle surface concentration",
+            "X-averaged negative particle surface concentration",
             "Negative current collector potential [V]",
             "Positive current collector potential [V]",
             "Local current collector potential difference [V]",
