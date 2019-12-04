@@ -22,15 +22,15 @@ use_tomo = True
 wrk = op.Workspace()
 input_dir = os.path.join(os.getcwd(), 'input')
 #pybamm.set_logging_level(10)
-I_app = 0.5
+I_app = 1.0
 # Simulation options
 opt = {'domain': 'model',
-       'Nlayers': 2,
+       'Nlayers': 3,
        'cp': 1399.0,
        'rho': 2055.0,
        'K0': 1.0,
        'T0': 303,
-       'heat_transfer_coefficient': 10,
+       'heat_transfer_coefficient': 5,
        'length_3d': 0.065,
        'I_app_mag': I_app*1.0,
        'cc_cond_neg': 3e7,
@@ -43,24 +43,29 @@ sim.setup(opt)
 j_dir = opt['domain']+'_journal_tomo_'+str(I_app)+'amp'
 #sim.run_thermal()
 #sim.runners['spm'].test_equivalent_capacity()
-sim.run(n_steps=10, time_step=0.005, n_subs=5, journal=j_dir)
+sim.run(n_steps=4, time_step=0.005, n_subs=5, journal=j_dir)
+
+
+
 #sim.plots()
 #sim.save('test')
+
 spm = sim.runners['spm']
-spm.export_3d_mat(var='Current collector current density [A.m-2]',
-                  fname='./'+j_dir+'/current_density.mat')
-var = "X-averaged negative particle surface concentration [mol.m-3]"
-spm.export_3d_mat(var=var,
-                  fname='./'+j_dir+'/neg_particle_conc.mat')
-var = "X-averaged positive particle surface concentration [mol.m-3]"
-spm.export_3d_mat(var=var,
-                  fname='./'+j_dir+'/pos_particle_conc.mat')
-var = "Positive current collector potential [V]"
-spm.export_3d_mat(var=var,
-                  fname='./'+j_dir+'/pos_cc_potential.mat')
-var = "Negative current collector potential [V]"
-spm.export_3d_mat(var=var,
-                  fname='./'+j_dir+'/neg_cc_potential.mat')
+spm.plot_3d()
+#spm.export_3d_mat(var='Current collector current density [A.m-2]',
+#                  fname='./'+j_dir+'/current_density.mat')
+#var = "X-averaged negative particle surface concentration [mol.m-3]"
+#spm.export_3d_mat(var=var,
+#                  fname='./'+j_dir+'/neg_particle_conc.mat')
+#var = "X-averaged positive particle surface concentration [mol.m-3]"
+#spm.export_3d_mat(var=var,
+#                  fname='./'+j_dir+'/pos_particle_conc.mat')
+#var = "Positive current collector potential [V]"
+#spm.export_3d_mat(var=var,
+#                  fname='./'+j_dir+'/pos_cc_potential.mat')
+#var = "Negative current collector potential [V]"
+#spm.export_3d_mat(var=var,
+#                  fname='./'+j_dir+'/neg_cc_potential.mat')
 
 #post = pybamm.post_process_variables(variables=spm.model.variables,
 #                              t_sol=spm.solution.t,
