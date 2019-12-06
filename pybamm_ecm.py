@@ -15,75 +15,8 @@ import pybamm
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
+
 plt.close('all')
-Nunit = 10
-net = op.network.Cubic([Nunit+1, 2, 1])
-print(net.labels())
-net['pore.pos_cc'] = net['pore.right']
-net['pore.neg_cc'] = net['pore.left']
-
-T = net.find_neighbor_throats(net.pores('front'), mode='xnor')
-tt.trim(net, throats=T)
-pos_cc_Ts = net.find_neighbor_throats(net.pores('pos_cc'), mode='xnor')
-neg_cc_Ts = net.find_neighbor_throats(net.pores('neg_cc'), mode='xnor')
-
-P_pos = net.pores(['pos_cc', 'front'], 'and')
-P_neg = net.pores(['neg_cc', 'front'], 'and')
-
-net['pore.pos_terminal'] = False
-net['pore.neg_terminal'] = False
-net['pore.pos_terminal'][P_pos] = True
-net['pore.neg_terminal'][P_neg] = True
-net['throat.pos_cc'] = False
-net['throat.neg_cc'] = False
-net['throat.pos_cc'][pos_cc_Ts] = True
-net['throat.neg_cc'][neg_cc_Ts] = True
-net['throat.spm_resistor'] = True
-net['throat.spm_resistor'][pos_cc_Ts] = False
-net['throat.spm_resistor'][neg_cc_Ts] = False
-
-del net['pore.left']
-del net['pore.right']
-del net['pore.front']
-del net['pore.back']
-del net['pore.internal']
-del net['pore.surface']
-del net['throat.internal']
-del net['throat.surface']
-print(net.labels())
-
-fig = tt.plot_coordinates(net, net.pores('pos_cc'), c='b')
-fig = tt.plot_coordinates(net, net.pores('pos_terminal'), c='y', fig=fig)
-fig = tt.plot_coordinates(net, net.pores('neg_cc'), c='r', fig=fig)
-fig = tt.plot_coordinates(net, net.pores('neg_terminal'), c='g', fig=fig)
-fig = tt.plot_connections(net, net.throats('pos_cc'), c='b', fig=fig)
-fig = tt.plot_connections(net, net.throats('neg_cc'), c='r', fig=fig)
-fig = tt.plot_connections(net, net.throats('spm_resistor'), c='k', fig=fig)
-
-phase = op.phases.GenericPhase(network=net)
-phase['throat.electrical_conductance'] = 1.0
-
-I = 1.0
-alg = op.algorithms.OhmicConduction(network=net)
-alg.setup(phase=phase,
-          quantity="pore.potential",
-          conductance="throat.electrical_conductance",
-          )
-alg.set_rate_BC(net.pores('pos_terminal'), values=I)
-alg.set_value_BC(net.pores('neg_terminal'), values=0.0)
-alg.run()
-fig = tt.plot_coordinates(net, net.Ps, c=alg['pore.potential'])
-
-potential_pairs = net['throat.conns'][net.throats('spm_resistor')]
-P1 = potential_pairs[:, 0]
-P2 = potential_pairs[:, 1]
-dV_local = alg['pore.potential'][P2] - alg['pore.potential'][P1]
-I_local = alg.rate(throats=net.throats('spm_resistor'), mode='single')
-R_local = dV_local / I_local
-print(dV_local)
-print(I_local)
-print(R_local)
-
 # set logging level
 pybamm.set_logging_level("INFO")
 
@@ -92,9 +25,121 @@ var = pybamm.standard_spatial_vars
 var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 5, var.r_p: 5}
 
 sim = pybamm.Simulation(model, var_pts=var_pts)
+#dt = 0.005
+#sim.step(dt)
+t_eval=np.linspace(0, 1.0, 201)
+sim.solve(t_eval=t_eval)
+pv = pybamm.post_process_variables(sim.built_model.variables,
+                                   sim.solution.t,
+                                   sim.solution.y,
+                                   sim.mesh)
+t_final = sim.solution.t
+V_ocv_spm = pv['Measured open circuit voltage [V]'](t_final)
+V_local_spm = pv['Local voltage [V]'](t_final)
+V_terminal_spm = pv['Terminal voltage [V]'](t_final)
+R_ecm = pv['Local ECM resistance [Ohm.m2]'](t_final)
+V_ecm = pv['Local ECM voltage [V]'](t_final)
+I_ecm = pv['Current collector current density [A.m-2]'](t_final)
 
-t_eval = np.linspace(0, 0.13, 2)
-# step through the solver, setting the temperature at each timestep
-for i in np.arange(1, len(t_eval) - 1):
-    dt = t_eval[i + 1] - t_eval[i]
-    sim.step(dt)
+etas = ["X-averaged battery reaction overpotential [V]",
+        "X-averaged battery concentration overpotential [V]",
+        "X-averaged battery electrolyte ohmic losses [V]",
+        "X-averaged battery solid phase ohmic losses [V]"]
+
+overpotential_sum = 0.0
+for eta in etas:
+    overpotential_sum -= pv[eta](t_final)
+
+h = sim.parameter_values['Electrode height [m]']
+w = sim.parameter_values['Electrode width [m]']
+A = h*w
+R = R_ecm/A
+
+print('*'*30)
+print('V local spm', V_ecm, '[V]')
+print('I local spm', I_ecm*A, '[A]')
+print('R local spm', R, '[Ohm]')
+
+fig, (ax1, ax2) = plt.subplots(2, 1)
+ax.plot(t_final, V_ocv_spm, 'b--')
+ax.plot(t_final, V_local_spm, 'r*-')
+#ax.plot(t_eval, V_terminal_spm, 'go-')
+ax2.plot(t_eval, V_ecm, 'k-')
+ax.scatter(t_final, V_ecm+V_local_spm, c='orange', s=100)
+
+########################################################################################
+
+#Nunit = 1
+#net = op.network.Cubic([Nunit+1, 2, 1])
+#net['pore.pos_cc'] = net['pore.right']
+#net['pore.neg_cc'] = net['pore.left']
+#
+#T = net.find_neighbor_throats(net.pores('front'), mode='xnor')
+#tt.trim(net, throats=T)
+#pos_cc_Ts = net.find_neighbor_throats(net.pores('pos_cc'), mode='xnor')
+#neg_cc_Ts = net.find_neighbor_throats(net.pores('neg_cc'), mode='xnor')
+#
+#P_pos = net.pores(['pos_cc', 'front'], 'and')
+#P_neg = net.pores(['neg_cc', 'front'], 'and')
+#
+#net['pore.pos_terminal'] = False
+#net['pore.neg_terminal'] = False
+#net['pore.pos_terminal'][P_pos] = True
+#net['pore.neg_terminal'][P_neg] = True
+#net['throat.pos_cc'] = False
+#net['throat.neg_cc'] = False
+#net['throat.pos_cc'][pos_cc_Ts] = True
+#net['throat.neg_cc'][neg_cc_Ts] = True
+#net['throat.spm_resistor'] = True
+#net['throat.spm_resistor'][pos_cc_Ts] = False
+#net['throat.spm_resistor'][neg_cc_Ts] = False
+#
+#del net['pore.left']
+#del net['pore.right']
+#del net['pore.front']
+#del net['pore.back']
+#del net['pore.internal']
+#del net['pore.surface']
+#del net['throat.internal']
+#del net['throat.surface']
+#
+#fig = tt.plot_coordinates(net, net.pores('pos_cc'), c='b')
+#fig = tt.plot_coordinates(net, net.pores('pos_terminal'), c='y', fig=fig)
+#fig = tt.plot_coordinates(net, net.pores('neg_cc'), c='r', fig=fig)
+#fig = tt.plot_coordinates(net, net.pores('neg_terminal'), c='g', fig=fig)
+#fig = tt.plot_connections(net, net.throats('pos_cc'), c='b', fig=fig)
+#fig = tt.plot_connections(net, net.throats('neg_cc'), c='r', fig=fig)
+#fig = tt.plot_connections(net, net.throats('spm_resistor'), c='k', fig=fig)
+#
+#phase = op.phases.GenericPhase(network=net)
+#cc_cond = 3e12
+#cc_unit_len = 5e-1
+#cc_unit_area = 20e-4
+#
+#phase['throat.electrical_conductance'] = cc_cond*cc_unit_area/cc_unit_len
+#phase['throat.electrical_conductance'][net.throats('spm_resistor')] = 1/R
+#
+#
+#alg = op.algorithms.OhmicConduction(network=net)
+#alg.setup(phase=phase,
+#          quantity="pore.potential",
+#          conductance="throat.electrical_conductance",
+#          )
+#alg.set_value_BC(net.pores('pos_terminal'), values=V_ecm)
+#alg.set_value_BC(net.pores('neg_terminal'), values=0.0)
+#alg.settings['solver_rtol'] = 1e-15
+#alg.settings['solver_atol'] = 1e-15
+#alg.run()
+#fig = tt.plot_coordinates(net, net.Ps, c=alg['pore.potential'])
+#
+#potential_pairs = net['throat.conns'][net.throats('spm_resistor')]
+#P1 = potential_pairs[:, 0]
+#P2 = potential_pairs[:, 1]
+#V_local_pnm = alg['pore.potential'][P2] - alg['pore.potential'][P1]
+#I_local_pnm = alg.rate(throats=net.throats('spm_resistor'), mode='single')
+#R_local_pnm = V_local_pnm / I_local_pnm
+#
+#print('*'*30)
+#print('V local pnm', V_local_pnm, '[V]')
+#print('I local pnm', I_local_pnm, '[A]')
+#print('R local pnm', R_local_pnm, '[Ohm]')
