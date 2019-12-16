@@ -21,8 +21,10 @@ pybamm.set_logging_level("INFO")
 
 
 if __name__ == '__main__':
-    Nunit = 10
+    parallel = False
+    Nunit = 20
     max_workers = int(os.cpu_count()/2)
+#    max_workers = 5
     I_app = 1.0
     spm_sim = ecm.make_spm(Nunit)
     height = spm_sim.parameter_values["Electrode height [m]"]
@@ -64,7 +66,8 @@ if __name__ == '__main__':
     t_eval = np.linspace(0, t_end, Nsteps)
     dt = t_end/(Nsteps-1)
     dead = np.zeros(Nunit, dtype=bool)
-    pool = ecm.setup_pool(max_workers)
+    if parallel:
+        pool = ecm.setup_pool(max_workers)
     outer_step = 0
     while np.any(~dead) and outer_step < Nsteps:
 #    for outer_step in range(Nsteps):
@@ -92,12 +95,19 @@ if __name__ == '__main__':
         terminal_voltages[outer_step] = V_test
         # I_local_pnm should now match the total applied current
         # Run the spms for the the new I_locals
-        data = ecm.pool_spm(zip(spm_models,
-                                I_local_pnm,
-                                np.ones(Nunit)*dt,
-                                pool_vars,
-                                dead),
-                            pool)
+        if parallel:
+            data = ecm.pool_spm(zip(spm_models,
+                                    I_local_pnm,
+                                    np.ones(Nunit)*dt,
+                                    pool_vars,
+                                    dead),
+                                pool)
+        else:
+            data = ecm.serial_spm(zip(spm_models,
+                                      I_local_pnm,
+                                      np.ones(Nunit)*dt,
+                                      pool_vars,
+                                      dead))
         data = np.asarray(data)
         spm_models = data[:, 0].tolist()
         temp = data[:, 1]
@@ -119,15 +129,15 @@ if __name__ == '__main__':
         print('Dead', dead)
         outer_step += 1
 
-
-    ecm.shutdown_pool(pool)
+    if parallel:
+        ecm.shutdown_pool(pool)
     fig, ax = plt.subplots()
     for i in range(Nunit):
-        ax.plot(local_R[i, :]) 
+        ax.plot(local_R[i, :])
     plt.title('R Local [Ohm]')
     fig, ax = plt.subplots()
     for i in range(Nunit):
-        ax.plot(all_time_I_local[:, i]) 
+        ax.plot(all_time_I_local[:, i])
     plt.title('I Local [A]')
     for i, var in enumerate(variables):
         temp = all_time_results[:, :, i]

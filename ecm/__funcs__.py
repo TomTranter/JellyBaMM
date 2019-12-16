@@ -10,7 +10,7 @@ import openpnm as op
 import openpnm.topotools as tt
 import pybamm
 import matplotlib.pyplot as plt
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 plt.close("all")
 # set logging level
@@ -157,7 +157,7 @@ def run_ecm(net, alg, V_terminal):
 
 
 def setup_pool(max_workers):
-    pool = ProcessPoolExecutor(max_workers=max_workers)
+    pool = ThreadPoolExecutor(max_workers=max_workers)
     return pool
 
 
@@ -169,3 +169,10 @@ def pool_spm(spm_models, pool):
 def shutdown_pool(pool):
     pool.shutdown()
     del pool
+
+
+def serial_spm(inputs):
+    outputs = []
+    for bundle in inputs:
+        outputs.append(step_spm(bundle))
+    return outputs
