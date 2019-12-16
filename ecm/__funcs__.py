@@ -22,7 +22,7 @@ def current_function(t):
 
 
 def make_spm(Nunit):
-    model = pybamm.lithium_ion.SPM()
+    model = pybamm.lithium_ion.SPMe()
     geometry = model.default_geometry
     param = model.default_parameter_values
     h = param["Electrode height [m]"]
@@ -124,8 +124,8 @@ def make_net(spm_sim, Nunit, R, spacing):
     del net["throat.internal"]
     del net["throat.surface"]
 
-    fig = tt.plot_coordinates(net, net.pores("pos_cc"), c="b")
-    fig = tt.plot_coordinates(net, net.pores("pos_terminal_a"), c="y", fig=fig)
+    fig = tt.plot_coordinates(net, net.pores("pos_cc"), c="r")
+    fig = tt.plot_coordinates(net, net.pores("pos_terminal_b"), c="y", fig=fig)
     fig = tt.plot_coordinates(net, net.pores("neg_cc"), c="r", fig=fig)
     fig = tt.plot_coordinates(net, net.pores("neg_terminal_b"), c="g", fig=fig)
     fig = tt.plot_connections(net, net.throats("pos_cc"), c="b", fig=fig)
@@ -133,9 +133,9 @@ def make_net(spm_sim, Nunit, R, spacing):
     fig = tt.plot_connections(net, net.throats("spm_resistor"), c="k", fig=fig)
 
     phase = op.phases.GenericPhase(network=net)
-    cc_cond = 3e5
+    cc_cond = 1e5
     cc_unit_len = spacing
-    cc_unit_area = 30e-6 * 65e-3
+    cc_unit_area = 25e-6 * 0.207
     phase["throat.electrical_conductance"] = cc_cond * cc_unit_area / cc_unit_len
     phase["throat.electrical_conductance"][net.throats("spm_resistor")] = 1 / R
     alg = op.algorithms.OhmicConduction(network=net)
@@ -148,18 +148,23 @@ def make_net(spm_sim, Nunit, R, spacing):
     return net, alg, phase
 
 
-def run_ecm(net, alg, V_terminal):
+def run_ecm(net, alg, V_terminal, plot=False):
     potential_pairs = net["throat.conns"][net.throats("spm_resistor")]
     P1 = potential_pairs[:, 0]
     P2 = potential_pairs[:, 1]
     adj = np.random.random(1) / 1e3
-    alg.set_value_BC(net.pores("pos_terminal_b"), values=V_terminal + adj)
-    alg.set_value_BC(net.pores("neg_terminal_b"), values=adj)
+    alg.set_value_BC(net.pores("pos_terminal_a"), values=V_terminal + adj)
+    alg.set_value_BC(net.pores("neg_terminal_a"), values=adj)
     #    alg['pore.potential'] -= adj
     alg.run()
     V_local_pnm = alg["pore.potential"][P2] - alg["pore.potential"][P1]
     I_local_pnm = alg.rate(throats=net.throats("spm_resistor"), mode="single")
     R_local_pnm = V_local_pnm / I_local_pnm
+    if plot:
+        plt.figure()
+        plt.plot(alg["pore.potential"][P1])
+        plt.plot(alg["pore.potential"][P2])
+
     return (V_local_pnm, I_local_pnm, R_local_pnm)
 
 
