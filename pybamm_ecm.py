@@ -33,8 +33,9 @@ if __name__ == '__main__':
     variables = ['Local ECM resistance [Ohm.m2]',
                  'Local ECM voltage [V]',
                  'Local voltage [V]',
-#                 'X-averaged positive particle surface concentration [mol.m-3]',
-#                 'X-averaged negative particle surface concentration [mol.m-3]'
+                 'X-averaged positive particle surface concentration [mol.m-3]',
+                 'X-averaged negative particle surface concentration [mol.m-3]',
+                 'Terminal voltage [V]',
                 ]
     pool_vars = [variables for i in range(Nunit)]
     spm_sim, results = ecm.step_spm((spm_sim, I_app/Nunit, 1e-6, variables, False))
@@ -49,7 +50,6 @@ if __name__ == '__main__':
     print('I local pnm', I_local_pnm, '[A]')
     print('R local pnm', R_local_pnm, '[Ohm]')
     spm_models = [copy.deepcopy(spm_sim) for i in range(len(net.throats('spm_resistor')))]
-    dt = 5e-2
     Nsteps = 120
     res_Ts = net.throats('spm_resistor')
     terminal_voltages = np.zeros(Nsteps)
@@ -116,6 +116,9 @@ if __name__ == '__main__':
             results[i, :] = temp[i]
         all_time_results[outer_step, :, :] = results
         temp_R = results[:, 0]/A_cc
+        temp_local_V = results[:, 2]
+        if np.any(temp_local_V < 2.5):
+            dead.fill(np.nan)
         sig = 1/temp_R
         if np.any(temp_R > R_max):
             dead[temp_R > R_max] = True
@@ -129,15 +132,18 @@ if __name__ == '__main__':
         print('Dead', dead)
         outer_step += 1
 
+    ecm.run_ecm(net, alg, V_test, plot=True)
+
+    all_time_results = all_time_results[:outer_step, :, :]
     if parallel:
         ecm.shutdown_pool(pool)
     fig, ax = plt.subplots()
     for i in range(Nunit):
-        ax.plot(local_R[i, :])
+        ax.plot(local_R[i, :outer_step])
     plt.title('R Local [Ohm]')
     fig, ax = plt.subplots()
     for i in range(Nunit):
-        ax.plot(all_time_I_local[:, i])
+        ax.plot(all_time_I_local[:outer_step, i])
     plt.title('I Local [A]')
     for i, var in enumerate(variables):
         temp = all_time_results[:, :, i]
@@ -146,6 +152,11 @@ if __name__ == '__main__':
             ax.plot(temp[:, i])
         plt.title(var)
 
+    # Time comparison
+    fig, ax = plt.subplots()
+    for i in range(44):
+        ax.plot(all_time_I_local[i, :])
+    plt.title('I Local [A] vs t')    
     print('*'*30)
     print('Sim time', time.time()-st)
     print('*'*30)
