@@ -164,7 +164,7 @@ if __name__ == "__main__":
     print("Sim time", time.time() - st)
     print("*" * 30)
 
-def compare_models(all_time_I_local, A_cc, Nunit):
+def compare_models(all_time_I_local, A_cc, Nunit, t_eval, Nsteps):
 
     # load (1+1D) SPMe model
     options = {
@@ -206,7 +206,7 @@ def compare_models(all_time_I_local, A_cc, Nunit):
     tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
     t_end = 3600 / tau.evaluate(0)
     # solution = model.default_solver.solve(model, t_eval)
-    solution = pybamm.CasadiSolver(mode="fast").solve(model, np.linspace(0, t_end, 120))
+    solution = pybamm.CasadiSolver(mode="fast").solve(model, np.linspace(0, t_end, Nsteps))
     # e.g. make model with variable for I_local
     # t_eval
     # all_time_I_local
@@ -215,7 +215,7 @@ def compare_models(all_time_I_local, A_cc, Nunit):
 
     def myinterp(t):
         return interp.interp1d(
-            t_eval * tau.evaluate(0), all_time_I_local / A_cc, axis=0
+            t_eval, all_time_I_local / A_cc, axis=0
         )(t)[:, np.newaxis]
 
     # Use dimensional time. Need to append ECM to name otherwise quickplot gets confused...
@@ -242,7 +242,7 @@ def compare_models(all_time_I_local, A_cc, Nunit):
     )
     plot.dynamic_plot()
 
-compare_models(all_time_I_local, A_cc, Nunit)
+compare_models(all_time_I_local, A_cc, Nunit, t_eval, Nsteps)
 
 
 #model = spm_models[0].built_model
