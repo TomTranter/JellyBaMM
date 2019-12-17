@@ -179,15 +179,14 @@ def compare_models(all_time_I_local, A_cc, Nunit, t_eval, Nsteps, outer_step):
 
     # load parameter values and process model and geometry
     param = model.default_parameter_values
-    C_rate = 1
-    current_1C = 24 * param.process_symbol(pybamm.geometric_parameters.A_cc).evaluate()
     param.update(
         {
-            "Typical current [A]": C_rate * current_1C,
+            "Current function [A]": 1,
             "Initial temperature [K]": 298.15,
             "Negative current collector conductivity [S.m-1]": 1e5,
             "Positive current collector conductivity [S.m-1]": 1e5,
             #            "Heat transfer coefficient [W.m-2.K-1]": 1,
+            # "Lower voltage cut-off [V]": 0,
         }
     )
     param.process_model(model)
@@ -209,25 +208,20 @@ def compare_models(all_time_I_local, A_cc, Nunit, t_eval, Nsteps, outer_step):
     disc = pybamm.Discretisation(mesh, model.default_spatial_methods)
     disc.process_model(model)
 
-    # solve model -- simulate one hour discharge
-    tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
-    t_end = 3600 / tau.evaluate(0)
-    # solution = model.default_solver.solve(model, t_eval)
-    solution = pybamm.CasadiSolver(mode="fast").solve(
-        model, np.linspace(0, t_end, Nsteps)
-    )
+    # solve model
+    t_end = t_eval[outer_step]
+    solution = model.default_solver.solve(model, np.linspace(0, t_end, Nsteps))
+
     # e.g. make model with variable for I_local
-    # t_eval
-    # all_time_I_local
     # Set name to be same as the pybamm variable
     variable_name = "Current collector current density [A.m-2]"
+    variable = all_time_I_local[:outer_step, :].T / A_cc
+    time = t_eval[:outer_step]
 
     def myinterp(t):
-        return interp.interp1d(
-            t_eval[:outer_step], all_time_I_local[:outer_step, :] / A_cc, axis=0
-        )(t)[:, np.newaxis]
+        return interp.interp1d(time, variable)(t)[:, np.newaxis]
 
-    # Use dimensional time. Need to append ECM to name otherwise quickplot gets confused...
+    # Need to append ECM to name otherwise quickplot gets confused...
     i_local = pybamm.Function(myinterp, pybamm.t, name=variable_name + "_ECM")
     # Set domain to be the same as the pybamm variable
     i_local.domain = "current collector"
@@ -241,6 +235,13 @@ def compare_models(all_time_I_local, A_cc, Nunit, t_eval, Nsteps, outer_step):
         solution.y,
         mesh=mesh,
     )
+
+    plt.figure()
+    z = mesh["current collector"][0].nodes
+    for ind, t in enumerate(time):
+        plt.plot(z, all_time_I_local[i, :].T / A_cc, "o")
+        plt.plot(z, processed_i_local(z=z, t=t), "-")
+    plt.title("i_local. ECM vs pybamm")
 
     #    # plot
     #    plot = pybamm.QuickPlot(
