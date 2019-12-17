@@ -22,7 +22,7 @@ pybamm.set_logging_level("INFO")
 
 if __name__ == "__main__":
     parallel = False
-    Nunit = 20
+    Nunit = 10
     max_workers = int(os.cpu_count() / 2)
     #    max_workers = 5
     I_app = 1.0
@@ -33,10 +33,14 @@ if __name__ == "__main__":
     variables = [
         "Local ECM resistance [Ohm.m2]",
         "Local ECM voltage [V]",
+        "Measured open circuit voltage [V]",
         "Local voltage [V]",
-        "X-averaged positive particle surface concentration [mol.m-3]",
-        "X-averaged negative particle surface concentration [mol.m-3]",
-        "Terminal voltage [V]",
+#        "X-averaged positive particle surface concentration [mol.m-3]",
+#        "X-averaged negative particle surface concentration [mol.m-3]",
+#        "X-averaged positive electrode open circuit potential [V]",
+#        "X-averaged negative electrode open circuit potential [V]",
+#        "Terminal voltage [V]",
+        
     ]
     pool_vars = [variables for i in range(Nunit)]
     spm_sim, results = ecm.step_spm((spm_sim, I_app / Nunit, 1e-6, variables, False))
@@ -53,7 +57,7 @@ if __name__ == "__main__":
     spm_models = [
         copy.deepcopy(spm_sim) for i in range(len(net.throats("spm_resistor")))
     ]
-    Nsteps = 120
+    Nsteps = 40
     res_Ts = net.throats("spm_resistor")
     terminal_voltages = np.zeros(Nsteps)
     V_test = V_ecm
@@ -61,7 +65,7 @@ if __name__ == "__main__":
     local_R = np.zeros([Nunit, Nsteps])
     stop_R = np.zeros(Nunit, dtype=bool)
     st = time.time()
-    all_time_results = np.zeros([Nsteps, Nunit, len(variables)])
+    all_time_results = np.zeros([Nsteps, Nunit, len(variables)+1])
     all_time_I_local = np.zeros([Nsteps, Nunit])
     param = spm_sim.parameter_values
     tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
@@ -72,6 +76,7 @@ if __name__ == "__main__":
     if parallel:
         pool = ecm.setup_pool(max_workers)
     outer_step = 0
+    V_ocv_0 = 3.845
     while np.any(~dead) and outer_step < Nsteps:
         #    for outer_step in range(Nsteps):
         print("*" * 30)
@@ -107,12 +112,18 @@ if __name__ == "__main__":
         data = np.asarray(data)
         spm_models = data[:, 0].tolist()
         temp = data[:, 1]
-        results = np.zeros([Nunit, len(variables)])
+        results = np.zeros([Nunit, len(variables)+1])
         for i in range(Nunit):
             results[i, :] = temp[i]
         all_time_results[outer_step, :, :] = results
-        temp_R = results[:, 0] / A_cc
-        temp_local_V = results[:, 2]
+#        temp_R = results[:, 0] / A_cc
+#        temp_local_OCV = results[:, 2]
+#        temp_local_dOCV = V_ocv_0 - temp_local_OCV 
+#        temp_local_ROCV = temp_local_dOCV/I_local_pnm
+        temp_local_V = results[:, 3]
+#        temp_R += temp_local_ROCV
+#        temp_R /= A_cc
+        temp_R = results[:, -1]
         if np.any(temp_local_V < 2.5):
             dead.fill(np.nan)
         sig = 1 / temp_R
@@ -125,6 +136,7 @@ if __name__ == "__main__":
         phase["throat.electrical_conductance"][res_Ts] = sig
         local_R[:, outer_step] = temp_R
         print("Resistances", temp_R)
+#        print('OCV Resistances', temp_local_ROCV)
         print("Dead", dead)
         outer_step += 1
 
@@ -152,11 +164,13 @@ if __name__ == "__main__":
     print("Sim time", time.time() - st)
     print("*" * 30)
 
+def compare_models(all_time_I_local, A_cc, Nunit):
+
     # load (1+1D) SPMe model
     options = {
         "current collector": "potential pair",
         "dimensionality": 1,
-        "thermal": "x-lumped",
+#        "thermal": "x-lumped",
     }
     model = pybamm.lithium_ion.SPM(options)
     model.use_simplify = False
@@ -173,7 +187,7 @@ if __name__ == "__main__":
             "Initial temperature [K]": 298.15,
             "Negative current collector conductivity [S.m-1]": 1e5,
             "Positive current collector conductivity [S.m-1]": 1e5,
-            "Heat transfer coefficient [W.m-2.K-1]": 1,
+#            "Heat transfer coefficient [W.m-2.K-1]": 1,
         }
     )
     param.process_model(model)
@@ -181,7 +195,7 @@ if __name__ == "__main__":
 
     # set mesh
     var = pybamm.standard_spatial_vars
-    var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 10, var.r_p: 10, var.z: 20}
+    var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 10, var.r_p: 10, var.z: Nunit}
     mesh = pybamm.Mesh(geometry, model.default_submesh_types, var_pts)
 
     # discretise model
@@ -213,7 +227,13 @@ if __name__ == "__main__":
     ECM_model = pybamm.BaseModel(name="ECM model")
     ECM_model.variables = {"Current collector current density [A.m-2]": i_local}
 
-    # plot
+#    # plot
+#    plot = pybamm.QuickPlot(
+#        model,
+#        mesh,
+#        solution, 
+#        output_variables=["Current collector current density [A.m-2]"],
+#    )
     plot = pybamm.QuickPlot(
         [model, ECM_model],
         mesh,
@@ -221,3 +241,10 @@ if __name__ == "__main__":
         output_variables=ECM_model.variables.keys(),
     )
     plot.dynamic_plot()
+
+compare_models(all_time_I_local, A_cc, Nunit)
+
+
+#model = spm_models[0].built_model
+#all_variables = model.variables
+#plot_voltage_components(all_variables, t_eval, model)

@@ -50,6 +50,21 @@ def make_spm(Nunit):
     return sim
 
 
+def calc_R(sim, current):
+    overpotentials = [
+        "X-averaged reaction overpotential [V]",
+        "X-averaged concentration overpotential [V]",
+        "X-averaged electrolyte ohmic losses [V]",
+        "X-averaged solid phase ohmic losses [V]",
+    ]
+    initial_ocv = 3.8518206633137266
+    ocv = evaluate(sim, "X-averaged battery open circuit voltage [V]", current)
+    totdV = initial_ocv - ocv
+    for overpotential in overpotentials:
+        totdV -= evaluate(sim, overpotential, current)
+    return totdV/current
+
+
 def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
     model = sim.built_model
     #    mesh = sim.mesh
@@ -70,14 +85,15 @@ def step_spm(zipped):
     #    h = sim.parameter_values['Electrode height [m]']
     #    w = sim.parameter_values['Electrode width [m]']
     #    A_cc = h*w
+    results = np.zeros(len(variables)+1)
     if ~dead:
         sim.step(dt=dt, inputs={"Current": I_app}, save=False)
-        results = np.zeros(len(variables))
         for i, key in enumerate(variables):
             results[i] = evaluate(sim, key, I_app)
+        results[-1] = calc_R(sim, I_app)
     #    V_ecm = evaluate(sim, 'Local ECM voltage [V]', I_app)
     else:
-        results = np.zeros(len(variables))
+#        results = np.zeros(len(variables))
         results.fill(np.nan)
     return sim, results
 
@@ -124,7 +140,7 @@ def make_net(spm_sim, Nunit, R, spacing):
     del net["throat.internal"]
     del net["throat.surface"]
 
-    fig = tt.plot_coordinates(net, net.pores("pos_cc"), c="r")
+    fig = tt.plot_coordinates(net, net.pores("pos_cc"), c="b")
     fig = tt.plot_coordinates(net, net.pores("pos_terminal_b"), c="y", fig=fig)
     fig = tt.plot_coordinates(net, net.pores("neg_cc"), c="r", fig=fig)
     fig = tt.plot_coordinates(net, net.pores("neg_terminal_b"), c="g", fig=fig)
@@ -153,8 +169,8 @@ def run_ecm(net, alg, V_terminal, plot=False):
     P1 = potential_pairs[:, 0]
     P2 = potential_pairs[:, 1]
     adj = np.random.random(1) / 1e3
-    alg.set_value_BC(net.pores("pos_terminal_a"), values=V_terminal + adj)
-    alg.set_value_BC(net.pores("neg_terminal_a"), values=adj)
+    alg.set_value_BC(net.pores("pos_terminal_b"), values=V_terminal + adj)
+    alg.set_value_BC(net.pores("neg_terminal_b"), values=adj)
     #    alg['pore.potential'] -= adj
     alg.run()
     V_local_pnm = alg["pore.potential"][P2] - alg["pore.potential"][P1]
