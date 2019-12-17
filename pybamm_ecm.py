@@ -29,7 +29,15 @@ if __name__ == "__main__":
     spm_sim = ecm.make_spm(Nunit)
     height = spm_sim.parameter_values["Electrode height [m]"]
     width = spm_sim.parameter_values["Electrode width [m]"]
+    t1 = spm_sim.parameter_values['Negative electrode thickness [m]']
+    t2 = spm_sim.parameter_values['Positive electrode thickness [m]']
+    t3 = spm_sim.parameter_values['Negative current collector thickness [m]']
+    t4 = spm_sim.parameter_values['Positive current collector thickness [m]']
+    t5 = spm_sim.parameter_values['Separator thickness [m]']
+    ttot = t1+t2+t3+t4+t5
     A_cc = height * width
+    bat_vol = height * width * ttot * Nunit
+#    print('BATTERY VOLUME', bat_vol)
     variables = [
         "Local ECM resistance [Ohm.m2]",
         "Local ECM voltage [V]",
@@ -56,7 +64,7 @@ if __name__ == "__main__":
     spm_models = [
         copy.deepcopy(spm_sim) for i in range(len(net.throats("spm_resistor")))
     ]
-    Nsteps = 40
+    Nsteps = 20
     res_Ts = net.throats("spm_resistor")
     terminal_voltages = np.zeros(Nsteps)
     V_test = V_ecm
@@ -68,7 +76,8 @@ if __name__ == "__main__":
     all_time_I_local = np.zeros([Nsteps, Nunit])
     param = spm_sim.parameter_values
     tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
-    t_end = 3600 / tau.evaluate(0)
+#    t_end = 3600 / tau.evaluate(0)
+    t_end = 0.15776182
     t_eval = np.linspace(0, t_end, Nsteps)
     dt = t_end / (Nsteps - 1)
     dead = np.zeros(Nunit, dtype=bool)
@@ -123,7 +132,7 @@ if __name__ == "__main__":
         #        temp_R += temp_local_ROCV
         #        temp_R /= A_cc
         temp_R = results[:, -1]
-        if np.any(temp_local_V < 2.5):
+        if np.any(temp_local_V < 3.5):
             dead.fill(np.nan)
         sig = 1 / temp_R
         if np.any(temp_R > R_max):
@@ -163,103 +172,143 @@ if __name__ == "__main__":
     print("Sim time", time.time() - st)
     print("*" * 30)
 
+    print('*'*30)
+    print('BATTERY UNIT HEIGHT', height)
+    print('BATTERY WIDTH', width)
+    print('BATTERY THICKNESS', ttot)
+    print('BATTERY VOLUME', bat_vol)
+    print('*'*30)
 
-def compare_models(all_time_I_local, A_cc, Nunit, t_eval, Nsteps, outer_step):
+t_eval = t_eval[:outer_step]
+J_compare = all_time_I_local[:outer_step, :] / A_cc
+#def compare_models(J_compare, Nunit, t_eval):
 
-    # load (1+1D) SPMe model
-    options = {
-        "current collector": "potential pair",
-        "dimensionality": 1,
-        #        "thermal": "x-lumped",
+# load (1+1D) SPMe model
+options = {
+    "current collector": "potential pair",
+    "dimensionality": 1,
+    #        "thermal": "x-lumped",
+}
+model = pybamm.lithium_ion.SPM(options)
+model.use_simplify = False
+# create geometry
+geometry = model.default_geometry
+
+# load parameter values and process model and geometry
+param = model.default_parameter_values
+param.update(
+    {
+        "Current function": ecm.current_function,
+        "Current": "[input]",
+        "Initial temperature [K]": 298.15,
+        "Negative current collector conductivity [S.m-1]": 1e5,
+        "Positive current collector conductivity [S.m-1]": 1e5,
+        #            "Heat transfer coefficient [W.m-2.K-1]": 1,
+        # "Lower voltage cut-off [V]": 0,
     }
-    model = pybamm.lithium_ion.SPM(options)
-    model.use_simplify = False
-    # create geometry
-    geometry = model.default_geometry
+)
+param.process_model(model)
+param.process_geometry(geometry)
+height = param["Electrode height [m]"]
+width = param["Electrode width [m]"]
+t1 = param['Negative electrode thickness [m]']
+t2 = param['Positive electrode thickness [m]']
+t3 = param['Negative current collector thickness [m]']
+t4 = param['Positive current collector thickness [m]']
+t5 = param['Separator thickness [m]']
+ttot = t1+t2+t3+t4+t5
+bat_vol = height * width * ttot
+print('*'*30)
+print('BATTERY HEIGHT', height)
+print('BATTERY WIDTH', width)
+print('BATTERY THICKNESS', ttot)
+print('BATTERY VOLUME', bat_vol)
+print('*'*30)
+# set mesh
+var = pybamm.standard_spatial_vars
+var_pts = {
+    var.x_n: 5,
+    var.x_s: 5,
+    var.x_p: 5,
+    var.r_n: 10,
+    var.r_p: 10,
+    var.z: Nunit,
+}
+spatial_methods = model.default_spatial_methods
+solver = pybamm.CasadiSolver()
+sim = pybamm.Simulation(
+    model=model,
+    geometry=geometry,
+    parameter_values=param,
+    var_pts=var_pts,
+    spatial_methods=spatial_methods,
+    solver=solver,
+)
 
-    # load parameter values and process model and geometry
-    param = model.default_parameter_values
-    param.update(
-        {
-            "Current function [A]": 1,
-            "Initial temperature [K]": 298.15,
-            "Negative current collector conductivity [S.m-1]": 1e5,
-            "Positive current collector conductivity [S.m-1]": 1e5,
-            #            "Heat transfer coefficient [W.m-2.K-1]": 1,
-            # "Lower voltage cut-off [V]": 0,
-        }
-    )
-    param.process_model(model)
-    param.process_geometry(geometry)
+# solve model
+#    t_end = t_eval[outer_step]
+#    solution = model.default_solver.solve(model, np.linspace(0, t_end, Nsteps))
+solution = sim.solver.step(model, dt, inputs={"Current": I_app})
 
-    # set mesh
-    var = pybamm.standard_spatial_vars
-    var_pts = {
-        var.x_n: 5,
-        var.x_s: 5,
-        var.x_p: 5,
-        var.r_n: 10,
-        var.r_p: 10,
-        var.z: Nunit,
-    }
-    mesh = pybamm.Mesh(geometry, model.default_submesh_types, var_pts)
+# e.g. make model with variable for I_local
+# Set name to be same as the pybamm variable
+variable_name = "Current collector current density [A.m-2]"
+#    variable = all_time_I_local[:outer_step, :].T / A_cc
+#    time = t_eval[:outer_step]
 
-    # discretise model
-    disc = pybamm.Discretisation(mesh, model.default_spatial_methods)
-    disc.process_model(model)
+def myinterp(t):
+    return interp.interp1d(t_eval, J_compare.T)(t)[:, np.newaxis]
 
-    # solve model
-    t_end = t_eval[outer_step]
-    solution = model.default_solver.solve(model, np.linspace(0, t_end, Nsteps))
+# Need to append ECM to name otherwise quickplot gets confused...
+#    i_local = pybamm.Function(myinterp, pybamm.t, name=variable_name + "_ECM")
+i_local = pybamm.Function(myinterp, pybamm.t, name=variable_name + "_ECM")
+# Set domain to be the same as the pybamm variable
+i_local.domain = "current collector"
 
-    # e.g. make model with variable for I_local
-    # Set name to be same as the pybamm variable
-    variable_name = "Current collector current density [A.m-2]"
-    variable = all_time_I_local[:outer_step, :].T / A_cc
-    time = t_eval[:outer_step]
+# Make ECM pybamm model
+ECM_model = pybamm.BaseModel(name="ECM model")
+ECM_model.variables = {"Current collector current density [A.m-2]": i_local}
+processed_i_local = pybamm.ProcessedVariable(
+    ECM_model.variables["Current collector current density [A.m-2]"],
+    sim.solution.t,
+    sim.solution.y,
+    mesh=sim.mesh,
+)
+processed_i_1p1 = pybamm.ProcessedVariable(
+    sim.built_model.variables["Current collector current density [A.m-2]"],
+    sim.solution.t,
+    sim.solution.y,
+    mesh=sim.mesh,
+    u={"Current": I_app},
+)
+plt.figure()
+z = sim.mesh["current collector"][0].nodes
+prop_cycle = plt.rcParams['axes.prop_cycle']
+colors = np.asarray(prop_cycle.by_key()['color'])
+for ind, t in enumerate(t_eval):
+    c = np.roll(colors, -ind)[0]
+    plt.plot(z, J_compare[ind, :].T, "o", color=c)
+#    plt.plot(z, processed_i_local(z=z, t=t), "--", color=c)
+    plt.plot(z, processed_i_1p1(z=z, t=t), "--", color=c)
+plt.title("i_local. ECM vs pybamm")
 
-    def myinterp(t):
-        return interp.interp1d(time, variable)(t)[:, np.newaxis]
-
-    # Need to append ECM to name otherwise quickplot gets confused...
-    i_local = pybamm.Function(myinterp, pybamm.t, name=variable_name + "_ECM")
-    # Set domain to be the same as the pybamm variable
-    i_local.domain = "current collector"
-
-    # Make ECM pybamm model
-    ECM_model = pybamm.BaseModel(name="ECM model")
-    ECM_model.variables = {"Current collector current density [A.m-2]": i_local}
-    processed_i_local = pybamm.ProcessedVariable(
-        ECM_model.variables["Current collector current density [A.m-2]"],
-        solution.t,
-        solution.y,
-        mesh=mesh,
-    )
-
-    plt.figure()
-    z = mesh["current collector"][0].nodes
-    for ind, t in enumerate(time):
-        plt.plot(z, all_time_I_local[i, :].T / A_cc, "o")
-        plt.plot(z, processed_i_local(z=z, t=t), "-")
-    plt.title("i_local. ECM vs pybamm")
-
-    #    # plot
-    #    plot = pybamm.QuickPlot(
-    #        model,
-    #        mesh,
-    #        solution,
-    #        output_variables=["Current collector current density [A.m-2]"],
-    #    )
-    plot = pybamm.QuickPlot(
-        [model, ECM_model],
-        mesh,
-        [solution, solution],
-        output_variables=ECM_model.variables.keys(),
-    )
-    plot.dynamic_plot()
+#    # plot
+#    plot = pybamm.QuickPlot(
+#        model,
+#        mesh,
+#        solution,
+#        output_variables=["Current collector current density [A.m-2]"],
+#    )
+plot = pybamm.QuickPlot(
+    [sim.built_model, ECM_model],
+    sim.mesh,
+    [sim.solution, sim.solution],
+    output_variables=ECM_model.variables.keys(),
+)
+plot.dynamic_plot()
 
 
-compare_models(all_time_I_local, A_cc, Nunit, t_eval, Nsteps, outer_step)
+#compare_models()
 
 
 # model = spm_models[0].built_model

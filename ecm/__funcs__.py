@@ -22,7 +22,7 @@ def current_function(t):
 
 
 def make_spm(Nunit):
-    model = pybamm.lithium_ion.SPMe()
+    model = pybamm.lithium_ion.SPM()
     geometry = model.default_geometry
     param = model.default_parameter_values
     h = param["Electrode height [m]"]
@@ -36,7 +36,14 @@ def make_spm(Nunit):
     )
     param.process_model(model)
     param.process_geometry(geometry)
-    var_pts = model.default_var_pts
+    var = pybamm.standard_spatial_vars
+    var_pts = {
+        var.x_n: 5,
+        var.x_s: 5,
+        var.x_p: 5,
+        var.r_n: 10,
+        var.r_p: 10,
+    }
     spatial_methods = model.default_spatial_methods
     solver = pybamm.CasadiSolver()
     sim = pybamm.Simulation(
