@@ -12,6 +12,7 @@ import pybamm
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import sys
+import time
 
 plt.close("all")
 # set logging level
@@ -30,6 +31,7 @@ def evaluate_python(python_eval, solution, current):
 
 
 def spm_1p1D(Nunit, Nsteps, I_app, total_length):
+    st = time.time()
     # set logging level
     pybamm.set_logging_level("INFO")
 
@@ -83,6 +85,9 @@ def spm_1p1D(Nunit, Nsteps, I_app, total_length):
     h = param['Electrode height [m]']
     A = u_len * w * h
     I_local = A[:, np.newaxis] * J_local
+    print('*'*30)
+    print('1+1D time', time.time()-st)
+    print('*'*30)
     return model, param, solution, mesh, t_eval, I_local.T
 
 
@@ -145,10 +150,12 @@ def calc_R(sim, current):
     return totdV / current
 
 def calc_R_new(overpotentials, current):
-    initial_ocv = 3.8518206633137266
-    totdV = initial_ocv - overpotentials[:, -1]
-    l = overpotentials.shape[1]-1
-    totdV -= np.sum(overpotentials[:, :l], axis=1)
+#    initial_ocv = 3.8518206633137266
+#    totdV = initial_ocv - overpotentials[:, -1]
+#    l = overpotentials.shape[1]-1
+#    totdV -= np.sum(overpotentials[:, :l], axis=1)
+    totdV = -np.sum(overpotentials, axis=1)
+
     return totdV/current
 
 

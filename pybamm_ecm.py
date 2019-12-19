@@ -23,12 +23,12 @@ pybamm.set_logging_level("INFO")
 
 if __name__ == "__main__":
     parallel = False
-    Nunit = 10
-    Nsteps = 30
+    Nunit = 600
+    Nsteps = 120
     max_workers = int(os.cpu_count() / 2)
     #    max_workers = 5
-    I_app = 0.25
-    total_length = 0.2
+    I_app = 2.0
+    total_length = 1.0
     spm_sim = ecm.make_spm(Nunit, I_app, total_length)
     height = spm_sim.parameter_values["Electrode height [m]"]
     width = spm_sim.parameter_values["Electrode width [m]"]
@@ -46,13 +46,14 @@ if __name__ == "__main__":
         "Local ECM voltage [V]",
         "Measured open circuit voltage [V]",
         "Local voltage [V]",
+        "Change in measured open circuit voltage [V]",
     ]
     overpotentials = [
         "X-averaged reaction overpotential [V]",
         "X-averaged concentration overpotential [V]",
         "X-averaged electrolyte ohmic losses [V]",
         "X-averaged solid phase ohmic losses [V]",
-        "X-averaged battery open circuit voltage [V]",
+        "Change in measured open circuit voltage [V]",
     ]
 #    pool_vars = [variables for i in range(Nunit)]
     spm_sol = ecm.step_spm((spm_sim, None, I_app / Nunit, 1e-6,  False))
@@ -114,7 +115,7 @@ if __name__ == "__main__":
         current_match = False
         max_inner_steps = 1000
         inner_step = 0
-        damping = Nunit / 10
+        damping = Nunit / 100
         while (inner_step < max_inner_steps) and (not current_match):
             (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net, alg, V_test)
             tot_I_local_pnm = np.sum(I_local_pnm)
@@ -124,7 +125,7 @@ if __name__ == "__main__":
             else:
                 V_test *= 1 + (diff / damping)
             inner_step += 1
-            print("Inner", inner_step, diff, V_test)
+#            print("Inner", inner_step, diff, V_test)
         print("N inner", inner_step)
         all_time_I_local[outer_step, :] = I_local_pnm
         terminal_voltages[outer_step] = V_test
@@ -173,9 +174,9 @@ if __name__ == "__main__":
             sig[np.isnan(temp_R)] = 1e-6
         phase["throat.electrical_conductance"][res_Ts] = sig
         local_R[:, outer_step] = temp_R
-        print("Resistances", temp_R)
+#        print("Resistances", temp_R)
         #        print('OCV Resistances', temp_local_ROCV)
-        print("Dead", dead)
+        print("N Dead", np.sum(dead))
         outer_step += 1
 
     ecm.run_ecm(net, alg, V_test, plot=True)
