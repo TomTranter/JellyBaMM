@@ -17,11 +17,20 @@ plt.close("all")
 pybamm.set_logging_level("INFO")
 
 
+def convert_time(param, non_dim_time, to="seconds"):
+    s_parms = pybamm.standard_parameters_lithium_ion
+    t_sec = param.process_symbol(s_parms.tau_discharge).evaluate()
+    t = non_dim_time * t_sec
+    if to == "hours":
+        t *= 1 / 3600
+    return t
+
+
 def current_function(t):
     return pybamm.InputParameter("Current")
 
 
-def make_spm(Nunit):
+def make_spm(Nunit, I_app):
     model = pybamm.lithium_ion.SPM()
     geometry = model.default_geometry
     param = model.default_parameter_values
@@ -29,6 +38,7 @@ def make_spm(Nunit):
     new_h = h / Nunit
     param.update(
         {
+            "Typical current [A]": I_app/Nunit,
             "Current function": current_function,
             "Current": "[input]",
             "Electrode height [m]": new_h,
