@@ -18,17 +18,6 @@ plt.close("all")
 pybamm.set_logging_level("INFO")
 
 
-def evaluate_python(python_eval, solution, current):
-    keys = list(python_eval.keys())
-    out = np.zeros(len(keys))
-    for i, key in enumerate(keys):
-        temp = python_eval[key].evaluate(
-                solution.t[-1], solution.y[:, -1], u={"Current": current}
-                )
-        out[i] = temp
-    return out
-
-
 def spm_1p1D(Nunit, Nsteps, I_app, total_length):
     # set logging level
     pybamm.set_logging_level("INFO")
@@ -144,13 +133,6 @@ def calc_R(sim, current):
         totdV -= evaluate(sim, overpotential, current)
     return totdV / current
 
-def calc_R_new(overpotentials, current):
-    initial_ocv = 3.8518206633137266
-    totdV = initial_ocv - overpotentials[:, -1]
-    l = overpotentials.shape[1]-1
-    totdV -= np.sum(overpotentials[:, :l], axis=1)
-    return totdV/current
-
 
 def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
     model = sim.built_model
@@ -174,23 +156,24 @@ def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
 
 
 def step_spm(zipped):
-    sim, solution, I_app, dt, dead = zipped
+    sim, solution, I_app, dt, variables, dead = zipped
     #    h = sim.parameter_values['Electrode height [m]']
     #    w = sim.parameter_values['Electrode width [m]']
     #    A_cc = h*w
-#    results = np.zeros(len(variables) + 1)
+    results = np.zeros(len(variables) + 1)
     if ~dead:
         if solution is not None:
             sim.solver.y0 = solution.y[:, -1]
             sim.solver.t = solution.t[-1]
         sim.step(dt=dt, inputs={"Current": I_app}, save=False)
-#        for i, key in enumerate(variables):
-#            results[i] = evaluate(sim, key, I_app)
-#        results[-1] = calc_R(sim, I_app)
-
-#    else:
-#        results.fill(np.nan)
-    return sim.solution
+        for i, key in enumerate(variables):
+            results[i] = evaluate(sim, key, I_app)
+        results[-1] = calc_R(sim, I_app)
+    #    V_ecm = evaluate(sim, 'Local ECM voltage [V]', I_app)
+    else:
+        #        results = np.zeros(len(variables))
+        results.fill(np.nan)
+    return sim.solution, results
 
 
 def make_net(spm_sim, Nunit, R, spacing):

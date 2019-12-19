@@ -46,16 +46,26 @@ if __name__ == "__main__":
         "Local ECM voltage [V]",
         "Measured open circuit voltage [V]",
         "Local voltage [V]",
-        #        "X-averaged positive particle surface concentration [mol.m-3]",
-        #        "X-averaged negative particle surface concentration [mol.m-3]",
-        #        "X-averaged positive electrode open circuit potential [V]",
-        #        "X-averaged negative electrode open circuit potential [V]",
-        #        "Terminal voltage [V]",
     ]
-    pool_vars = [variables for i in range(Nunit)]
-    spm_sol, results = ecm.step_spm((spm_sim, None, I_app / Nunit, 1e-6, variables, False))
-    R = results[0] / A_cc
-    V_ecm = results[1]
+    overpotentials = [
+        "X-averaged reaction overpotential [V]",
+        "X-averaged concentration overpotential [V]",
+        "X-averaged electrolyte ohmic losses [V]",
+        "X-averaged solid phase ohmic losses [V]",
+        "X-averaged battery open circuit voltage [V]",
+    ]
+#    pool_vars = [variables for i in range(Nunit)]
+    spm_sol = ecm.step_spm((spm_sim, None, I_app / Nunit, 1e-6,  False))
+    variables_eval = {}
+    overpotentials_eval = {}
+    for var in variables:
+        variables_eval[var] = pybamm.EvaluatorPython(spm_sim.built_model.variables[var])
+    for var in overpotentials:
+        overpotentials_eval[var] = pybamm.EvaluatorPython(spm_sim.built_model.variables[var])
+    
+    temp = ecm.evaluate_python(variables_eval, spm_sol, current=I_app/Nunit)
+    R = temp[0] / A_cc
+    V_ecm = temp[1]
     print(R)
     R_max = R * 10
     net, alg, phase = ecm.make_net(spm_sim, Nunit, R, spacing=height)
@@ -81,7 +91,9 @@ if __name__ == "__main__":
     local_R = np.zeros([Nunit, Nsteps])
     stop_R = np.zeros(Nunit, dtype=bool)
     st = time.time()
-    all_time_results = np.zeros([Nsteps, Nunit, len(variables) + 1])
+    all_time_results = np.zeros([Nsteps, Nunit, len(variables)])
+    all_time_overpotentials = np.zeros([Nsteps, Nunit, len(overpotentials)])
+#    all_time_R = np.zeros([Nsteps, Nunit])
     all_time_I_local = np.zeros([Nsteps, Nunit])
     param = spm_sim.parameter_values
     tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
@@ -119,21 +131,27 @@ if __name__ == "__main__":
         # I_local_pnm should now match the total applied current
         # Run the spms for the the new I_locals
         if parallel:
-            data = ecm.pool_spm(
-                zip(spm_models, solutions, I_local_pnm, np.ones(Nunit) * dt, pool_vars, dead), pool
+            solutions = ecm.pool_spm(
+                zip(spm_models, solutions, I_local_pnm, np.ones(Nunit) * dt, dead), pool
             )
         else:
-            data = ecm.serial_spm(
-                zip(spm_models, solutions, I_local_pnm, np.ones(Nunit) * dt, pool_vars, dead)
+            solutions = ecm.serial_spm(
+                zip(spm_models, solutions, I_local_pnm, np.ones(Nunit) * dt, dead)
             )
-        data = np.asarray(data)
+#        data = np.asarray(data)
 #        spm_models = data[:, 0].tolist()
-        solutions = data[:, 0].tolist()
-        temp = data[:, 1]
-        results = np.zeros([Nunit, len(variables) + 1])
-        for i in range(Nunit):
-            results[i, :] = temp[i]
+#        solutions = data[:, 0].tolist()
+        results = np.zeros([Nunit, len(variables)])
+        results_o = np.zeros([Nunit, len(overpotentials)])
+        for i, solution in enumerate(solutions):
+            results[i, :] = ecm.evaluate_python(variables_eval, solution, I_local_pnm[i])
+            results_o[i, :] = ecm.evaluate_python(overpotentials_eval, solution, current=I_local_pnm[i])
+#        temp = data[:, 1]
+#        results = np.zeros([Nunit, len(variables)])
+#        for i in range(Nunit):
+#            results[i, :] = temp[i]
         all_time_results[outer_step, :, :] = results
+        all_time_overpotentials[outer_step, :, :] = results_o
         #        temp_R = results[:, 0] / A_cc
         #        temp_local_OCV = results[:, 2]
         #        temp_local_dOCV = V_ocv_0 - temp_local_OCV
@@ -141,7 +159,9 @@ if __name__ == "__main__":
         temp_local_V = results[:, 3]
         #        temp_R += temp_local_ROCV
         #        temp_R /= A_cc
-        temp_R = results[:, -1]
+#        temp_R = results[:, -1]
+        temp_R = ecm.calc_R_new(results_o, I_local_pnm)
+#        all_time_R[outer_step, :] = temp_R
         if np.any(temp_local_V < 3.5):
             dead.fill(np.nan)
         sig = 1 / temp_R
