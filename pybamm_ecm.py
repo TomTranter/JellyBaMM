@@ -21,71 +21,15 @@ plt.close("all")
 pybamm.set_logging_level("INFO")
 
 
-def spm_1p1D(Nunit, Nsteps, I_app):
-    # set logging level
-    pybamm.set_logging_level("INFO")
-
-    # load (1+1D) SPMe model
-    options = {
-        "current collector": "potential pair",
-        "dimensionality": 1,
-    }
-    model = pybamm.lithium_ion.SPM(options)
-
-    # create geometry
-    geometry = model.default_geometry
-
-    # load parameter values and process model and geometry
-    param = model.default_parameter_values
-    param.update(
-        {
-            "Typical current [A]": I_app,
-            "Current function": "[constant]",
-            "Initial temperature [K]": 298.15,
-            "Negative current collector conductivity [S.m-1]": 1e5,
-            "Positive current collector conductivity [S.m-1]": 1e5,
-            "Heat transfer coefficient [W.m-2.K-1]": 1,
-        }
-    )
-    param.process_model(model)
-    param.process_geometry(geometry)
-
-    # set mesh
-    var = pybamm.standard_spatial_vars
-    var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 10, var.r_p: 10, var.z: Nunit}
-    # depending on number of points in y-z plane may need to increase recursion depth...
-    sys.setrecursionlimit(10000)
-    mesh = pybamm.Mesh(geometry, model.default_submesh_types, var_pts)
-
-    # discretise model
-    disc = pybamm.Discretisation(mesh, model.default_spatial_methods)
-    disc.process_model(model)
-
-    # solve model -- simulate one hour discharge
-    tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
-    t_end = 3600 / tau.evaluate(0)
-    t_eval = np.linspace(0, t_end, Nsteps)
-
-#    print('1p1D t_eval', t_eval)
-#    print('1p1D hrs', ecm.convert_time(param, t_eval, to="hours"))
-
-    solver = pybamm.CasadiSolver(mode="fast")
-    solution = solver.solve(model, t_eval)
-    
-    J_local = model.variables["Current collector current density [A.m-2]"].evaluate(solution.t, solution.y)
-    A = mesh["current collector"][0].d_edges * param['Electrode width [m]'] * param['Electrode height [m]']
-    I_local = A[:, np.newaxis] * J_local
-    return model, param, solution, mesh, t_eval, I_local.T
-
-
 if __name__ == "__main__":
     parallel = False
     Nunit = 10
-    Nsteps = 60
+    Nsteps = 30
     max_workers = int(os.cpu_count() / 2)
     #    max_workers = 5
     I_app = 0.25
-    spm_sim = ecm.make_spm(Nunit, I_app)
+    total_length = 0.2
+    spm_sim = ecm.make_spm(Nunit, I_app, total_length)
     height = spm_sim.parameter_values["Electrode height [m]"]
     width = spm_sim.parameter_values["Electrode width [m]"]
     t1 = spm_sim.parameter_values['Negative electrode thickness [m]']
@@ -109,7 +53,7 @@ if __name__ == "__main__":
         #        "Terminal voltage [V]",
     ]
     pool_vars = [variables for i in range(Nunit)]
-    spm_sim, results = ecm.step_spm((spm_sim, I_app / Nunit, 1e-6, variables, False))
+    spm_sol, results = ecm.step_spm((spm_sim, None, I_app / Nunit, 1e-6, variables, False))
     R = results[0] / A_cc
     V_ecm = results[1]
     print(R)
@@ -121,8 +65,14 @@ if __name__ == "__main__":
     print("I local pnm", I_local_pnm, "[A]")
     print("R local pnm", R_local_pnm, "[Ohm]")
     spm_models = [
-        copy.deepcopy(spm_sim) for i in range(len(net.throats("spm_resistor")))
+        spm_sim for i in range(Nunit)
     ]
+    solutions = [
+        spm_sol for i in range(Nunit)
+    ]
+#    spm_models = [
+#        copy.deepcopy(spm_sim) for i in range(len(net.throats("spm_resistor")))
+#    ]
 
     res_Ts = net.throats("spm_resistor")
     terminal_voltages = np.zeros(Nsteps)
@@ -170,14 +120,15 @@ if __name__ == "__main__":
         # Run the spms for the the new I_locals
         if parallel:
             data = ecm.pool_spm(
-                zip(spm_models, I_local_pnm, np.ones(Nunit) * dt, pool_vars, dead), pool
+                zip(spm_models, solutions, I_local_pnm, np.ones(Nunit) * dt, pool_vars, dead), pool
             )
         else:
             data = ecm.serial_spm(
-                zip(spm_models, I_local_pnm, np.ones(Nunit) * dt, pool_vars, dead)
+                zip(spm_models, solutions, I_local_pnm, np.ones(Nunit) * dt, pool_vars, dead)
             )
         data = np.asarray(data)
-        spm_models = data[:, 0].tolist()
+#        spm_models = data[:, 0].tolist()
+        solutions = data[:, 0].tolist()
         temp = data[:, 1]
         results = np.zeros([Nunit, len(variables) + 1])
         for i in range(Nunit):
@@ -232,7 +183,7 @@ if __name__ == "__main__":
     print("*" * 30)
 
 
-    model_1p1D, param_1p1D, solution_1p1D, mesh_1p1D, t_eval_1p1D, I_local_1p1D = spm_1p1D(Nunit, Nsteps, I_app)
+    model_1p1D, param_1p1D, solution_1p1D, mesh_1p1D, t_eval_1p1D, I_local_1p1D = ecm.spm_1p1D(Nunit, Nsteps, I_app, total_length)
     print('ECM t_eval', t_eval_ecm)
     print('1+1D t_eval', t_eval_1p1D)
     print('ECM hours', ecm.convert_time(param, t_eval_ecm, to='hours'))

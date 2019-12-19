@@ -11,10 +11,68 @@ import openpnm.topotools as tt
 import pybamm
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+import sys
 
 plt.close("all")
 # set logging level
 pybamm.set_logging_level("INFO")
+
+
+def spm_1p1D(Nunit, Nsteps, I_app, total_length):
+    # set logging level
+    pybamm.set_logging_level("INFO")
+
+    # load (1+1D) SPMe model
+    options = {
+        "current collector": "potential pair",
+        "dimensionality": 1,
+    }
+    model = pybamm.lithium_ion.SPM(options)
+    # create geometry
+    geometry = model.default_geometry
+    # load parameter values and process model and geometry
+    param = model.default_parameter_values
+    param.update(
+        {
+            "Typical current [A]": I_app,
+            "Current function": "[constant]",
+            "Initial temperature [K]": 298.15,
+            "Negative current collector conductivity [S.m-1]": 3e7,
+            "Positive current collector conductivity [S.m-1]": 3e7,
+            "Heat transfer coefficient [W.m-2.K-1]": 1,
+            "Electrode height [m]": total_length,
+            "Positive tab centre z-coordinate [m]": total_length,
+            "Negative tab centre z-coordinate [m]": total_length,
+        }
+    )
+    param.process_model(model)
+    param.process_geometry(geometry)
+
+    # set mesh
+    var = pybamm.standard_spatial_vars
+    var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5,
+               var.r_n: 10, var.r_p: 10, var.z: Nunit}
+    sys.setrecursionlimit(10000)
+    mesh = pybamm.Mesh(geometry, model.default_submesh_types, var_pts)
+
+    # discretise model
+    disc = pybamm.Discretisation(mesh, model.default_spatial_methods)
+    disc.process_model(model)
+    # solve model -- simulate one hour discharge
+    tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
+    t_end = 3600 / tau.evaluate(0)
+    t_eval = np.linspace(0, t_end, Nsteps)
+
+    solver = pybamm.CasadiSolver(mode="fast")
+    solution = solver.solve(model, t_eval)
+    var = "Current collector current density [A.m-2]"
+    J_local = model.variables[var].evaluate(solution.t, solution.y)
+    u_len = mesh["current collector"][0].d_edges
+    w = param['Electrode width [m]']
+    h = param['Electrode height [m]']
+    A = u_len * w * h
+    I_local = A[:, np.newaxis] * J_local
+    return model, param, solution, mesh, t_eval, I_local.T
 
 
 def convert_time(param, non_dim_time, to="seconds"):
@@ -30,12 +88,12 @@ def current_function(t):
     return pybamm.InputParameter("Current")
 
 
-def make_spm(Nunit, I_app):
+def make_spm(Nunit, I_app, total_length):
     model = pybamm.lithium_ion.SPM()
     geometry = model.default_geometry
     param = model.default_parameter_values
-    h = param["Electrode height [m]"]
-    new_h = h / Nunit
+#    h = param["Electrode height [m]"]
+    new_h = total_length/ Nunit
     param.update(
         {
             "Typical current [A]": I_app/Nunit,
@@ -98,12 +156,15 @@ def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
 
 
 def step_spm(zipped):
-    sim, I_app, dt, variables, dead = zipped
+    sim, solution, I_app, dt, variables, dead = zipped
     #    h = sim.parameter_values['Electrode height [m]']
     #    w = sim.parameter_values['Electrode width [m]']
     #    A_cc = h*w
     results = np.zeros(len(variables)+1)
     if ~dead:
+        if solution is not None:
+            sim.solver.y0 = solution.y[:, -1]
+            sim.solver.t = solution.t[-1]
         sim.step(dt=dt, inputs={"Current": I_app}, save=False)
         for i, key in enumerate(variables):
             results[i] = evaluate(sim, key, I_app)
@@ -112,18 +173,19 @@ def step_spm(zipped):
     else:
 #        results = np.zeros(len(variables))
         results.fill(np.nan)
-    return sim, results
+    return sim.solution, results
 
 
 def make_net(spm_sim, Nunit, R, spacing):
-    net = op.network.Cubic([Nunit + 2, 2, 1], spacing)
+#    net = op.network.Cubic([Nunit + 2, 2, 1], spacing)
+    net = op.network.Cubic([Nunit, 2, 1], spacing)
     net["pore.pos_cc"] = net["pore.right"]
     net["pore.neg_cc"] = net["pore.left"]
 
-    T = net.find_neighbor_throats(net.pores("front"), mode="xnor")
-    tt.trim(net, throats=T)
-    T = net.find_neighbor_throats(net.pores("back"), mode="xnor")
-    tt.trim(net, throats=T)
+#    T = net.find_neighbor_throats(net.pores("front"), mode="xnor")
+#    tt.trim(net, throats=T)
+#    T = net.find_neighbor_throats(net.pores("back"), mode="xnor")
+#    tt.trim(net, throats=T)
     pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
     neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
 
@@ -166,7 +228,7 @@ def make_net(spm_sim, Nunit, R, spacing):
     fig = tt.plot_connections(net, net.throats("spm_resistor"), c="k", fig=fig)
 
     phase = op.phases.GenericPhase(network=net)
-    cc_cond = 1e5
+    cc_cond = 3e7
     cc_unit_len = spacing
     cc_unit_area = 25e-6 * 0.207
     phase["throat.electrical_conductance"] = cc_cond * cc_unit_area / cc_unit_len
