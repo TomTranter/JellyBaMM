@@ -38,7 +38,7 @@ def make_spm(Nunit, I_app):
     new_h = h / Nunit
     param.update(
         {
-            "Typical current [A]": I_app/Nunit,
+            "Typical current [A]": I_app / Nunit,
             "Current function": current_function,
             "Current": "[input]",
             "Electrode height [m]": new_h,
@@ -47,13 +47,7 @@ def make_spm(Nunit, I_app):
     param.process_model(model)
     param.process_geometry(geometry)
     var = pybamm.standard_spatial_vars
-    var_pts = {
-        var.x_n: 5,
-        var.x_s: 5,
-        var.x_p: 5,
-        var.r_n: 10,
-        var.r_p: 10,
-    }
+    var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 10, var.r_p: 10}
     spatial_methods = model.default_spatial_methods
     solver = pybamm.CasadiSolver()
     sim = pybamm.Simulation(
@@ -79,7 +73,7 @@ def calc_R(sim, current):
     totdV = initial_ocv - ocv
     for overpotential in overpotentials:
         totdV -= evaluate(sim, overpotential, current)
-    return totdV/current
+    return totdV / current
 
 
 def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
@@ -93,6 +87,12 @@ def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
     value = model.variables[var].evaluate(
         solution.t[-1], solution.y[:, -1], u={"Current": current}
     )
+    # should move this definition to the main script...
+    python_eval = pybamm.EvaluatorPython(model.variables[var])
+    python_value = python_eval.evaluate(
+        solution.t[-1], solution.y[:, -1], u={"Current": current}
+    )
+
     #    return proc(solution.t[-1])
     return value
 
@@ -102,7 +102,7 @@ def step_spm(zipped):
     #    h = sim.parameter_values['Electrode height [m]']
     #    w = sim.parameter_values['Electrode width [m]']
     #    A_cc = h*w
-    results = np.zeros(len(variables)+1)
+    results = np.zeros(len(variables) + 1)
     if ~dead:
         sim.step(dt=dt, inputs={"Current": I_app}, save=False)
         for i, key in enumerate(variables):
@@ -110,7 +110,7 @@ def step_spm(zipped):
         results[-1] = calc_R(sim, I_app)
     #    V_ecm = evaluate(sim, 'Local ECM voltage [V]', I_app)
     else:
-#        results = np.zeros(len(variables))
+        #        results = np.zeros(len(variables))
         results.fill(np.nan)
     return sim, results
 
