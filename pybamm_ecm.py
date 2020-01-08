@@ -7,14 +7,13 @@ Created on Thu Dec  5 13:14:46 2019
 """
 
 import pybamm
+from pybamm import EvaluatorPython as ep
 import numpy as np
 import matplotlib.pyplot as plt
 import ecm
 import os
 import time
-import copy
-import scipy.interpolate as interp
-import sys
+
 
 plt.close("all")
 # set logging level
@@ -23,12 +22,14 @@ pybamm.set_logging_level("INFO")
 
 if __name__ == "__main__":
     parallel = False
-    Nunit = 600
-    Nsteps = 120
+    Nlayers = 3
+    dtheta = 10
+    Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
+    Nunit = np.int(Nlayers * Narc)  # nodes in each cc
+    Nsteps = 60  # number of time steps
     max_workers = int(os.cpu_count() / 2)
-    #    max_workers = 5
-    I_app = 2.0
-    total_length = 1.0
+    I_app = 2.0  # A
+    total_length = 1.0  # m
     spm_sim = ecm.make_spm(Nunit, I_app, total_length)
     height = spm_sim.parameter_values["Electrode height [m]"]
     width = spm_sim.parameter_values["Electrode width [m]"]
@@ -57,67 +58,71 @@ if __name__ == "__main__":
     ]
 #    pool_vars = [variables for i in range(Nunit)]
     spm_sol = ecm.step_spm((spm_sim, None, I_app / Nunit, 1e-6,  False))
+    # Create dictionaries of evaluator functions from the discretized model
     variables_eval = {}
     overpotentials_eval = {}
     for var in variables:
-        variables_eval[var] = pybamm.EvaluatorPython(spm_sim.built_model.variables[var])
+        variables_eval[var] = ep(spm_sim.built_model.variables[var])
     for var in overpotentials:
-        overpotentials_eval[var] = pybamm.EvaluatorPython(spm_sim.built_model.variables[var])
-    
+        overpotentials_eval[var] = ep(spm_sim.built_model.variables[var])
+
     temp = ecm.evaluate_python(variables_eval, spm_sol, current=I_app/Nunit)
     R = temp[0] / A_cc
     V_ecm = temp[1]
     print(R)
     R_max = R * 10
-    net, alg, phase = ecm.make_net(spm_sim, Nunit, R, spacing=height)
+    net, alg, phase = ecm.make_spiral_net(Nlayers, dtheta, spacing=195e-6,
+                                          pos_tabs=[0], neg_tabs=[-1], R=R)
+    # The jellyroll layers are double sided around the cc except for the inner
+    # and outer layers the number of spm models is the number of throat
+    # connections between cc layers
+    Nspm = net.num_throats('spm_resistor')
+    # Initialize with a guess for the terminal voltage
     (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net, alg, V_ecm)
     print("*" * 30)
     print("V local pnm", V_local_pnm, "[V]")
     print("I local pnm", I_local_pnm, "[A]")
     print("R local pnm", R_local_pnm, "[Ohm]")
     spm_models = [
-        spm_sim for i in range(Nunit)
+        spm_sim for i in range(Nspm)
     ]
     solutions = [
-        spm_sol for i in range(Nunit)
+        spm_sol for i in range(Nspm)
     ]
-#    spm_models = [
-#        copy.deepcopy(spm_sim) for i in range(len(net.throats("spm_resistor")))
-#    ]
 
     res_Ts = net.throats("spm_resistor")
     terminal_voltages = np.zeros(Nsteps)
     V_test = V_ecm
     tol = 1e-5
-    local_R = np.zeros([Nunit, Nsteps])
-    stop_R = np.zeros(Nunit, dtype=bool)
+    local_R = np.zeros([Nspm, Nsteps])
     st = time.time()
-    all_time_results = np.zeros([Nsteps, Nunit, len(variables)])
-    all_time_overpotentials = np.zeros([Nsteps, Nunit, len(overpotentials)])
-#    all_time_R = np.zeros([Nsteps, Nunit])
-    all_time_I_local = np.zeros([Nsteps, Nunit])
+    all_time_results = np.zeros([Nsteps, Nspm, len(variables)])
+    all_time_overpotentials = np.zeros([Nsteps, Nspm, len(overpotentials)])
+    all_time_I_local = np.zeros([Nsteps, Nspm])
     param = spm_sim.parameter_values
-    tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
+    sym_tau = pybamm.standard_parameters_lithium_ion.tau_discharge
+    tau = param.process_symbol(sym_tau)
     t_end = 3600 / tau.evaluate(0)
-#    t_end = 0.15776182
     t_eval_ecm = np.linspace(0, t_end, Nsteps)
     dt = t_end / (Nsteps - 1)
-    dead = np.zeros(Nunit, dtype=bool)
+    dead = np.zeros(Nspm, dtype=bool)
     if parallel:
         pool = ecm.setup_pool(max_workers)
     outer_step = 0
 
     while np.any(~dead) and outer_step < Nsteps:
-        #    for outer_step in range(Nsteps):
         print("*" * 30)
         print("Outer", outer_step)
         # Find terminal voltage that satisfy ecm total currents for R
         current_match = False
         max_inner_steps = 1000
         inner_step = 0
-        damping = Nunit / 100
+        damping = Nspm / 100
+        # Iterate the ecm until the currents match
         while (inner_step < max_inner_steps) and (not current_match):
-            (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net, alg, V_test)
+            (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net,
+                                                                  alg,
+                                                                  V_test)
             tot_I_local_pnm = np.sum(I_local_pnm)
             diff = (I_app - tot_I_local_pnm) / I_app
             if np.absolute(diff) < tol:
@@ -125,46 +130,43 @@ if __name__ == "__main__":
             else:
                 V_test *= 1 + (diff / damping)
             inner_step += 1
-#            print("Inner", inner_step, diff, V_test)
+
         print("N inner", inner_step)
         all_time_I_local[outer_step, :] = I_local_pnm
         terminal_voltages[outer_step] = V_test
-        # I_local_pnm should now match the total applied current
-        # Run the spms for the the new I_locals
+        # I_local_pnm should now sum to match the total applied current
+        # Run the spms for the the new I_locals for the next time interval
         if parallel:
             solutions = ecm.pool_spm(
-                zip(spm_models, solutions, I_local_pnm, np.ones(Nunit) * dt, dead), pool
+                zip(spm_models, solutions, I_local_pnm,
+                    np.ones(Nspm) * dt, dead), pool
             )
         else:
             solutions = ecm.serial_spm(
-                zip(spm_models, solutions, I_local_pnm, np.ones(Nunit) * dt, dead)
+                zip(spm_models, solutions, I_local_pnm,
+                    np.ones(Nspm) * dt, dead)
             )
-#        data = np.asarray(data)
-#        spm_models = data[:, 0].tolist()
-#        solutions = data[:, 0].tolist()
-        results = np.zeros([Nunit, len(variables)])
-        results_o = np.zeros([Nunit, len(overpotentials)])
+        # Gather the results for this time step
+        results = np.zeros([Nspm, len(variables)])
+        results_o = np.zeros([Nspm, len(overpotentials)])
         for i, solution in enumerate(solutions):
-            results[i, :] = ecm.evaluate_python(variables_eval, solution, I_local_pnm[i])
-            results_o[i, :] = ecm.evaluate_python(overpotentials_eval, solution, current=I_local_pnm[i])
-#        temp = data[:, 1]
-#        results = np.zeros([Nunit, len(variables)])
-#        for i in range(Nunit):
-#            results[i, :] = temp[i]
+            results[i, :] = ecm.evaluate_python(variables_eval,
+                                                solution,
+                                                I_local_pnm[i])
+            results_o[i, :] = ecm.evaluate_python(overpotentials_eval,
+                                                  solution,
+                                                  current=I_local_pnm[i])
+        # Collate the results
         all_time_results[outer_step, :, :] = results
         all_time_overpotentials[outer_step, :, :] = results_o
-        #        temp_R = results[:, 0] / A_cc
-        #        temp_local_OCV = results[:, 2]
-        #        temp_local_dOCV = V_ocv_0 - temp_local_OCV
-        #        temp_local_ROCV = temp_local_dOCV/I_local_pnm
         temp_local_V = results[:, 3]
-        #        temp_R += temp_local_ROCV
-        #        temp_R /= A_cc
-#        temp_R = results[:, -1]
+        # Get new equivalent resistances
         temp_R = ecm.calc_R_new(results_o, I_local_pnm)
-#        all_time_R[outer_step, :] = temp_R
+        # stop simulation if any local voltage below the minimum
+        # To do: check validity of using local
         if np.any(temp_local_V < 3.5):
             dead.fill(np.nan)
+        # Update ecm conductivities for the spm_resistor throats
         sig = 1 / temp_R
         if np.any(temp_R > R_max):
             dead[temp_R > R_max] = True
@@ -174,8 +176,7 @@ if __name__ == "__main__":
             sig[np.isnan(temp_R)] = 1e-6
         phase["throat.electrical_conductance"][res_Ts] = sig
         local_R[:, outer_step] = temp_R
-#        print("Resistances", temp_R)
-        #        print('OCV Resistances', temp_local_ROCV)
+
         print("N Dead", np.sum(dead))
         outer_step += 1
 
@@ -185,17 +186,17 @@ if __name__ == "__main__":
     if parallel:
         ecm.shutdown_pool(pool)
     fig, ax = plt.subplots()
-    for i in range(Nunit):
+    for i in range(Nspm):
         ax.plot(local_R[i, :outer_step])
     plt.title("R Local [Ohm]")
     fig, ax = plt.subplots()
-    for i in range(Nunit):
+    for i in range(Nspm):
         ax.plot(all_time_I_local[:outer_step, i])
     plt.title("I Local [A]")
     for i, var in enumerate(variables):
         temp = all_time_results[:, :, i]
         fig, ax = plt.subplots()
-        for i in range(Nunit):
+        for i in range(Nspm):
             ax.plot(temp[:, i])
         plt.title(var)
 
@@ -203,55 +204,19 @@ if __name__ == "__main__":
     print("ECM Sim time", time.time() - st)
     print("*" * 30)
 
+#    # Compare this to pure pybamm solution
+#    model_1p1D, param_1p1D, solution_1p1D, mesh_1p1D, t_eval_1p1D, I_local_1p1D = ecm.spm_1p1D(Nunit, Nsteps, I_app, total_length)
+#    print('ECM t_eval', t_eval_ecm)
+#    print('1+1D t_eval', t_eval_1p1D)
+#    print('ECM hours', ecm.convert_time(param, t_eval_ecm, to='hours'))
+#    print('1+1D hours', ecm.convert_time(param_1p1D, t_eval_1p1D, to='hours'))
 
-    model_1p1D, param_1p1D, solution_1p1D, mesh_1p1D, t_eval_1p1D, I_local_1p1D = ecm.spm_1p1D(Nunit, Nsteps, I_app, total_length)
-    print('ECM t_eval', t_eval_ecm)
-    print('1+1D t_eval', t_eval_1p1D)
-    print('ECM hours', ecm.convert_time(param, t_eval_ecm, to='hours'))
-    print('1+1D hours', ecm.convert_time(param_1p1D, t_eval_1p1D, to='hours'))
-
-    plt.figure()
-    z = mesh_1p1D["current collector"][0].nodes
-    prop_cycle = plt.rcParams['axes.prop_cycle']
-    colors = np.asarray(prop_cycle.by_key()['color'])
-    for ind, t in enumerate(t_eval_ecm[:outer_step]):
-        c = np.roll(colors, -ind)[0]
-        plt.plot(z, all_time_I_local[ind, :].T, "o", color=c)
-        plt.plot(z, I_local_1p1D[ind, :].T, "--", color=c)
-    plt.title("i_local. ECM vs pybamm")
-
-
-#    J_compare = all_time_I_local / A_cc
-#
-#    variable_name = "Current collector current density [A.m-2]"
-#
-#    def myinterp(t):
-#        return interp.interp1d(t_eval_ecm, J_compare.T)(t)[:, np.newaxis]
-#
-#    # Need to append ECM to name otherwise quickplot gets confused...
-#    i_local = pybamm.Function(myinterp, pybamm.t, name=variable_name + "_ECM")
-#    # Set domain to be the same as the pybamm variable
-#    i_local.domain = "current collector"
-#
-#    # Make ECM pybamm model
-#    ECM_model = pybamm.BaseModel(name="ECM model")
-#    ECM_model.variables = {"Current collector current density [A.m-2]": i_local}
-#    processed_i_local = pybamm.ProcessedVariable(
-#        ECM_model.variables["Current collector current density [A.m-2]"],
-#        solution_1p1D.t,
-#        solution_1p1D.y,
-#        mesh=mesh_1p1D,
-#    )
-#    processed_i_1p1D = pybamm.ProcessedVariable(
-#        model_1p1D.variables["Current collector current density [A.m-2]"],
-#        solution_1p1D.t,
-#        solution_1p1D.y,
-#        mesh=mesh_1p1D
-#    )
-#    plot = pybamm.QuickPlot(
-#        [model_1p1D, ECM_model],
-#        mesh_1p1D,
-#        [solution_1p1D, solution_1p1D],
-#        output_variables=ECM_model.variables.keys(),
-#    )
-#    plot.dynamic_plot()
+#    plt.figure()
+#    z = mesh_1p1D["current collector"][0].nodes
+#    prop_cycle = plt.rcParams['axes.prop_cycle']
+#    colors = np.asarray(prop_cycle.by_key()['color'])
+#    for ind, t in enumerate(t_eval_ecm[:outer_step]):
+#        c = np.roll(colors, -ind)[0]
+#        plt.plot(z, all_time_I_local[ind, :].T, "o", color=c)
+#        plt.plot(z, I_local_1p1D[ind, :].T, "--", color=c)
+#    plt.title("i_local. ECM vs pybamm")
