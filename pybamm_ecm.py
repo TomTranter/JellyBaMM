@@ -23,16 +23,29 @@ pybamm.set_logging_level("INFO")
 if __name__ == "__main__":
     parallel = False
     Nlayers = 3
+    layer_spacing = 195e-6
     dtheta = 10
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # nodes in each cc
     Nsteps = 60  # number of time steps
     max_workers = int(os.cpu_count() / 2)
-    I_app = 2.0  # A
-    total_length = 1.0  # m
-    spm_sim = ecm.make_spm(Nunit, I_app, total_length)
+    I_app = 0.25  # A
+    ###########################################################################
+    net, arc_edges = ecm.make_spiral_net(Nlayers, dtheta,
+                                         spacing=layer_spacing,
+                                         pos_tabs=[0], neg_tabs=[-1])
+    # The jellyroll layers are double sided around the cc except for the inner
+    # and outer layers the number of spm models is the number of throat
+    # connections between cc layers
+    Nspm = net.num_throats('spm_resistor')
+    l = arc_edges[1:] - arc_edges[:-1]
+    l_norm = l/l[-1]
+    total_length = arc_edges[-1]  # m
+    ###########################################################################
+    I_typical = I_app / Nspm
+    spm_sim = ecm.make_spm(I_typical, height=l[-1])
     height = spm_sim.parameter_values["Electrode height [m]"]
-    width = spm_sim.parameter_values["Electrode width [m]"]
+    width = spm_sim.parameter_values["Electrode width [m]"] 
     t1 = spm_sim.parameter_values['Negative electrode thickness [m]']
     t2 = spm_sim.parameter_values['Positive electrode thickness [m]']
     t3 = spm_sim.parameter_values['Negative current collector thickness [m]']
@@ -48,6 +61,7 @@ if __name__ == "__main__":
         "Measured open circuit voltage [V]",
         "Local voltage [V]",
         "Change in measured open circuit voltage [V]",
+        "X-averaged total heating [W.m-3]",
     ]
     overpotentials = [
         "X-averaged reaction overpotential [V]",
@@ -71,13 +85,8 @@ if __name__ == "__main__":
     V_ecm = temp[1]
     print(R)
     R_max = R * 10
-    net, alg, phase = ecm.make_spiral_net(Nlayers, dtheta, spacing=195e-6,
-                                          pos_tabs=[0], neg_tabs=[-1], R=R)
-    # The jellyroll layers are double sided around the cc except for the inner
-    # and outer layers the number of spm models is the number of throat
-    # connections between cc layers
-    Nspm = net.num_throats('spm_resistor')
     # Initialize with a guess for the terminal voltage
+    alg, phase = ecm.setup_ecm_alg(net, layer_spacing, R)
     (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net, alg, V_ecm)
     print("*" * 30)
     print("V local pnm", V_local_pnm, "[V]")

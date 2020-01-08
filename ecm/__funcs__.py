@@ -185,7 +185,11 @@ def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
     net["pore.region_id"][net["pore.free_stream"]] = -1
     net["pore.cell_id"][net["pore.free_stream"]] = -1
     plot_topology(net)
+    print('N SPM', net.num_throats('spm_resistor'))
+    return net, arc_edges
 
+
+def setup_ecm_alg(net, spacing, R):
     phase = op.phases.GenericPhase(network=net)
     cc_cond = 3e7
     cc_unit_len = spacing
@@ -199,8 +203,7 @@ def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
         conductance="throat.electrical_conductance",
     )
     alg.settings["rxn_tolerance"] = 1e-8
-    print('N SPM', net.num_throats('spm_resistor'))
-    return net, alg, phase
+    return alg, phase
 
 
 def evaluate_python(python_eval, solution, current):
@@ -288,18 +291,20 @@ def current_function(t):
     return pybamm.InputParameter("Current")
 
 
-def make_spm(Nunit, I_app, total_length):
-    model = pybamm.lithium_ion.SPM()
+def make_spm(I_typical, height):
+    model_options = {
+            "thermal": "x-lumped",
+            "external submodels": ["thermal"],
+        }
+    model = pybamm.lithium_ion.SPM(model_options)
     geometry = model.default_geometry
     param = model.default_parameter_values
-#    h = param["Electrode height [m]"]
-    new_h = total_length/ Nunit
     param.update(
         {
-            "Typical current [A]": I_app / Nunit,
+            "Typical current [A]": I_typical,
             "Current function": current_function,
             "Current": "[input]",
-            "Electrode height [m]": new_h,
+            "Electrode height [m]": height,
         }
     )
     param.process_model(model)
@@ -370,11 +375,14 @@ def step_spm(zipped):
     #    w = sim.parameter_values['Electrode width [m]']
     #    A_cc = h*w
 #    results = np.zeros(len(variables) + 1)
+    T_av = 303.15
     if ~dead:
         if solution is not None:
             sim.solver.y0 = solution.y[:, -1]
             sim.solver.t = solution.t[-1]
-        sim.step(dt=dt, inputs={"Current": I_app}, save=False)
+        sim.step(dt=dt, inputs={"Current": I_app},
+                 external_variables={"X-averaged cell temperature": T_av},
+                 save=False)
 #        for i, key in enumerate(variables):
 #            results[i] = evaluate(sim, key, I_app)
 #        results[-1] = calc_R(sim, I_app)
