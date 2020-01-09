@@ -292,11 +292,12 @@ def current_function(t):
 
 
 def make_spm(I_typical, height):
-    model_options = {
-            "thermal": "x-lumped",
-            "external submodels": ["thermal"],
-        }
-    model = pybamm.lithium_ion.SPM(model_options)
+#    model_options = {
+#            "thermal": "x-lumped",
+#            "external submodels": ["thermal"],
+#        }
+#    model = pybamm.lithium_ion.SPM(model_options)
+    model = pybamm.lithium_ion.SPM()
     geometry = model.default_geometry
     param = model.default_parameter_values
     param.update(
@@ -313,6 +314,7 @@ def make_spm(I_typical, height):
     var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 10, var.r_p: 10}
     spatial_methods = model.default_spatial_methods
     solver = pybamm.CasadiSolver()
+#    solver = model.default_solver
     sim = pybamm.Simulation(
         model=model,
         geometry=geometry,
@@ -381,8 +383,9 @@ def step_spm(zipped):
             sim.solver.y0 = solution.y[:, -1]
             sim.solver.t = solution.t[-1]
         sim.step(dt=dt, inputs={"Current": I_app},
-                 external_variables={"X-averaged cell temperature": T_av},
+#                 external_variables={"X-averaged cell temperature": T_av})
                  save=False)
+        
 #        for i, key in enumerate(variables):
 #            results[i] = evaluate(sim, key, I_app)
 #        results[-1] = calc_R(sim, I_app)

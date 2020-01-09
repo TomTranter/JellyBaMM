@@ -129,6 +129,7 @@ if __name__ == "__main__":
         damping = Nspm / 100
         # Iterate the ecm until the currents match
         while (inner_step < max_inner_steps) and (not current_match):
+            print(inner_step, V_test)
             (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net,
                                                                   alg,
                                                                   V_test)
