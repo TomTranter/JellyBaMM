@@ -487,62 +487,64 @@ data_b = data_b.sort_values(by=['cell_id'])
 #    inter_Ts = Ts[net['throat.interconnection'][Ts]]
 #    print(net['pore.cell_id'][pore], net['pore.cell_id'][net['throat.conns'][Ts]] - i)
 
-Ts = net.throats('interconnection')
-tt.trim(network=net, throats=Ts)
-vec = net['pore.coords'][data_a.pore_index] - net['pore.coords'][data_b.pore_index]
-cc2cc = np.linalg.norm(vec, axis=1)
-mean_cc2cc = np.mean(cc2cc)
-num_new_layers = 17
-for nlayer in range(num_new_layers):
-    new_layer = []
-    frac = (nlayer+1)/(num_new_layers+1)
-    Np0 = net.Np
+make_new_layers = False
+if make_new_layers:
+    Ts = net.throats('interconnection')
+    tt.trim(network=net, throats=Ts)
     vec = net['pore.coords'][data_a.pore_index] - net['pore.coords'][data_b.pore_index]
-    new_coords = net['pore.coords'][data_b.pore_index] + vec*frac
-    tt.extend(net, pore_coords=new_coords, labels='layer_'+str(nlayer))
-    net['pore.cell_id'][-len(new_coords):] = data_b.cell_id
-    net['pore.arc_index'][-len(new_coords):] = net['pore.arc_index'][data_b.pore_index]
-    net['pore.theta'][-len(new_coords):] = net['pore.theta'][data_b.pore_index]
-#    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
-    # Same cell conns
-    if nlayer == num_new_layers - 1:
-        new_conns = np.vstack((data_a.pore_index, np.arange(0, len(new_coords), dtype=int)+Np0)).T
-        tt.extend(net, throat_conns=new_conns, labels='interconnection')
-    new_layer = new_layer + list(np.arange(0, len(new_coords), dtype=int)+Np0)
-    # Back-layer conns
-    if nlayer == 0:
-        new_conns = np.vstack((data_b.pore_index, np.arange(0, len(new_coords), dtype=int)+Np0)).T
-        tt.extend(net, throat_conns=new_conns, labels='interconnection')
-    new_conns = np.vstack((np.arange(0, len(new_coords)-1, dtype=int)+Np0, np.arange(1, len(new_coords), dtype=int)+Np0)).T
-    tt.extend(net, throat_conns=new_conns, labels='layer_'+str(nlayer))
-    # Mirror
-    tmp_b = data_b.pore_index[36:]
-    tmp_a = np.roll(data_a.pore_index, 36)[36:]
-    Np0 = net.Np
-    vec = net['pore.coords'][tmp_a] - net['pore.coords'][tmp_b]
-    vnorm = np.linalg.norm(vec, axis=1)
-    new_coords = net['pore.coords'][tmp_b] + vec*frac
-    tt.extend(net, pore_coords=new_coords, labels='layer_'+str(nlayer)+'_m')
-    net['pore.cell_id'][-len(new_coords):] = data_b.cell_id[36:]
-    net['pore.arc_index'][-len(new_coords):] = net['pore.arc_index'][tmp_b]
-    net['pore.theta'][-len(new_coords):] = net['pore.theta'][tmp_b]
-#    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
-    # Same cell conns
-    if nlayer == num_new_layers - 1:
-        new_conns = np.vstack((tmp_a, np.arange(0, len(new_coords), dtype=int)+Np0)).T
-        tt.extend(net, throat_conns=new_conns, labels='interconnection')
-    # Back-layer conns
-    if nlayer == 0:
-        new_conns = np.vstack((tmp_b, np.arange(0, len(new_coords), dtype=int)+Np0)).T
-        tt.extend(net, throat_conns=new_conns, labels='interconnection')
-    new_conns = np.vstack((np.arange(0, len(new_coords)-1, dtype=int)+Np0, np.arange(1, len(new_coords), dtype=int)+Np0)).T
-    tt.extend(net, throat_conns=new_conns, labels='layer_'+str(nlayer)+'_m')
-    new_layer = new_layer + list(np.arange(0, len(new_coords), dtype=int)+Np0)
-    # Inter layer conns
-    if nlayer > 0:
-        new_layer = np.asarray(new_layer)
-        new_conns = np.vstack((new_layer, new_layer-len(new_layer))).T
-        tt.extend(net, throat_conns=new_conns, labels='interconnection')
+    cc2cc = np.linalg.norm(vec, axis=1)
+    mean_cc2cc = np.mean(cc2cc)
+    num_new_layers = 17
+    for nlayer in range(num_new_layers):
+        new_layer = []
+        frac = (nlayer+1)/(num_new_layers+1)
+        Np0 = net.Np
+        vec = net['pore.coords'][data_a.pore_index] - net['pore.coords'][data_b.pore_index]
+        new_coords = net['pore.coords'][data_b.pore_index] + vec*frac
+        tt.extend(net, pore_coords=new_coords, labels='layer_'+str(nlayer))
+        net['pore.cell_id'][-len(new_coords):] = data_b.cell_id
+        net['pore.arc_index'][-len(new_coords):] = net['pore.arc_index'][data_b.pore_index]
+        net['pore.theta'][-len(new_coords):] = net['pore.theta'][data_b.pore_index]
+    #    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
+        # Same cell conns
+        if nlayer == num_new_layers - 1:
+            new_conns = np.vstack((data_a.pore_index, np.arange(0, len(new_coords), dtype=int)+Np0)).T
+            tt.extend(net, throat_conns=new_conns, labels='interconnection')
+        new_layer = new_layer + list(np.arange(0, len(new_coords), dtype=int)+Np0)
+        # Back-layer conns
+        if nlayer == 0:
+            new_conns = np.vstack((data_b.pore_index, np.arange(0, len(new_coords), dtype=int)+Np0)).T
+            tt.extend(net, throat_conns=new_conns, labels='interconnection')
+        new_conns = np.vstack((np.arange(0, len(new_coords)-1, dtype=int)+Np0, np.arange(1, len(new_coords), dtype=int)+Np0)).T
+        tt.extend(net, throat_conns=new_conns, labels='layer_'+str(nlayer))
+        # Mirror
+        tmp_b = data_b.pore_index[36:]
+        tmp_a = np.roll(data_a.pore_index, 36)[36:]
+        Np0 = net.Np
+        vec = net['pore.coords'][tmp_a] - net['pore.coords'][tmp_b]
+        vnorm = np.linalg.norm(vec, axis=1)
+        new_coords = net['pore.coords'][tmp_b] + vec*frac
+        tt.extend(net, pore_coords=new_coords, labels='layer_'+str(nlayer)+'_m')
+        net['pore.cell_id'][-len(new_coords):] = data_b.cell_id[36:]
+        net['pore.arc_index'][-len(new_coords):] = net['pore.arc_index'][tmp_b]
+        net['pore.theta'][-len(new_coords):] = net['pore.theta'][tmp_b]
+    #    net['pore.radial_position'][-len(new_coords):] = np.linalg.norm(net['pore.coords'][-len(new_coords):] - mhs, axis=1)
+        # Same cell conns
+        if nlayer == num_new_layers - 1:
+            new_conns = np.vstack((tmp_a, np.arange(0, len(new_coords), dtype=int)+Np0)).T
+            tt.extend(net, throat_conns=new_conns, labels='interconnection')
+        # Back-layer conns
+        if nlayer == 0:
+            new_conns = np.vstack((tmp_b, np.arange(0, len(new_coords), dtype=int)+Np0)).T
+            tt.extend(net, throat_conns=new_conns, labels='interconnection')
+        new_conns = np.vstack((np.arange(0, len(new_coords)-1, dtype=int)+Np0, np.arange(1, len(new_coords), dtype=int)+Np0)).T
+        tt.extend(net, throat_conns=new_conns, labels='layer_'+str(nlayer)+'_m')
+        new_layer = new_layer + list(np.arange(0, len(new_coords), dtype=int)+Np0)
+        # Inter layer conns
+        if nlayer > 0:
+            new_layer = np.asarray(new_layer)
+            new_conns = np.vstack((new_layer, new_layer-len(new_layer))).T
+            tt.extend(net, throat_conns=new_conns, labels='interconnection')
     
 plot_domain(net)
 prj = wrk['sim_01']
@@ -553,10 +555,10 @@ net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
 net['pore.mirror'] = False
 net['pore.mirror'][net.pores('*_m')] = True
 net['throat.separator'] = False
-Ts = net.throats(["layer_7", "layer_7_m", "layer_8", "layer_8_m"])
-net['throat.separator'][Ts] = True
+#Ts = net.throats(["layer_7", "layer_7_m", "layer_8", "layer_8_m"])
+#net['throat.separator'][Ts] = True
 prj.export_data(filename='tomography_m')
-wrk.save_project(project=prj, filename=os.path.join(path, 'MJ141-mid-top_m'))
+wrk.save_project(project=prj, filename=os.path.join(path, 'MJ141-mid-top_m_cc'))
 tt.plot_coordinates(net, net.Ps, c=net['pore.cell_id'])
 
 show_Ps = np.in1d(net['pore.cell_id'], np.arange(0, 650, 10))

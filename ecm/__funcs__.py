@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import sys
 import time
+import os
 
 
 def plot_topology(net):
@@ -205,6 +206,36 @@ def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
                                      phase=phase,
                                      geometry=geo)
     return prj, arc_edges
+
+
+def make_tomo_net(dtheta=10, spacing=190e-6, length_3d=0.065):
+    wrk = op.Workspace()
+    cwd = os.getcwd()
+    input_dir = os.path.join(cwd, 'input')
+    wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top_m_cc_ecm.pnm'))
+    sim_name = list(wrk.keys())[-1]
+    project = wrk[sim_name]
+    net = project.network
+    arc_edges = [0.0]
+    Ps = net.pores('neg_cc')
+    Nunit = net['pore.cell_id'][Ps].max() + 1
+    old_coord = None
+    for cell_id in range(Nunit):
+        P = Ps[net['pore.cell_id'][Ps] == cell_id]
+        coord = net['pore.coords'][P]
+        if old_coord is not None:
+            d = np.linalg.norm(coord-old_coord)
+            arc_edges.append(arc_edges[-1] + d)
+        old_coord = coord
+    # Add 1 more
+    arc_edges.append(arc_edges[-1] + d)
+    arc_edges = np.asarray(arc_edges)
+    geo = setup_geometry(net, dtheta, spacing, length_3d=0.065)
+    phase = op.phases.GenericPhase(network=net)
+    phys = op.physics.GenericPhysics(network=net,
+                                     phase=phase,
+                                     geometry=geo)
+    return project, arc_edges
 
 
 def setup_ecm_alg(project, spacing, R):

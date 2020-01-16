@@ -24,14 +24,15 @@ wrk.clear()
 
 if __name__ == "__main__":
     parallel = True
-    Nlayers = 19
+    Nlayers = 6
     layer_spacing = 195e-6
     dtheta = 10
+    length_3d = 0.065
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # nodes in each cc
     Nsteps = 60  # number of time steps
     max_workers = int(os.cpu_count() / 2)
-    I_app = 2.5  # A
+    I_app = 1.5  # A
     model_name = 'blah'
     opt = {'domain': 'model',
            'Nlayers': Nlayers,
@@ -40,7 +41,7 @@ if __name__ == "__main__":
            'K0': 1.0,
            'T0': 303,
            'heat_transfer_coefficient': 5,
-           'length_3d': 0.065,
+           'length_3d': length_3d,
            'I_app': I_app,
            'cc_cond_neg': 3e7,
            'cc_cond_pos': 3e7,
@@ -48,9 +49,12 @@ if __name__ == "__main__":
            'spacing': 1e-5,
            'model_name': model_name}
     ###########################################################################
-    project, arc_edges = ecm.make_spiral_net(Nlayers, dtheta,
-                                             spacing=layer_spacing,
-                                             pos_tabs=[0], neg_tabs=[-1])
+    project, arc_edges = ecm.make_tomo_net(dtheta,
+                                           spacing=layer_spacing,
+                                           length_3d=length_3d)
+#    project, arc_edges = ecm.make_spiral_net(Nlayers, dtheta,
+#                                             spacing=layer_spacing,
+#                                             pos_tabs=[0], neg_tabs=[-1])
     net = project.network
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
