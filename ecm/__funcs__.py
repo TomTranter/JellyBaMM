@@ -633,15 +633,15 @@ def run_step_transient(project, time_step, BC_value):
     project.purge_object(alg)
 
 
-def setup_pool(max_workers, pool_type='Thread'):
-    if pool_type == 'Thread':
-        pool = ThreadPoolExecutor(max_workers=max_workers)
-    else:
+def setup_pool(max_workers, pool_type='Process'):
+    if pool_type == 'Process':
         pool = ProcessPoolExecutor(max_workers=max_workers)
+    else:
+        pool = ThreadPoolExecutor(max_workers=max_workers)
     return pool
 
 
-def _rebundle_models(spm_models, max_workers):
+def _regroup_models(spm_models, max_workers):
     unpack = list(spm_models)
     num_models = len(unpack)
     num_chunk = np.int(np.ceil(num_models/max_workers))
@@ -654,21 +654,15 @@ def _rebundle_models(spm_models, max_workers):
                 temp.append(unpack[mod_num])
                 mod_num += 1
         split.append(temp)
-#    split = np.split(unpack, max_workers)
     return split
 
 
-def pool_spm_new(spm_models, pool, max_workers):
-    split_models = _rebundle_models(spm_models, max_workers)
+def pool_spm(spm_models, pool, max_workers):
+    split_models = _regroup_models(spm_models, max_workers)
     split_data = list(pool.map(serial_spm, split_models))
     data = []
     for temp in split_data:
         data = data + temp
-    return data
-
-
-def pool_spm(spm_models, pool, max_workers):
-    data = list(pool.map(step_spm, spm_models))
     return data
 
 

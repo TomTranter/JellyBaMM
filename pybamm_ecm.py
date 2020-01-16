@@ -24,15 +24,14 @@ wrk.clear()
 
 if __name__ == "__main__":
     parallel = True
-    Nlayers = 7
+    Nlayers = 19
     layer_spacing = 195e-6
     dtheta = 10
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # nodes in each cc
-    Nsteps = 2  # number of time steps
+    Nsteps = 60  # number of time steps
     max_workers = int(os.cpu_count() / 2)
-#    max_workers = 30
-    I_app = 0.5  # A
+    I_app = 2.5  # A
     model_name = 'blah'
     opt = {'domain': 'model',
            'Nlayers': Nlayers,
@@ -133,7 +132,7 @@ if __name__ == "__main__":
     param = spm_sim.parameter_values
     sym_tau = pybamm.standard_parameters_lithium_ion.tau_discharge
     tau = param.process_symbol(sym_tau)
-    t_end = 3600 / tau.evaluate(0)
+    t_end = 2*3600 / tau.evaluate(0)
     t_eval_ecm = np.linspace(0, t_end, Nsteps)
     dt = t_end / (Nsteps - 1)
     dim_time_step = ecm.convert_time(spm_sim.parameter_values,
@@ -174,10 +173,11 @@ if __name__ == "__main__":
         # I_local_pnm should now sum to match the total applied current
         # Run the spms for the the new I_locals for the next time interval
         if parallel:
-            solutions = ecm.pool_spm_new(
+            solutions = ecm.pool_spm(
                 zip(spm_models, solutions, I_local_pnm,
-                    np.ones(Nspm) * dt, spm_temperature, dead), pool,
-                    max_workers
+                    np.ones(Nspm) * dt, spm_temperature, dead),
+                pool,
+                max_workers
             )
         else:
             solutions = ecm.serial_spm(
@@ -226,25 +226,25 @@ if __name__ == "__main__":
         print("N Dead", np.sum(dead))
         outer_step += 1
 
-#    ecm.run_ecm(net, alg, V_test, plot=True)
-#
-#    all_time_results = all_time_results[:outer_step, :, :]
-#    if parallel:
-#        ecm.shutdown_pool(pool)
-#    fig, ax = plt.subplots()
-#    for i in range(Nspm):
-#        ax.plot(local_R[i, :outer_step])
-#    plt.title("R Local [Ohm]")
-#    fig, ax = plt.subplots()
-#    for i in range(Nspm):
-#        ax.plot(all_time_I_local[:outer_step, i])
-#    plt.title("I Local [A]")
-#    for i, var in enumerate(variables):
-#        temp = all_time_results[:, :, i]
-#        fig, ax = plt.subplots()
-#        for i in range(Nspm):
-#            ax.plot(temp[:, i])
-#        plt.title(var)
+    ecm.run_ecm(net, alg, V_test, plot=True)
+
+    all_time_results = all_time_results[:outer_step, :, :]
+    if parallel:
+        ecm.shutdown_pool(pool)
+    fig, ax = plt.subplots()
+    for i in range(Nspm):
+        ax.plot(local_R[i, :outer_step])
+    plt.title("R Local [Ohm]")
+    fig, ax = plt.subplots()
+    for i in range(Nspm):
+        ax.plot(all_time_I_local[:outer_step, i])
+    plt.title("I Local [A]")
+    for i, var in enumerate(variables):
+        temp = all_time_results[:, :, i]
+        fig, ax = plt.subplots()
+        for i in range(Nspm):
+            ax.plot(temp[:, i])
+        plt.title(var)
 
     ecm.plot_phase_data(project, 'pore.temperature')
     print("*" * 30)
