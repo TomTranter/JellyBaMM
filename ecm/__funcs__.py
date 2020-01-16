@@ -10,15 +10,12 @@ import openpnm as op
 import openpnm.topotools as tt
 from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
+from openpnm.models.physics.generic_source_term import linear
 import pybamm
 import matplotlib.pyplot as plt
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import sys
 import time
-
-plt.close("all")
-# set logging level
-pybamm.set_logging_level("INFO")
 
 
 def plot_topology(net):
@@ -33,13 +30,31 @@ def plot_topology(net):
     fig = pcoord(net, pores=inner, c="pink", fig=fig)
     fig = pcoord(net, pores=outer, c="yellow", fig=fig)
     fig = pcoord(net, pores=net.pores('free_stream'), c="green", fig=fig)
-    fig = pconn(net, throats=net.throats("throat.free_stream"), c="green", fig=fig)
+    fig = pconn(net, throats=net.throats("throat.free_stream"), c="green",
+                fig=fig)
     t_sep = net.throats("spm_resistor")
     if len(t_sep) > 0:
         fig = pconn(
             net, throats=net.throats("spm_resistor"),
             c="k", fig=fig
         )
+
+
+def plot_phase_data(project, data='pore.temperature'):
+    net = project.network
+    phase = project.phases()['phase_01']
+    Ps = net.pores('free_stream', mode='not')
+    coords = net['pore.coords']
+    x = coords[:, 0][Ps]
+    y = coords[:, 1][Ps]
+    fig, ax = plt.subplots()
+    ax.scatter(x, y)
+    ax.scatter(x, y, c=phase[data][Ps])
+    ax = fig.gca()
+    ax.set_xlim(x.min()*1.05,
+                x.max()*1.05)
+    ax.set_ylim(y.min()*1.05,
+                y.max()*1.05)
 
 
 def spiral(r, dr, ntheta=36, n=10):
@@ -74,7 +89,6 @@ def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
     net["pore.cell_id"] = unit_id.flatten()
     # Extend the connections in the cell repetition direction
     net["pore.coords"][:, 0] *= 10
-    #        self.plot()
     inner_r = 185 * 1e-5
     # Update coords
     net["pore.radial_position"] = 0.0
@@ -95,7 +109,6 @@ def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
         if i == 0:
             arc_edges = np.cumsum(np.deg2rad(dtheta) * rad)
             arc_edges -= arc_edges[0]
-    #        self.plot()
     # Make interlayer connections after rolling
     Ps_neg_cc = net.pores("neg_cc")
     Ps_pos_cc = net.pores("pos_cc")
@@ -186,16 +199,26 @@ def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
     net["pore.cell_id"][net["pore.free_stream"]] = -1
     plot_topology(net)
     print('N SPM', net.num_throats('spm_resistor'))
-    return net, arc_edges
-
-
-def setup_ecm_alg(net, spacing, R):
+    geo = setup_geometry(net, dtheta, spacing, length_3d=0.065)
     phase = op.phases.GenericPhase(network=net)
+    phys = op.physics.GenericPhysics(network=net,
+                                     phase=phase,
+                                     geometry=geo)
+    return prj, arc_edges
+
+
+def setup_ecm_alg(project, spacing, R):
+    net = project.network
+    phase = project.phases()['phase_01']
+    phys = project.physics()['phys_01']
+#    phase = op.phases.GenericPhase(network=net)
     cc_cond = 3e7
     cc_unit_len = spacing
     cc_unit_area = 25e-6 * 0.207
-    phase["throat.electrical_conductance"] = cc_cond * cc_unit_area / cc_unit_len
-    phase["throat.electrical_conductance"][net.throats("spm_resistor")] = 1 / R
+    econd = cc_cond * cc_unit_area / cc_unit_len
+    phys["throat.electrical_conductance"] = econd
+    res_Ts = net.throats("spm_resistor")
+    phys["throat.electrical_conductance"][res_Ts] = 1 / R
     alg = op.algorithms.OhmicConduction(network=net)
     alg.setup(
         phase=phase,
@@ -203,7 +226,7 @@ def setup_ecm_alg(net, spacing, R):
         conductance="throat.electrical_conductance",
     )
     alg.settings["rxn_tolerance"] = 1e-8
-    return alg, phase
+    return alg
 
 
 def evaluate_python(python_eval, solution, current):
@@ -259,7 +282,8 @@ def spm_1p1D(Nunit, Nsteps, I_app, total_length):
     disc = pybamm.Discretisation(mesh, model.default_spatial_methods)
     disc.process_model(model)
     # solve model -- simulate one hour discharge
-    tau = param.process_symbol(pybamm.standard_parameters_lithium_ion.tau_discharge)
+    stp_liion = pybamm.standard_parameters_lithium_ion
+    tau = param.process_symbol(stp_liion.tau_discharge)
     t_end = 3600 / tau.evaluate(0)
     t_eval = np.linspace(0, t_end, Nsteps)
 
@@ -291,19 +315,22 @@ def current_function(t):
     return pybamm.InputParameter("Current")
 
 
-def make_spm(I_typical, height):
-#    model_options = {
-#            "thermal": "x-lumped",
-#            "external submodels": ["thermal"],
-#        }
-#    model = pybamm.lithium_ion.SPM(model_options)
-    model = pybamm.lithium_ion.SPM()
+def make_spm(I_typical, height, thermal=True):
+    if thermal:
+        model_options = {
+                "thermal": "x-lumped",
+                "external submodels": ["thermal"],
+            }
+        model = pybamm.lithium_ion.SPM(model_options)
+    else:
+        model = pybamm.lithium_ion.SPM()
     geometry = model.default_geometry
     param = model.default_parameter_values
     param.update(
         {
             "Typical current [A]": I_typical,
             "Current function": current_function,
+            "Current function [A]": I_typical,
             "Current": "[input]",
             "Electrode height [m]": height,
         }
@@ -313,8 +340,8 @@ def make_spm(I_typical, height):
     var = pybamm.standard_spatial_vars
     var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 10, var.r_p: 10}
     spatial_methods = model.default_spatial_methods
-    solver = pybamm.CasadiSolver()
-#    solver = model.default_solver
+#    solver = pybamm.CasadiSolver()
+    solver = model.default_solver
     sim = pybamm.Simulation(
         model=model,
         geometry=geometry,
@@ -340,17 +367,15 @@ def calc_R(sim, current):
         totdV -= evaluate(sim, overpotential, current)
     return totdV / current
 
+
 def calc_R_new(overpotentials, current):
-#    initial_ocv = 3.8518206633137266
-#    totdV = initial_ocv - overpotentials[:, -1]
-#    l = overpotentials.shape[1]-1
-#    totdV -= np.sum(overpotentials[:, :l], axis=1)
     totdV = -np.sum(overpotentials, axis=1)
 
     return totdV/current
 
 
-def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
+def evaluate(sim, var="Current collector current density [A.m-2]",
+             current=0.0):
     model = sim.built_model
     #    mesh = sim.mesh
     solution = sim.solution
@@ -362,36 +387,40 @@ def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
         solution.t[-1], solution.y[:, -1], u={"Current": current}
     )
     # should move this definition to the main script...
-    python_eval = pybamm.EvaluatorPython(model.variables[var])
-    python_value = python_eval.evaluate(
-        solution.t[-1], solution.y[:, -1], u={"Current": current}
-    )
+#    python_eval = pybamm.EvaluatorPython(model.variables[var])
+#    python_value = python_eval.evaluate(
+#        solution.t[-1], solution.y[:, -1], u={"Current": current}
+#    )
 
     #    return proc(solution.t[-1])
     return value
 
 
+def convert_temperature(sim, T_dim):
+    temp_parms = sim.model.submodels["thermal"].param
+    param = sim.parameter_values
+    Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate()
+    T_ref = sim.parameter_values.process_symbol(temp_parms.T_ref).evaluate()
+    return (T_dim - T_ref) / Delta_T
+
+
 def step_spm(zipped):
-    sim, solution, I_app, dt, dead = zipped
-    #    h = sim.parameter_values['Electrode height [m]']
-    #    w = sim.parameter_values['Electrode width [m]']
-    #    A_cc = h*w
-#    results = np.zeros(len(variables) + 1)
-    T_av = 303.15
+    sim, solution, I_app, dt, T_av, dead = zipped
+    T_av_non_dim = convert_temperature(sim, T_av)
+    inputs = {"Current": I_app}
+    if len(sim.model.external_variables) > 0:
+        external_variables = {"X-averaged cell temperature": T_av_non_dim}
+    else:
+        external_variables = None
     if ~dead:
         if solution is not None:
-            sim.solver.y0 = solution.y[:, -1]
+            solved_len = sim.solver.y0.shape[0]
+            sim.solver.y0 = solution.y[:solved_len, -1]
             sim.solver.t = solution.t[-1]
-        sim.step(dt=dt, inputs={"Current": I_app},
-#                 external_variables={"X-averaged cell temperature": T_av})
+        sim.step(dt=dt, inputs=inputs,
+                 external_variables=external_variables,
                  save=False)
-        
-#        for i, key in enumerate(variables):
-#            results[i] = evaluate(sim, key, I_app)
-#        results[-1] = calc_R(sim, I_app)
 
-#    else:
-#        results.fill(np.nan)
     return sim.solution
 
 
@@ -482,6 +511,126 @@ def run_ecm(net, alg, V_terminal, plot=False):
         plt.plot(alg["pore.potential"][net.pores('neg_cc')])
 
     return (V_local_pnm, I_local_pnm, R_local_pnm)
+
+
+def setup_geometry(net, dtheta, spacing, length_3d):
+    # Create Geometry based on circular arc segment
+    drad = 2 * np.pi * dtheta / 360
+    geo = op.geometry.GenericGeometry(
+            network=net, pores=net.Ps, throats=net.Ts
+            )
+    geo["throat.radial_position"] = net.interpolate_data(
+            "pore.radial_position"
+            )
+    geo["pore.volume"] = (
+            net["pore.radial_position"] * drad * spacing * length_3d
+            )
+    cn = net["throat.conns"]
+    C1 = net["pore.coords"][cn[:, 0]]
+    C2 = net["pore.coords"][cn[:, 1]]
+    D = np.sqrt(((C1 - C2) ** 2).sum(axis=1))
+    geo["throat.length"] = D
+    # Work out if throat connects pores in same radial position
+    rPs = geo["pore.arc_index"][net["throat.conns"]]
+    sameR = rPs[:, 0] == rPs[:, 1]
+    geo["throat.area"] = spacing * length_3d
+    geo["throat.area"][sameR] = (
+            geo["throat.radial_position"][sameR] * drad * length_3d
+            )
+    geo["throat.volume"] = 0.0
+    return geo
+
+
+def setup_thermal(project, options):
+    T0 = options['T0']
+    cp = options['cp']
+    rho = options['rho']
+    K0 = options['K0']
+    heat_transfer_coefficient = options['heat_transfer_coefficient']
+    net = project.network
+    geo = project.geometries()['geo_01']
+#    phase = op.phases.GenericPhase(network=net)
+    phase = project.phases()['phase_01']
+    phys = project.physics()['phys_01']
+    alpha = K0 / (cp * rho)
+    hc = heat_transfer_coefficient / (cp * rho)
+    # Set up Phase and Physics
+    phase["pore.temperature"] = T0
+    phase["pore.thermal_conductivity"] = alpha  # [W/(m.K)]
+    phys["throat.conductance"] = (
+        alpha * geo["throat.area"] / geo["throat.length"]
+    )
+    # Reduce separator conductance
+    Ts = net.throats("spm_resistor")
+    phys["throat.conductance"][Ts] *= 0.1
+    # Free stream convective flux
+    Ts = net.throats("free_stream")
+    phys["throat.conductance"][Ts] = geo["throat.area"][Ts] * hc
+
+    print('Mean throat conductance',
+          np.mean(phys['throat.conductance']))
+    print('Mean throat conductance Boundary',
+          np.mean(phys['throat.conductance'][Ts]))
+
+
+def apply_heat_source(project, Q):
+    # The SPMs are defined at the throat but the pores represent the
+    # Actual electrode volume so need to interpolate for heat sources
+    net = project.network
+    phys = project.physics()['phys_01']
+    spm_Ts = net.throats('spm_resistor')
+    phys['throat.heat_source'] = 0.0
+    phys['throat.heat_source'][spm_Ts] = Q
+    phys.add_model(propname='pore.heat_source',
+                   model=op.models.misc.from_neighbor_throats,
+                   throat_prop='throat.heat_source',
+                   mode='max')
+
+
+def run_step_transient(project, time_step, BC_value):
+    # To Do - test whether this needs to be transient
+    net = project.network
+    phase = project.phases()['phase_01']
+    phys = project.physics()['phys_01']
+    Q_scaled = phys['pore.heat_source']
+    phys["pore.A1"] = 0.0
+    phys["pore.A2"] = Q_scaled * net["pore.volume"]
+    # Heat Source
+    T0 = phase['pore.temperature']
+    t_step = float(time_step/10)
+    phys.add_model(
+        "pore.source",
+        model=linear,
+        X="pore.temperature",
+        A1="pore.A1",
+        A2="pore.A2",
+    )
+    # Run Transient Heat Transport Algorithm
+    alg = op.algorithms.TransientReactiveTransport(network=net)
+    alg.setup(phase=phase,
+              conductance='throat.conductance',
+              quantity='pore.temperature',
+              t_initial=0.0,
+              t_final=time_step,
+              t_step=t_step,
+              t_output=t_step,
+              t_tolerance=1e-9,
+              t_precision=12,
+              rxn_tolerance=1e-9,
+              t_scheme='implicit')
+    alg.set_IC(values=T0)
+    bulk_Ps = net.pores("free_stream", mode="not")
+    alg.set_source("pore.source", bulk_Ps)
+    alg.set_value_BC(net.pores("free_stream"), values=BC_value)
+    alg.run()
+    print(
+        "Max Temp",
+        alg["pore.temperature"].max(),
+        "Min Temp",
+        alg["pore.temperature"].min(),
+    )
+    phase["pore.temperature"] = alg["pore.temperature"]
+    project.purge_object(alg)
 
 
 def setup_pool(max_workers):

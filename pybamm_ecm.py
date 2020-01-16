@@ -7,6 +7,7 @@ Created on Thu Dec  5 13:14:46 2019
 """
 
 import pybamm
+import openpnm as op
 from pybamm import EvaluatorPython as ep
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,7 +19,8 @@ import time
 plt.close("all")
 # set logging level
 pybamm.set_logging_level("INFO")
-
+wrk = op.Workspace()
+wrk.clear()
 
 if __name__ == "__main__":
     parallel = False
@@ -27,25 +29,41 @@ if __name__ == "__main__":
     dtheta = 10
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # nodes in each cc
-    Nsteps = 60  # number of time steps
+    Nsteps = 5  # number of time steps
     max_workers = int(os.cpu_count() / 2)
-    I_app = 0.25  # A
+    I_app = 2.0  # A
+    model_name = 'blah'
+    opt = {'domain': 'model',
+           'Nlayers': Nlayers,
+           'cp': 1399.0,
+           'rho': 2055.0,
+           'K0': 1.0,
+           'T0': 303,
+           'heat_transfer_coefficient': 5,
+           'length_3d': 0.065,
+           'I_app': I_app,
+           'cc_cond_neg': 3e7,
+           'cc_cond_pos': 3e7,
+           'dtheta': dtheta,
+           'spacing': 1e-5,
+           'model_name': model_name}
     ###########################################################################
-    net, arc_edges = ecm.make_spiral_net(Nlayers, dtheta,
-                                         spacing=layer_spacing,
-                                         pos_tabs=[0], neg_tabs=[-1])
+    project, arc_edges = ecm.make_spiral_net(Nlayers, dtheta,
+                                             spacing=layer_spacing,
+                                             pos_tabs=[0], neg_tabs=[-1])
+    net = project.network
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
     # connections between cc layers
     Nspm = net.num_throats('spm_resistor')
-    l = arc_edges[1:] - arc_edges[:-1]
-    l_norm = l/l[-1]
+    lens = arc_edges[1:] - arc_edges[:-1]
+    l_norm = lens/lens[-1]
     total_length = arc_edges[-1]  # m
     ###########################################################################
     I_typical = I_app / Nspm
-    spm_sim = ecm.make_spm(I_typical, height=l[-1])
+    spm_sim = ecm.make_spm(I_typical, height=lens[-1])
     height = spm_sim.parameter_values["Electrode height [m]"]
-    width = spm_sim.parameter_values["Electrode width [m]"] 
+    width = spm_sim.parameter_values["Electrode width [m]"]
     t1 = spm_sim.parameter_values['Negative electrode thickness [m]']
     t2 = spm_sim.parameter_values['Positive electrode thickness [m]']
     t3 = spm_sim.parameter_values['Negative current collector thickness [m]']
@@ -71,7 +89,8 @@ if __name__ == "__main__":
         "Change in measured open circuit voltage [V]",
     ]
 #    pool_vars = [variables for i in range(Nunit)]
-    spm_sol = ecm.step_spm((spm_sim, None, I_app / Nunit, 1e-6,  False))
+    spm_sol = ecm.step_spm((spm_sim, None, I_app / Nunit, 1e-6,
+                            opt['T0'], False))
     # Create dictionaries of evaluator functions from the discretized model
     variables_eval = {}
     overpotentials_eval = {}
@@ -86,7 +105,9 @@ if __name__ == "__main__":
     print(R)
     R_max = R * 10
     # Initialize with a guess for the terminal voltage
-    alg, phase = ecm.setup_ecm_alg(net, layer_spacing, R)
+    alg = ecm.setup_ecm_alg(project, layer_spacing, R)
+    phys = project.physics()['phys_01']
+    phase = project.phases()['phase_01']
     (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net, alg, V_ecm)
     print("*" * 30)
     print("V local pnm", V_local_pnm, "[V]")
@@ -114,11 +135,16 @@ if __name__ == "__main__":
     t_end = 3600 / tau.evaluate(0)
     t_eval_ecm = np.linspace(0, t_end, Nsteps)
     dt = t_end / (Nsteps - 1)
+    dim_time_step = ecm.convert_time(spm_sim.parameter_values,
+                                     dt, to='seconds')
     dead = np.zeros(Nspm, dtype=bool)
     if parallel:
         pool = ecm.setup_pool(max_workers)
     outer_step = 0
-
+    print(project)
+    ecm.setup_thermal(project, opt)
+    print(project)
+    spm_temperature = np.ones(len(res_Ts))*opt['T0']
     while np.any(~dead) and outer_step < Nsteps:
         print("*" * 30)
         print("Outer", outer_step)
@@ -149,12 +175,12 @@ if __name__ == "__main__":
         if parallel:
             solutions = ecm.pool_spm(
                 zip(spm_models, solutions, I_local_pnm,
-                    np.ones(Nspm) * dt, dead), pool
+                    np.ones(Nspm) * dt, spm_temperature, dead), pool
             )
         else:
             solutions = ecm.serial_spm(
                 zip(spm_models, solutions, I_local_pnm,
-                    np.ones(Nspm) * dt, dead)
+                    np.ones(Nspm) * dt, spm_temperature, dead)
             )
         # Gather the results for this time step
         results = np.zeros([Nspm, len(variables)])
@@ -170,6 +196,14 @@ if __name__ == "__main__":
         all_time_results[outer_step, :, :] = results
         all_time_overpotentials[outer_step, :, :] = results_o
         temp_local_V = results[:, 3]
+        # Apply Heat Sources
+        # To Do: make this better
+        Q = results[:, 5] / (opt['cp'] * opt['rho'])
+        ecm.apply_heat_source(project, Q)
+        # Calculate Global Temperature
+        ecm.run_step_transient(project, dim_time_step, opt['T0'])
+        # Interpolate the node temperatures for the SPMs
+        spm_temperature = phase.interpolate_data('pore.temperature')[res_Ts]
         # Get new equivalent resistances
         temp_R = ecm.calc_R_new(results_o, I_local_pnm)
         # stop simulation if any local voltage below the minimum
@@ -184,7 +218,7 @@ if __name__ == "__main__":
         if np.any(np.isnan(temp_R)):
             dead[np.isnan(temp_R)] = True
             sig[np.isnan(temp_R)] = 1e-6
-        phase["throat.electrical_conductance"][res_Ts] = sig
+        phys["throat.electrical_conductance"][res_Ts] = sig
         local_R[:, outer_step] = temp_R
 
         print("N Dead", np.sum(dead))
@@ -210,23 +244,7 @@ if __name__ == "__main__":
             ax.plot(temp[:, i])
         plt.title(var)
 
+    ecm.plot_phase_data(project, 'pore.temperature')
     print("*" * 30)
     print("ECM Sim time", time.time() - st)
     print("*" * 30)
-
-#    # Compare this to pure pybamm solution
-#    model_1p1D, param_1p1D, solution_1p1D, mesh_1p1D, t_eval_1p1D, I_local_1p1D = ecm.spm_1p1D(Nunit, Nsteps, I_app, total_length)
-#    print('ECM t_eval', t_eval_ecm)
-#    print('1+1D t_eval', t_eval_1p1D)
-#    print('ECM hours', ecm.convert_time(param, t_eval_ecm, to='hours'))
-#    print('1+1D hours', ecm.convert_time(param_1p1D, t_eval_1p1D, to='hours'))
-
-#    plt.figure()
-#    z = mesh_1p1D["current collector"][0].nodes
-#    prop_cycle = plt.rcParams['axes.prop_cycle']
-#    colors = np.asarray(prop_cycle.by_key()['color'])
-#    for ind, t in enumerate(t_eval_ecm[:outer_step]):
-#        c = np.roll(colors, -ind)[0]
-#        plt.plot(z, all_time_I_local[ind, :].T, "o", color=c)
-#        plt.plot(z, I_local_1p1D[ind, :].T, "--", color=c)
-#    plt.title("i_local. ECM vs pybamm")
