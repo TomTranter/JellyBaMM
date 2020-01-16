@@ -13,7 +13,7 @@ from openpnm.topotools import plot_coordinates as pcoord
 from openpnm.models.physics.generic_source_term import linear
 import pybamm
 import matplotlib.pyplot as plt
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import sys
 import time
 
@@ -633,12 +633,41 @@ def run_step_transient(project, time_step, BC_value):
     project.purge_object(alg)
 
 
-def setup_pool(max_workers):
-    pool = ThreadPoolExecutor(max_workers=max_workers)
+def setup_pool(max_workers, pool_type='Thread'):
+    if pool_type == 'Thread':
+        pool = ThreadPoolExecutor(max_workers=max_workers)
+    else:
+        pool = ProcessPoolExecutor(max_workers=max_workers)
     return pool
 
 
-def pool_spm(spm_models, pool):
+def _rebundle_models(spm_models, max_workers):
+    unpack = list(spm_models)
+    num_models = len(unpack)
+    num_chunk = np.int(np.ceil(num_models/max_workers))
+    split = []
+    mod_num = 0
+    for i in range(max_workers):
+        temp = []
+        for j in range(num_chunk):
+            if mod_num < num_models:
+                temp.append(unpack[mod_num])
+                mod_num += 1
+        split.append(temp)
+#    split = np.split(unpack, max_workers)
+    return split
+
+
+def pool_spm_new(spm_models, pool, max_workers):
+    split_models = _rebundle_models(spm_models, max_workers)
+    split_data = list(pool.map(serial_spm, split_models))
+    data = []
+    for temp in split_data:
+        data = data + temp
+    return data
+
+
+def pool_spm(spm_models, pool, max_workers):
     data = list(pool.map(step_spm, spm_models))
     return data
 

@@ -23,15 +23,16 @@ wrk = op.Workspace()
 wrk.clear()
 
 if __name__ == "__main__":
-    parallel = False
-    Nlayers = 3
+    parallel = True
+    Nlayers = 7
     layer_spacing = 195e-6
     dtheta = 10
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # nodes in each cc
-    Nsteps = 5  # number of time steps
+    Nsteps = 2  # number of time steps
     max_workers = int(os.cpu_count() / 2)
-    I_app = 2.0  # A
+#    max_workers = 30
+    I_app = 0.5  # A
     model_name = 'blah'
     opt = {'domain': 'model',
            'Nlayers': Nlayers,
@@ -139,7 +140,7 @@ if __name__ == "__main__":
                                      dt, to='seconds')
     dead = np.zeros(Nspm, dtype=bool)
     if parallel:
-        pool = ecm.setup_pool(max_workers)
+        pool = ecm.setup_pool(max_workers, pool_type='Process')
     outer_step = 0
     print(project)
     ecm.setup_thermal(project, opt)
@@ -173,9 +174,10 @@ if __name__ == "__main__":
         # I_local_pnm should now sum to match the total applied current
         # Run the spms for the the new I_locals for the next time interval
         if parallel:
-            solutions = ecm.pool_spm(
+            solutions = ecm.pool_spm_new(
                 zip(spm_models, solutions, I_local_pnm,
-                    np.ones(Nspm) * dt, spm_temperature, dead), pool
+                    np.ones(Nspm) * dt, spm_temperature, dead), pool,
+                    max_workers
             )
         else:
             solutions = ecm.serial_spm(
@@ -224,25 +226,25 @@ if __name__ == "__main__":
         print("N Dead", np.sum(dead))
         outer_step += 1
 
-    ecm.run_ecm(net, alg, V_test, plot=True)
-
-    all_time_results = all_time_results[:outer_step, :, :]
-    if parallel:
-        ecm.shutdown_pool(pool)
-    fig, ax = plt.subplots()
-    for i in range(Nspm):
-        ax.plot(local_R[i, :outer_step])
-    plt.title("R Local [Ohm]")
-    fig, ax = plt.subplots()
-    for i in range(Nspm):
-        ax.plot(all_time_I_local[:outer_step, i])
-    plt.title("I Local [A]")
-    for i, var in enumerate(variables):
-        temp = all_time_results[:, :, i]
-        fig, ax = plt.subplots()
-        for i in range(Nspm):
-            ax.plot(temp[:, i])
-        plt.title(var)
+#    ecm.run_ecm(net, alg, V_test, plot=True)
+#
+#    all_time_results = all_time_results[:outer_step, :, :]
+#    if parallel:
+#        ecm.shutdown_pool(pool)
+#    fig, ax = plt.subplots()
+#    for i in range(Nspm):
+#        ax.plot(local_R[i, :outer_step])
+#    plt.title("R Local [Ohm]")
+#    fig, ax = plt.subplots()
+#    for i in range(Nspm):
+#        ax.plot(all_time_I_local[:outer_step, i])
+#    plt.title("I Local [A]")
+#    for i, var in enumerate(variables):
+#        temp = all_time_results[:, :, i]
+#        fig, ax = plt.subplots()
+#        for i in range(Nspm):
+#            ax.plot(temp[:, i])
+#        plt.title(var)
 
     ecm.plot_phase_data(project, 'pore.temperature')
     print("*" * 30)
