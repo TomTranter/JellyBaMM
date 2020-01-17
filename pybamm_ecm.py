@@ -24,7 +24,7 @@ wrk.clear()
 
 if __name__ == "__main__":
     parallel = True
-    Nlayers = 5
+    Nlayers = 2
     layer_spacing = 195e-6
     dtheta = 10
     length_3d = 0.065
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     Nunit = np.int(Nlayers * Narc)  # nodes in each cc
     Nsteps = 3  # number of time steps
     max_workers = int(os.cpu_count() / 2)
-    I_app = 0.5  # A
+    I_app = 0.25  # A
     model_name = 'blah'
     opt = {'domain': 'model',
            'Nlayers': Nlayers,
@@ -98,6 +98,7 @@ if __name__ == "__main__":
     # Create dictionaries of evaluator functions from the discretized model
     variables_eval = {}
     overpotentials_eval = {}
+
     for var in variables:
         variables_eval[var] = ep(spm_sim.built_model.variables[var])
     for var in overpotentials:
@@ -200,20 +201,31 @@ if __name__ == "__main__":
             results_o[i, :] = ecm.evaluate_python(overpotentials_eval,
                                                   solution,
                                                   current=I_local_pnm[i])
-        # Collate the results
+
+        # Collate the results for last time step
+#        t, y = ecm.collect_solutions(solutions)
+#        for i, func in enumerate(variables_eval.values()):
+#            print(i)
+#            temp = func.evaluate(t, y, u={'Current': I_local_pnm})
+#            all_time_results[outer_step, :, i] = temp
+#        for i, func in enumerate(overpotentials_eval.values()):
+#            print(i)
+#            temp = func.evaluate(t, y, u={'Current': I_local_pnm})
+#            all_time_overpotentials[outer_step, :, i] = temp
         all_time_results[outer_step, :, :] = results
         all_time_overpotentials[outer_step, :, :] = results_o
-        temp_local_V = results[:, 3]
+        temp_local_V = all_time_results[outer_step, :, 3]
         # Apply Heat Sources
         # To Do: make this better
-        Q = results[:, 5] / (opt['cp'] * opt['rho'])
+#        Q = all_time_results[outer_step, :, 5] / (opt['cp'] * opt['rho'])
+        Q = np.ones(Nspm)*25000 / (opt['cp'] * opt['rho'])
         ecm.apply_heat_source(project, Q)
         # Calculate Global Temperature
         ecm.run_step_transient(project, dim_time_step, opt['T0'])
         # Interpolate the node temperatures for the SPMs
         spm_temperature = phase.interpolate_data('pore.temperature')[res_Ts]
         # Get new equivalent resistances
-        temp_R = ecm.calc_R_new(results_o, I_local_pnm)
+        temp_R = ecm.calc_R_new(all_time_overpotentials[outer_step, :, :], I_local_pnm)
         # stop simulation if any local voltage below the minimum
         # To do: check validity of using local
         if np.any(temp_local_V < 3.5):
@@ -234,23 +246,23 @@ if __name__ == "__main__":
 
     ecm.run_ecm(net, alg, V_test, plot=True)
 
-#    all_time_results = all_time_results[:outer_step, :, :]
-#    if parallel:
-#        ecm.shutdown_pool(pool)
-#    fig, ax = plt.subplots()
-#    for i in range(Nspm):
-#        ax.plot(local_R[i, :outer_step])
-#    plt.title("R Local [Ohm]")
-#    fig, ax = plt.subplots()
-#    for i in range(Nspm):
-#        ax.plot(all_time_I_local[:outer_step, i])
-#    plt.title("I Local [A]")
-#    for i, var in enumerate(variables):
-#        temp = all_time_results[:, :, i]
-#        fig, ax = plt.subplots()
-#        for i in range(Nspm):
-#            ax.plot(temp[:, i])
-#        plt.title(var)
+    all_time_results = all_time_results[:outer_step, :, :]
+    if parallel:
+        ecm.shutdown_pool(pool)
+    fig, ax = plt.subplots()
+    for i in range(Nspm):
+        ax.plot(local_R[i, :outer_step])
+    plt.title("R Local [Ohm]")
+    fig, ax = plt.subplots()
+    for i in range(Nspm):
+        ax.plot(all_time_I_local[:outer_step, i])
+    plt.title("I Local [A]")
+    for i, var in enumerate(variables):
+        temp = all_time_results[:, :, i]
+        fig, ax = plt.subplots()
+        for i in range(Nspm):
+            ax.plot(temp[:, i])
+        plt.title(var)
 
 #    ecm.plot_phase_data(project, 'pore.temperature')
     print("*" * 30)

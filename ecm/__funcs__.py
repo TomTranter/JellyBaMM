@@ -260,6 +260,26 @@ def setup_ecm_alg(project, spacing, R):
     return alg
 
 
+#def _pool_eval_wrapper(args):
+#    return args[0].evaluate(args[1], args[2], args[3])
+#
+#
+#def evaluate_python_pool(python_eval, solutions, currents, max_workers):
+#    pool = ProcessPoolExecutor(max_workers=max_workers)
+#    keys = list(python_eval.keys())
+#    out = np.zeros([len(solutions), len(keys)])
+#
+#    for i, key in enumerate(keys):
+#        pool_in = []
+#        for j, solution in enumerate(solutions):
+#            pool_in.append([python_eval[key],
+#                            solution.t[-1],
+#                            solution.y[:, -1],
+#                            {"Current": currents[j]}])
+#        out[:, i] = list(pool.map(_pool_eval_wrapper, pool_in))
+#    return out
+
+
 def evaluate_python(python_eval, solution, current):
     keys = list(python_eval.keys())
     out = np.zeros(len(keys))
@@ -708,3 +728,16 @@ def serial_spm(inputs):
     for bundle in inputs:
         outputs.append(step_spm(bundle))
     return outputs
+
+
+def collect_solutions(solutions):
+    temp_y = []
+    temp_t = []
+    for sol in solutions:
+        temp_y.append(sol.y[:, -1])
+        temp_t.append(sol.t[-1])
+    temp_y = np.asarray(temp_y)
+    temp_t = np.asarray(temp_t)
+    return temp_t, temp_y.T
+
+    
