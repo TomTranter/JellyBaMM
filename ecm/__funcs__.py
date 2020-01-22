@@ -70,7 +70,7 @@ def spiral(r, dr, ntheta=36, n=10):
 
 def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
                     pos_tabs=[0], neg_tabs=[-1],
-                    R=1.0):
+                    R=1.0, length_3d=0.065):
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # total number of unit cells
     N1d = 2
@@ -200,7 +200,7 @@ def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
     net["pore.cell_id"][net["pore.free_stream"]] = -1
     plot_topology(net)
     print('N SPM', net.num_throats('spm_resistor'))
-    geo = setup_geometry(net, dtheta, spacing, length_3d=0.065)
+    geo = setup_geometry(net, dtheta, spacing, length_3d=length_3d)
     phase = op.phases.GenericPhase(network=net)
     phys = op.physics.GenericPhysics(network=net,
                                      phase=phase,
@@ -238,12 +238,12 @@ def make_tomo_net(dtheta=10, spacing=190e-6, length_3d=0.065):
     return project, arc_edges
 
 
-def setup_ecm_alg(project, spacing, R):
+def setup_ecm_alg(project, spacing, R, cc_cond=3e7):
     net = project.network
     phase = project.phases()['phase_01']
     phys = project.physics()['phys_01']
 #    phase = op.phases.GenericPhase(network=net)
-    cc_cond = 3e7
+#    cc_cond = 3e7
     cc_unit_len = spacing
     cc_unit_area = 25e-6 * 0.207
     econd = cc_cond * cc_unit_area / cc_unit_len
@@ -280,12 +280,24 @@ def setup_ecm_alg(project, spacing, R):
 #    return out
 
 
-def evaluate_python(python_eval, solution, current):
+def evaluate_python(python_eval, solution, inputs):
     keys = list(python_eval.keys())
     out = np.zeros(len(keys))
     for i, key in enumerate(keys):
         temp = python_eval[key].evaluate(
-                solution.t[-1], solution.y[:, -1], u={"Current": current}
+                solution.t[-1], solution.y[:, -1], u=inputs
+                )
+        out[i] = temp
+    return out
+
+
+def evaluate_solution(python_eval, solution, current):
+    keys = list(python_eval.keys())
+    out = np.zeros(len(keys))
+    for i, key in enumerate(keys):
+        temp = solution[key](
+                solution.t[-1]
+#                solution.t[-1], solution.y[:, -1], u={"Current": current}
                 )
         out[i] = temp
     return out
@@ -353,9 +365,9 @@ def spm_1p1D(Nunit, Nsteps, I_app, total_length):
     return model, param, solution, mesh, t_eval, I_local.T
 
 
-def convert_time(param, non_dim_time, to="seconds"):
+def convert_time(param, non_dim_time, to="seconds", inputs=None):
     s_parms = pybamm.standard_parameters_lithium_ion
-    t_sec = param.process_symbol(s_parms.tau_discharge).evaluate()
+    t_sec = param.process_symbol(s_parms.tau_discharge).evaluate(u=inputs)
     t = non_dim_time * t_sec
     if to == "hours":
         t *= 1 / 3600
@@ -366,7 +378,7 @@ def current_function(t):
     return pybamm.InputParameter("Current")
 
 
-def make_spm(I_typical, height, thermal=True):
+def make_spm(I_typical, thermal=True):
     if thermal:
         model_options = {
                 "thermal": "x-lumped",
@@ -380,10 +392,10 @@ def make_spm(I_typical, height, thermal=True):
     param.update(
         {
             "Typical current [A]": I_typical,
-            "Current function": current_function,
-            "Current function [A]": I_typical,
+            "Current function [A]": current_function,
+#            "Current function [A]": I_typical,
             "Current": "[input]",
-            "Electrode height [m]": height,
+            "Electrode height [m]": "[input]",
         }
     )
     param.process_model(model)
@@ -447,23 +459,25 @@ def evaluate(sim, var="Current collector current density [A.m-2]",
     return value
 
 
-def convert_temperature(sim, T_dim):
+def convert_temperature(sim, T_dim, inputs):
     temp_parms = sim.model.submodels["thermal"].param
     param = sim.parameter_values
-    Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate()
-    T_ref = sim.parameter_values.process_symbol(temp_parms.T_ref).evaluate()
+    Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate(u=inputs)
+    T_ref = sim.parameter_values.process_symbol(temp_parms.T_ref).evaluate(u=inputs)
     return (T_dim - T_ref) / Delta_T
 
 
 def step_spm(zipped):
-    sim, solution, I_app, dt, T_av, dead = zipped
-    T_av_non_dim = convert_temperature(sim, T_av)
-    inputs = {"Current": I_app}
+    sim, solution, I_app, e_height, dt, T_av, dead = zipped
+    inputs = {"Current": I_app,
+              'Electrode height [m]': e_height}
+    T_av_non_dim = convert_temperature(sim, T_av, inputs)
     if len(sim.model.external_variables) > 0:
         external_variables = {"X-averaged cell temperature": T_av_non_dim}
     else:
         external_variables = None
     if ~dead:
+#        print(inputs)
         if solution is not None:
             solved_len = sim.solver.y0.shape[0]
             sim.solver.y0 = solution.y[:solved_len, -1]
@@ -471,20 +485,19 @@ def step_spm(zipped):
         sim.step(dt=dt, inputs=inputs,
                  external_variables=external_variables,
                  save=False)
-
     return sim.solution
 
 
-def make_net(Nunit, R, spacing, pos_tabs, neg_tabs):
+def make_1D_net(Nunit, R, spacing, pos_tabs, neg_tabs):
 #    net = op.network.Cubic([Nunit + 2, 2, 1], spacing)
-    net = op.network.Cubic([Nunit, 2, 1], spacing)
+    net = op.network.Cubic([Nunit+2, 2, 1], spacing)
     net["pore.pos_cc"] = net["pore.right"]
     net["pore.neg_cc"] = net["pore.left"]
 
-#    T = net.find_neighbor_throats(net.pores("front"), mode="xnor")
-#    tt.trim(net, throats=T)
-#    T = net.find_neighbor_throats(net.pores("back"), mode="xnor")
-#    tt.trim(net, throats=T)
+    T = net.find_neighbor_throats(net.pores("front"), mode="xnor")
+    tt.trim(net, throats=T)
+    T = net.find_neighbor_throats(net.pores("back"), mode="xnor")
+    tt.trim(net, throats=T)
     pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
     neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
 
@@ -529,19 +542,25 @@ def make_net(Nunit, R, spacing, pos_tabs, neg_tabs):
     fig = tt.plot_connections(net, net.throats("spm_resistor"), c="k", fig=fig)
 
     phase = op.phases.GenericPhase(network=net)
-    cc_cond = 3e7
-    cc_unit_len = spacing
-    cc_unit_area = 25e-6 * 0.207
-    phase["throat.electrical_conductance"] = cc_cond * cc_unit_area / cc_unit_len
-    phase["throat.electrical_conductance"][net.throats("spm_resistor")] = 1 / R
-    alg = op.algorithms.OhmicConduction(network=net)
-    alg.setup(
-        phase=phase,
-        quantity="pore.potential",
-        conductance="throat.electrical_conductance",
-    )
-    alg.settings["rxn_tolerance"] = 1e-8
-    return net, alg, phase
+#    cc_cond = 3e7
+#    cc_unit_len = spacing
+#    cc_unit_area = 25e-6 * 0.207
+#    phase["throat.electrical_conductance"] = cc_cond * cc_unit_area / cc_unit_len
+#    phase["throat.electrical_conductance"][net.throats("spm_resistor")] = 1 / R
+    geo = op.geometry.GenericGeometry(
+            network=net, pores=net.Ps, throats=net.Ts
+            )
+    phys = op.physics.GenericPhysics(network=net,
+                                     phase=phase,
+                                     geometry=geo)
+#    alg = op.algorithms.OhmicConduction(network=net)
+#    alg.setup(
+#        phase=phase,
+#        quantity="pore.potential",
+#        conductance="throat.electrical_conductance",
+#    )
+#    alg.settings["rxn_tolerance"] = 1e-8
+    return net.project
 
 
 def run_ecm(net, alg, V_terminal, plot=False):
@@ -586,9 +605,8 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     rPs = geo["pore.arc_index"][net["throat.conns"]]
     sameR = rPs[:, 0] == rPs[:, 1]
     geo["throat.area"] = spacing * length_3d
-    geo["throat.area"][sameR] = (
-            geo["throat.radial_position"][sameR] * drad * length_3d
-            )
+    geo['throat.electrode_height'] = geo["throat.radial_position"] * drad
+    geo["throat.area"][sameR] = geo['throat.electrode_height'][sameR] * length_3d
     geo["throat.volume"] = 0.0
     return geo
 
