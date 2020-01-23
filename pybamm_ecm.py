@@ -26,13 +26,16 @@ wrk.clear()
 if __name__ == "__main__":
     parallel = True
     Nlayers = 19
+    hours = 1.0
     layer_spacing = 195e-6
     dtheta = 20
     length_3d = 0.065
+    pixel_size = 10.4e-6
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
-    Nsteps = 60  # number of time steps
+    Nsteps = np.int(hours*60)  # number of time steps
     max_workers = int(os.cpu_count() / 2)
     I_app = 3.6  # A
+    V_over_max = 0.4
     model_name = 'blah'
     opt = {'domain': 'tomo',
            'Nlayers': Nlayers,
@@ -88,7 +91,8 @@ if __name__ == "__main__":
     print('Typical height', typical_height)
     print('Typical current', I_typical)
     ###########################################################################
-    spm_sim = ecm.make_spm(I_typical)
+    spm_sim = ecm.make_spm(I_typical, thermal=True,
+                           length_3d=length_3d, pixel_size=pixel_size)
     #    height = spm_sim.parameter_values["Electrode height [m]"]
     height = electrode_heights.min()
     width = spm_sim.parameter_values["Electrode width [m]"]
@@ -182,7 +186,7 @@ if __name__ == "__main__":
     sym_tau = pybamm.standard_parameters_lithium_ion.tau_discharge
     tau = param.process_symbol(sym_tau)
     tau_typical = tau.evaluate(u=temp_inputs)
-    t_end = 1.0*3600 / tau_typical
+    t_end = hours*3600 / tau_typical
     t_eval_ecm = np.linspace(0, t_end, Nsteps)
     dt = t_end / (Nsteps - 1)
     tau_spm = []
@@ -201,7 +205,8 @@ if __name__ == "__main__":
     ecm.setup_thermal(project, opt)
     print(project)
     T_non_dim_spm = np.ones(len(res_Ts))*T_non_dim
-    while np.any(~dead) and outer_step < Nsteps and V_test < 0.3:
+    max_temperatures = []
+    while np.any(~dead) and outer_step < Nsteps and V_test < V_over_max:
         print("*" * 30)
         print("Outer", outer_step)
         # Find terminal voltage that satisfy ecm total currents for R
@@ -223,97 +228,98 @@ if __name__ == "__main__":
             else:
                 V_test *= 1 + (diff * damping)
             inner_step += 1
-    
-        print("N inner", inner_step, 'time per step',
-              (time.time()-t_ecm_start)/inner_step)
-        all_time_I_local[outer_step, :] = I_local_pnm
-        terminal_voltages[outer_step] = V_test
-        # I_local_pnm should now sum to match the total applied current
-        # Run the spms for the the new I_locals for the next time interval
-        time_steps = np.ones(Nspm) * dt * (tau_typical/tau_spm)
-        bundle_inputs = zip(spm_models, spm_solvers,
-                            solutions, I_local_pnm, electrode_heights,
-                            time_steps, T_non_dim_spm, dead)
-        if parallel:
-            solutions = ecm.pool_spm(
-                    bundle_inputs,
-                    pool,
-                    max_workers
-            )
-        else:
-            solutions = ecm.serial_spm(
-                bundle_inputs
-            )
-        # Gather the results for this time step
-        results = np.ones([Nspm, len(variables)])*np.nan
-        results_o = np.ones([Nspm, len(overpotentials)])*np.nan
-        for i in range(Nspm):
-            if solutions[i].termination != 'final time':
-                dead[i] = True
-        for i, solution in enumerate(solutions):
-            if not dead[i]:
-                temp_inputs = {"Current": I_local_pnm[i],
-                               'Electrode height [m]': electrode_heights[i]}
-                results[i, :] = ecm.evaluate_python(variables_eval,
-                                                    solution,
-                                                    temp_inputs)
-                results_o[i, :] = ecm.evaluate_python(overpotentials_eval,
-                                                      solution,
-                                                      temp_inputs)
-        all_time_results[outer_step, :, :] = results
-        all_time_overpotentials[outer_step, :, :] = results_o
-    
-        # Collate the results for last time step
-    #        t, y = ecm.collect_solutions(solutions)
-    #        for i, func in enumerate(variables_eval.values()):
-    #            print(i)
-    #            temp = func.evaluate(t, y, u={'Current': I_local_pnm})
-    #            all_time_results[outer_step, :, i] = temp
-    #        for i, func in enumerate(overpotentials_eval.values()):
-    #            print(i)
-    #            temp = func.evaluate(t, y, u={'Current': I_local_pnm})
-    #            all_time_overpotentials[outer_step, :, i] = temp
-    
-        temp_local_V = all_time_results[outer_step, :, 3]
-        # Apply Heat Sources
-        # To Do: make this better
-        Q = all_time_results[outer_step, :, 5] / (opt['cp'] * opt['rho'])
-    #        Q = np.ones(Nspm)*25000 / (opt['cp'] * opt['rho'])
-        Q[np.isnan(Q)] = 0.0
-        ecm.apply_heat_source(project, Q)
-        # Calculate Global Temperature
-        ecm.run_step_transient(project, dim_time_step, opt['T0'])
-        # Interpolate the node temperatures for the SPMs
-        spm_temperature = phase.interpolate_data('pore.temperature')[res_Ts]
-        T_non_dim_spm = (spm_temperature - T_ref) / Delta_T_spm
-        # Get new equivalent resistances
-        temp_R = ecm.calc_R_new(all_time_overpotentials[outer_step, :, :], I_local_pnm)
-        # stop simulation if any local voltage below the minimum
-        # To do: check validity of using local
-    #        if np.any(temp_local_V < 3.5):
-    #            dead.fill(np.nan)
-        # Update ecm conductivities for the spm_resistor throats
-        sig = 1 / temp_R
-        if np.any(temp_R > R_max):
-            print('Max R found')
-            print(I_local_pnm[temp_R > R_max])
-            dead[temp_R > R_max] = True
-            sig[temp_R > R_max] = 1/R_max
-        if np.any(np.isnan(temp_R)):
-            print('Nans found')
-            print(I_local_pnm[np.isnan(temp_R)])
-            dead[np.isnan(temp_R)] = True
-            sig[np.isnan(temp_R)] = 1/R_max
-        phys["throat.electrical_conductance"][res_Ts] = sig
-        local_R[:, outer_step] = temp_R
-    
-        print("N Dead", np.sum(dead))
-        if np.any(dead):
-            fig = tt.plot_connections(net, res_Ts[dead], c='r')
-            fig = tt.plot_connections(net, res_Ts[~dead], c='g', fig=fig)
-            plt.title('Dead SPM: step '+str(outer_step))
-        outer_step += 1
-    
+        if V_test < V_over_max:
+            print("N inner", inner_step, 'time per step',
+                  (time.time()-t_ecm_start)/inner_step)
+            all_time_I_local[outer_step, :] = I_local_pnm
+            terminal_voltages[outer_step] = V_test
+            # I_local_pnm should now sum to match the total applied current
+            # Run the spms for the the new I_locals for the next time interval
+            time_steps = np.ones(Nspm) * dt * (tau_typical/tau_spm)
+            bundle_inputs = zip(spm_models, spm_solvers,
+                                solutions, I_local_pnm, electrode_heights,
+                                time_steps, T_non_dim_spm, dead)
+            if parallel:
+                solutions = ecm.pool_spm(
+                        bundle_inputs,
+                        pool,
+                        max_workers
+                )
+            else:
+                solutions = ecm.serial_spm(
+                    bundle_inputs
+                )
+            # Gather the results for this time step
+            results = np.ones([Nspm, len(variables)])*np.nan
+            results_o = np.ones([Nspm, len(overpotentials)])*np.nan
+            for i in range(Nspm):
+                if solutions[i].termination != 'final time':
+                    dead[i] = True
+            for i, solution in enumerate(solutions):
+                if not dead[i]:
+                    temp_inputs = {"Current": I_local_pnm[i],
+                                   'Electrode height [m]': electrode_heights[i]}
+                    results[i, :] = ecm.evaluate_python(variables_eval,
+                                                        solution,
+                                                        temp_inputs)
+                    results_o[i, :] = ecm.evaluate_python(overpotentials_eval,
+                                                          solution,
+                                                          temp_inputs)
+            all_time_results[outer_step, :, :] = results
+            all_time_overpotentials[outer_step, :, :] = results_o
+        
+            # Collate the results for last time step
+        #        t, y = ecm.collect_solutions(solutions)
+        #        for i, func in enumerate(variables_eval.values()):
+        #            print(i)
+        #            temp = func.evaluate(t, y, u={'Current': I_local_pnm})
+        #            all_time_results[outer_step, :, i] = temp
+        #        for i, func in enumerate(overpotentials_eval.values()):
+        #            print(i)
+        #            temp = func.evaluate(t, y, u={'Current': I_local_pnm})
+        #            all_time_overpotentials[outer_step, :, i] = temp
+        
+            temp_local_V = all_time_results[outer_step, :, 3]
+            # Apply Heat Sources
+            # To Do: make this better
+            Q = all_time_results[outer_step, :, 5] / (opt['cp'] * opt['rho'])
+        #        Q = np.ones(Nspm)*25000 / (opt['cp'] * opt['rho'])
+            Q[np.isnan(Q)] = 0.0
+            ecm.apply_heat_source(project, Q)
+            # Calculate Global Temperature
+            ecm.run_step_transient(project, dim_time_step, opt['T0'])
+            # Interpolate the node temperatures for the SPMs
+            spm_temperature = phase.interpolate_data('pore.temperature')[res_Ts]
+            max_temperatures.append(spm_temperature.max())
+            T_non_dim_spm = (spm_temperature - T_ref) / Delta_T_spm
+            # Get new equivalent resistances
+            temp_R = ecm.calc_R_new(all_time_overpotentials[outer_step, :, :], I_local_pnm)
+            # stop simulation if any local voltage below the minimum
+            # To do: check validity of using local
+        #        if np.any(temp_local_V < 3.5):
+        #            dead.fill(np.nan)
+            # Update ecm conductivities for the spm_resistor throats
+            sig = 1 / temp_R
+            if np.any(temp_R > R_max):
+                print('Max R found')
+                print(I_local_pnm[temp_R > R_max])
+                dead[temp_R > R_max] = True
+                sig[temp_R > R_max] = 1/R_max
+            if np.any(np.isnan(temp_R)):
+                print('Nans found')
+                print(I_local_pnm[np.isnan(temp_R)])
+                dead[np.isnan(temp_R)] = True
+                sig[np.isnan(temp_R)] = 1/R_max
+            phys["throat.electrical_conductance"][res_Ts] = sig
+            local_R[:, outer_step] = temp_R
+        
+            print("N Dead", np.sum(dead))
+            if np.any(dead):
+                fig = tt.plot_connections(net, res_Ts[dead], c='r')
+                fig = tt.plot_connections(net, res_Ts[~dead], c='g', fig=fig)
+                plt.title('Dead SPM: step '+str(outer_step))
+            outer_step += 1
+
     ecm.run_ecm(net, alg, V_test, plot=True)
     
     all_time_results = all_time_results[:outer_step, :, :]
@@ -330,11 +336,18 @@ if __name__ == "__main__":
     for i, var in enumerate(variables):
         temp = all_time_results[:, :, i]
         fig, ax = plt.subplots()
-        for i in range(Nspm):
-            ax.plot(temp[:, i])
+#        for i in range(Nspm):
+#            ax.plot(temp[:, i])
+        ax.plot(temp)
         plt.title(var)
     
     ecm.plot_phase_data(project, 'pore.temperature')
+
+    fig, ax = plt.subplots()
+    ax.plot(temp[:, 0], max_temperatures)
+    ax.set_xlabel('Discharge Time [h]')
+    ax.set_ylabel('Maximum Temperature [K]')
+    
     print("*" * 30)
     print("ECM Sim time", time.time() - st)
     print("*" * 30)

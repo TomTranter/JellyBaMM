@@ -378,7 +378,7 @@ def current_function(t):
     return pybamm.InputParameter("Current")
 
 
-def make_spm(I_typical, thermal=True):
+def make_spm(I_typical, thermal=True, length_3d=0.065, pixel_size=10.4e-6):
     if thermal:
         model_options = {
                 "thermal": "x-lumped",
@@ -395,6 +395,18 @@ def make_spm(I_typical, thermal=True):
             "Current function [A]": current_function,
             "Current": "[input]",
             "Electrode height [m]": "[input]",
+            "Electrode width [m]": length_3d,
+            "Negative electrode thickness [m]": 6.0*pixel_size,
+            "Positive electrode thickness [m]": 9.0*pixel_size,
+            "Separator thickness [m]": 1.0*pixel_size,
+            "Positive current collector thickness [m]": 1.0*pixel_size,
+            "Negative current collector thickness [m]": 1.0*pixel_size,
+#            "Negative tab centre z-coordinate [m]": z_edges[0],
+#            "Positive tab centre z-coordinate [m]": z_edges[-1],
+            "Positive electrode conductivity [S.m-1]": 0.1,
+            "Negative electrode conductivity [S.m-1]": 0.1,
+            "Lower voltage cut-off [V]": 3.45,
+            "Upper voltage cut-off [V]": 4.7,
         }
     )
     param.process_model(model)
