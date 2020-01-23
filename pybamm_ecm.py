@@ -24,17 +24,17 @@ wrk = op.Workspace()
 wrk.clear()
 
 if __name__ == "__main__":
-    parallel = False
+    parallel = True
     Nlayers = 3
     layer_spacing = 195e-6
     dtheta = 20
     length_3d = 0.065
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
-    Nsteps = 60  # number of time steps
+    Nsteps = 600  # number of time steps
     max_workers = int(os.cpu_count() / 2)
-    I_app = 0.5  # A
+    I_app = 1.0  # A
     model_name = 'blah'
-    opt = {'domain': 'model',
+    opt = {'domain': 'tomo',
            'Nlayers': Nlayers,
            'cp': 1399.0,
            'rho': 2055.0,
@@ -43,8 +43,8 @@ if __name__ == "__main__":
            'heat_transfer_coefficient': 5,
            'length_3d': length_3d,
            'I_app': I_app,
-           'cc_cond_neg': 1e5,
-           'cc_cond_pos': 1e5,
+           'cc_cond_neg': 1e7,
+           'cc_cond_pos': 1e7,
            'dtheta': dtheta,
            'spacing': 1e-5,
            'model_name': model_name}

@@ -15,7 +15,7 @@ plt.close('all')
 
 # load (1+1D) SPMe model
 wrk = op.Workspace()
-Nspm = 20
+Nspm = 10
 parallel = False
 e_height = 1.0
 max_workers = int(os.cpu_count() / 2)
@@ -34,7 +34,7 @@ param = model.default_parameter_values
 #C_rate = 1
 
 #current_1C = 24 * A_cc
-I_app = 2.0
+I_app = 1.0
 I_typical = I_app/Nspm
 e_cond_cc = 1e7
 param.update(
@@ -344,31 +344,31 @@ fig, ax = plt.subplots()
 ax.plot(temp)
 plt.title('ECM Resistance [Ohm]')
 
-for i, var in enumerate(variables):
-    temp = all_time_results[:, :, i]
-    fig, ax = plt.subplots()
-    for i in range(Nspm):
-        ax.plot(temp[:, i])
-    plt.title(var)
+#for i, var in enumerate(variables):
+#    temp = all_time_results[:, :, i]
+#    fig, ax = plt.subplots()
+#    for i in range(Nspm):
+#        ax.plot(temp[:, i])
+#    plt.title(var)
 
-V_test = V_ecm
-re_I_local = np.zeros([Nsteps, Nspm])
-for i in range(Nsteps):
-    R_spm = R_local[i, :]
-    sig = 1/R_spm
-    phys["throat.electrical_conductance"][res_Ts] = sig
-    inner_step = 0
-    current_match = False
-    while (inner_step < max_inner_steps) and (not current_match):
-
-        (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net,
-                                                              alg,
-                                                              V_test)
-        tot_I_local_pnm = np.sum(I_local_pnm)
-        diff = (I_app - tot_I_local_pnm) / I_app
-        if np.absolute(diff) < tol:
-            current_match = True
-        else:
-            V_test *= 1 + (diff * damping)
-        inner_step += 1
-    re_I_local[i, :] = I_local_pnm
+#V_test = V_ecm
+#re_I_local = np.zeros([Nsteps, Nspm])
+#for i in range(Nsteps):
+#    R_spm = R_local[i, :]
+#    sig = 1/R_spm
+#    phys["throat.electrical_conductance"][res_Ts] = sig
+#    inner_step = 0
+#    current_match = False
+#    while (inner_step < max_inner_steps) and (not current_match):
+#
+#        (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net,
+#                                                              alg,
+#                                                              V_test)
+#        tot_I_local_pnm = np.sum(I_local_pnm)
+#        diff = (I_app - tot_I_local_pnm) / I_app
+#        if np.absolute(diff) < tol:
+#            current_match = True
+#        else:
+#            V_test *= 1 + (diff * damping)
+#        inner_step += 1
+#    re_I_local[i, :] = I_local_pnm
