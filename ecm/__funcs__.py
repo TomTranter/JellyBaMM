@@ -393,7 +393,6 @@ def make_spm(I_typical, thermal=True):
         {
             "Typical current [A]": I_typical,
             "Current function [A]": current_function,
-#            "Current function [A]": I_typical,
             "Current": "[input]",
             "Electrode height [m]": "[input]",
         }
@@ -704,10 +703,15 @@ def run_step_transient(project, time_step, BC_value):
 
 
 def setup_pool(max_workers, pool_type='Process'):
+#    if pool_type == 'Process':
+#        pool = ProcessPoolExecutor(max_workers=max_workers)
+#    else:
+#        pool = ThreadPoolExecutor(max_workers=max_workers)
+#    return pool
     if pool_type == 'Process':
-        pool = ProcessPoolExecutor(max_workers=max_workers)
+        pool = ProcessPoolExecutor()
     else:
-        pool = ThreadPoolExecutor(max_workers=max_workers)
+        pool = ThreadPoolExecutor()
     return pool
 
 

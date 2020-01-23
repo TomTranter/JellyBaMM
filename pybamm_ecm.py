@@ -34,7 +34,7 @@ if __name__ == "__main__":
     max_workers = int(os.cpu_count() / 2)
     I_app = 1.0  # A
     model_name = 'blah'
-    opt = {'domain': 'tomo',
+    opt = {'domain': 'model',
            'Nlayers': Nlayers,
            'cp': 1399.0,
            'rho': 2055.0,
@@ -143,10 +143,10 @@ if __name__ == "__main__":
     print("I local pnm", I_local_pnm, "[A]")
     print("R local pnm", R_local_pnm, "[Ohm]")
     spm_models = [
-        ecm.make_spm(I_typical) for i in range(Nspm)
+        spm_sim for i in range(Nspm)
     ]
     solutions = [
-        None for i in range(Nspm)
+        spm_sol for i in range(Nspm)
     ]
 
 
