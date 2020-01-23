@@ -412,6 +412,7 @@ def make_spm(I_typical, thermal=True):
         spatial_methods=spatial_methods,
         solver=solver,
     )
+    sim.build(check_model=True)
     return sim
 
 
@@ -458,15 +459,39 @@ def evaluate(sim, var="Current collector current density [A.m-2]",
     return value
 
 
-def convert_temperature(sim, T_dim, inputs):
-    temp_parms = sim.model.submodels["thermal"].param
-    param = sim.parameter_values
+def convert_temperature(built_model, param, T_dim, inputs):
+    temp_parms = built_model.submodels["thermal"].param
+#    param = sim.parameter_values
     Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate(u=inputs)
-    T_ref = sim.parameter_values.process_symbol(temp_parms.T_ref).evaluate(u=inputs)
+    T_ref = param.process_symbol(temp_parms.T_ref).evaluate(u=inputs)
     return (T_dim - T_ref) / Delta_T
 
 
 def step_spm(zipped):
+    built_model, solver, solution, I_app, e_height, dt, T_av, dead = zipped
+    inputs = {"Current": I_app,
+              'Electrode height [m]': e_height}
+#    T_av_non_dim = convert_temperature(built_model, param, T_av, inputs)
+#    T_av_non_dim = 0.0
+    if len(built_model.external_variables) > 0:
+        external_variables = {"X-averaged cell temperature": T_av}
+    else:
+        external_variables = None
+    if ~dead:
+#        print(inputs)
+        if solution is not None:
+            solved_len = solver.y0.shape[0]
+            solver.y0 = solution.y[:solved_len, -1]
+            solver.t = solution.t[-1]
+        solution = solver.step(
+            built_model, dt, external_variables=external_variables, inputs=inputs
+        )
+#        sim.step(dt=dt, inputs=inputs,
+#                 external_variables=external_variables,
+#                 save=False)
+    return solution
+
+def step_spm_old(zipped):
     sim, solution, I_app, e_height, dt, T_av, dead = zipped
     inputs = {"Current": I_app,
               'Electrode height [m]': e_height}

@@ -59,12 +59,13 @@ def convert_temperature(sim, T_dim, inputs):
 
 
 def step_spm(zipped):
-    built_model, solver, solution, I_app, e_height, dt, T_av, dead = zipped
+    built_model, solver, param, solution, I_app, e_height, dt, T_av, dead = zipped
     inputs = {"Current": I_app,
               'Electrode height [m]': e_height}
 #    T_av_non_dim = convert_temperature(sim, T_av, inputs)
+    T_av_non_dim = 0.0
     if len(built_model.external_variables) > 0:
-        external_variables = {"X-averaged cell temperature": T_av}
+        external_variables = {"X-averaged cell temperature": T_av_non_dim}
     else:
         external_variables = None
     if ~dead:
@@ -76,26 +77,29 @@ def step_spm(zipped):
         solution = solver.step(
             built_model, dt, external_variables=external_variables, inputs=inputs
         )
-#        sim.step(dt=dt, inputs=inputs,
-#                 external_variables=external_variables,
-#                 save=False)
+
     return solution
 
 def pool_func(inputs):
-    model, solver, dt = inputs
-    solution = step_spm((model, solver, None,
-                         1.0, 1.0, dt, 0.0, False))
+    model, solver, param, dt = inputs
+    solution = step_spm((model, solver, param, None,
+                         1.0, 1.0, dt, 303, False))
     return solution
 
 def main():
+    pass_param = True
     Nspm = 10
     max_workers = int(os.cpu_count() / 2)
     pool = ProcessPoolExecutor(max_workers=max_workers)
     sim = make_spm(I_typical=1.0, thermal=False)
     models = [sim.built_model for i in range(Nspm)]
     solvers = [sim.solver for i in range(Nspm)]
+    if pass_param:
+        params = [sim.parameter_values for i in range(Nspm)]
+    else:
+        params = [None for i in range(Nspm)]
     time_steps = np.linspace(0.1, 1, Nspm)*1e-6
-    solutions = list(pool.map(pool_func, zip(models, solvers, time_steps)))
+    solutions = list(pool.map(pool_func, zip(models, solvers, params, time_steps)))
     print([sol.t[-1] for sol in solutions])
     pool.shutdown()
     del pool

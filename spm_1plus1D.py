@@ -1,15 +1,16 @@
+import pybamm
+import numpy as np
+import sys
+import matplotlib.pyplot as plt
+import ecm
+import openpnm as op
+import time
+import os
+from pybamm import EvaluatorPython as ep
+import openpnm.topotools as tt
+from copy import deepcopy
+    
 def main():
-    import pybamm
-    import numpy as np
-    import sys
-    import matplotlib.pyplot as plt
-    import ecm
-    import openpnm as op
-    import time
-    import os
-    from pybamm import EvaluatorPython as ep
-    import openpnm.topotools as tt
-    from copy import deepcopy
 
     plt.close('all')
     # set logging level
@@ -156,19 +157,26 @@ def main():
     
     typical_height = spacing
     temperature = 303.0
-    spm_temperature = np.ones(Nspm)*temperature
+    
     spm_sim = ecm.make_spm(I_typical=I_typical, thermal=False)
-    spm_sol = ecm.step_spm((spm_sim, None, I_typical, typical_height, 1e-6,
+    spm_models = [spm_sim.built_model for i in range(Nspm)]
+    spm_solvers = [spm_sim.solver for i in range(Nspm)]
+    #spm_params = [spm_sim.parameter_values for i in range(Nspm)]
+    spm_sol = ecm.step_spm((spm_sim.built_model,
+                            spm_sim.solver,
+                            None, I_typical, typical_height, 1e-6,
                             temperature, False))
-    spm_models = [
-        spm_sim for i in range(Nspm)
-    ]
-    #spm_models = [
-    #    ecm.make_spm(I_typical=I_typical, thermal=False) for i in range(Nspm)
-    #]
     solutions = [
         spm_sol for i in range(Nspm)
     ]
+    
+    
+    #    spm_models = [
+    #        spm_sim for i in range(Nspm)
+    #    ]
+    #spm_models = [
+    #    ecm.make_spm(I_typical=I_typical, thermal=False) for i in range(Nspm)
+    #]
     
     variables_eval = {}
     overpotentials_eval = {}
@@ -180,6 +188,8 @@ def main():
     
     temp_inputs = {"Current": I_typical,
                    'Electrode height [m]': typical_height}
+    spm_temperature = np.zeros(Nspm) # Non-dim
+    
     electrode_heights = cc_fracs*e_height
     project = ecm.make_1D_net(Nunit=Nspm, R=R_local[0, :], spacing=spacing, pos_tabs=[0], neg_tabs=[-1])
     net = project.network
@@ -243,7 +253,8 @@ def main():
         terminal_voltages[outer_step] = V_test
         # I_local_pnm should now sum to match the total applied current
         # Run the spms for the the new I_locals for the next time interval
-        bundle_inputs = zip(spm_models, solutions, I_local_pnm, electrode_heights,
+        bundle_inputs = zip(spm_models, spm_solvers,
+                            solutions, I_local_pnm, electrode_heights,
                             np.ones(Nspm) * dt, spm_temperature, dead)
         if parallel:
             solutions = ecm.pool_spm(
