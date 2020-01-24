@@ -644,6 +644,7 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     geo['throat.electrode_height'] = geo["throat.radial_position"] * drad
     geo["throat.area"][sameR] = geo['throat.electrode_height'][sameR] * length_3d
     geo["throat.volume"] = 0.0
+    geo["throat.volume"][sameR] = geo["throat.area"][sameR]*spacing
     return geo
 
 
