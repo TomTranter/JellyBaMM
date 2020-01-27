@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import sys
 import time
 import os
+from scipy import io
 
 
 def plot_topology(net):
@@ -245,7 +246,7 @@ def setup_ecm_alg(project, spacing, R, cc_cond=3e7):
 #    phase = op.phases.GenericPhase(network=net)
 #    cc_cond = 3e7
     cc_unit_len = spacing
-    cc_unit_area = 25e-6 * 0.207
+    cc_unit_area = 10.4e-6 * 0.207
     econd = cc_cond * cc_unit_area / cc_unit_len
     phys["throat.electrical_conductance"] = econd
     res_Ts = net.throats("spm_resistor")
@@ -800,4 +801,21 @@ def collect_solutions(solutions):
     temp_t = np.asarray(temp_t)
     return temp_t, temp_y.T
 
-    
+
+def _format_key(key):
+    key = [word+'_' for word in key.split() if '[' not in word]
+    return ''.join(key)[:-1]
+
+
+def export(save_dir=None, export_dict=None, prefix=''):
+    if save_dir is None:
+        save_dir = os.getcwd()
+    else:
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+    for key in export_dict.keys():
+        data = export_dict[key]
+        save_path = os.path.join(save_dir, prefix+_format_key(key))
+        io.savemat(file_name=save_path,
+                   mdict={'data': data},
+                   long_field_names=True)

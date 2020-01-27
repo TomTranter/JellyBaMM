@@ -24,19 +24,20 @@ wrk = op.Workspace()
 wrk.clear()
 
 if __name__ == "__main__":
-    parallel = True
-    Nlayers = 19
-    hours = 1.0
+    parallel = False
+    Nlayers = 5
+    hours = 0.25
     layer_spacing = 195e-6
     dtheta = 10
     length_3d = 0.065
     pixel_size = 10.4e-6
-    Nsteps = np.int(hours*60)  # number of time steps
+#    Nsteps = np.int(hours*30)  # number of time steps
+    Nsteps = 40
     max_workers = int(os.cpu_count() / 2)
-    I_app = 1.0  # A
+    I_app = 0.5  # A
     V_over_max = 0.4
     model_name = 'blah'
-    opt = {'domain': 'tomo',
+    opt = {'domain': 'model',
            'Nlayers': Nlayers,
            'cp': 1399.0,
            'rho': 2055.0,
@@ -45,8 +46,8 @@ if __name__ == "__main__":
            'heat_transfer_coefficient': 5,
            'length_3d': length_3d,
            'I_app': I_app,
-           'cc_cond_neg': 1e7,
-           'cc_cond_pos': 1e7,
+           'cc_cond_neg': 1e5,
+           'cc_cond_pos': 1e5,
            'dtheta': dtheta,
            'spacing': 1e-5,
            'model_name': model_name}
@@ -71,6 +72,7 @@ if __name__ == "__main__":
     res_Ts = net.throats("spm_resistor")
     electrode_heights = net['throat.electrode_height'][res_Ts]
     typical_height = np.mean(electrode_heights)
+    electrode_heights.fill(typical_height)
     #############################################
     #    electrode_heights.fill(typical_height)
     #############################################    
@@ -108,15 +110,16 @@ if __name__ == "__main__":
     result_template = np.ones([Nsteps, Nspm])
     result_template.fill(np.nan)
     variables = {
+        "X-averaged positive particle surface concentration [mol.m-3]": result_template.copy(),
+        "X-averaged negative particle surface concentration [mol.m-3]": result_template.copy(),
         "Local ECM resistance [Ohm.m2]": result_template.copy(),
         "Local ECM voltage [V]": result_template.copy(),
         "Measured open circuit voltage [V]": result_template.copy(),
         "Terminal voltage [V]": result_template.copy(),
-        "X-averaged positive particle surface concentration [mol.m-3]": result_template.copy(),
-        "X-averaged negative particle surface concentration [mol.m-3]": result_template.copy(),
         "Change in measured open circuit voltage [V]": result_template.copy(),
         "X-averaged total heating [W.m-3]": result_template.copy(),
         "Time [h]": result_template.copy(),
+        "Current collector current density [A.m-2]": result_template.copy()
     }
     overpotentials = {
         "X-averaged reaction overpotential [V]": result_template.copy(),
@@ -156,7 +159,7 @@ if __name__ == "__main__":
     R = temp / I_typical
     V_ecm = temp
     print(R)
-    R_max = R * 1e6
+    R_max = R[0] * 1e6
     # Initialize with a guess for the terminal voltage
     alg = ecm.setup_ecm_alg(project, layer_spacing, R, opt['cc_cond_neg'])
     phys = project.physics()['phys_01']
@@ -174,7 +177,9 @@ if __name__ == "__main__":
     solutions = [
         spm_sol for i in range(Nspm)
     ]
-    
+    saved_sols = [
+        None for i in range(Nspm)
+    ]
     terminal_voltages = np.ones(Nsteps)*np.nan
     V_test = V_ecm
     tol = 1e-5
@@ -206,6 +211,7 @@ if __name__ == "__main__":
     print(project)
     T_non_dim_spm = np.ones(len(res_Ts))*T_non_dim
     max_temperatures = []
+    sorted_res_Ts = net['throat.radial_position'][res_Ts].argsort()
     while np.any(~dead) and outer_step < Nsteps and V_test < V_over_max:
         print("*" * 30)
         print("Outer", outer_step)
@@ -248,19 +254,25 @@ if __name__ == "__main__":
                 solutions = ecm.serial_spm(
                     bundle_inputs
                 )
+            for i in range(Nspm):
+                if saved_sols[i] is None:
+                    saved_sols[i] = solutions[i]
+                else:
+                    saved_sols[i].append(solutions[i])
             # Gather the results for this time step
             results_o = np.ones([Nspm, len(overpotential_keys)])*np.nan
-            for i in range(Nspm):
+            for i in sorted_res_Ts:
                 if solutions[i].termination != 'final time':
                     dead[i] = True
                 else:
                     temp_inputs = {"Current": I_local_pnm[i],
                                    'Electrode height [m]': electrode_heights[i]}
                     for key in variable_keys:
-                        temp = variables_eval[key].evaluate(
-                                solutions[i].t[-1], solutions[i].y[:, -1],
-                                u=temp_inputs
-                                )
+#                        temp = variables_eval[key].evaluate(
+#                                solutions[i].t[-1], solutions[i].y[:, -1],
+#                                u=temp_inputs
+#                                )
+                        temp = saved_sols[i][key](saved_sols[i].t[-1])
                         variables[key][outer_step, i] = temp
                     for j, key in enumerate(overpotential_keys):
                         temp = overpotentials_eval[key].evaluate(
@@ -310,17 +322,21 @@ if __name__ == "__main__":
     
     if parallel:
         ecm.shutdown_pool(pool)
-    fig, ax = plt.subplots()
-    for i in range(Nspm):
-        ax.plot(1/local_R[i, :outer_step])
-    plt.title("Sigma Local [S]")
-    fig, ax = plt.subplots()
-    for i in range(Nspm):
-        ax.plot(all_time_I_local[:outer_step, i]/electrode_heights[i])
-    plt.title("I Local [A.m-1]")
-    for key in variable_keys:
+
+    
+#    fig, ax = plt.subplots()
+#    for i in range(Nspm):
+#    ax.plot(1/local_R[sorted_res_Ts, :outer_step].T)
+    variables['ECM sigma local'] = 1/local_R[sorted_res_Ts, :outer_step].T
+#    plt.title("Sigma Local [S]")
+#    fig, ax = plt.subplots()
+#    for i in range(Nspm):
+    variables['ECM I Local'] = all_time_I_local[:outer_step, sorted_res_Ts]
+#    ax.plot(all_time_I_local[:outer_step, sorted_res_Ts]/electrode_heights[sorted_res_Ts])
+#    plt.title("I Local [A.m-1]")
+    for key in variables.keys():
         fig, ax = plt.subplots()
-        ax.plot(variables[key])
+        ax.plot(variables[key][:, sorted_res_Ts])
         plt.title(key)
     
     ecm.plot_phase_data(project, 'pore.temperature')
@@ -329,7 +345,9 @@ if __name__ == "__main__":
     ax.plot(max_temperatures)
     ax.set_xlabel('Discharge Time [h]')
     ax.set_ylabel('Maximum Temperature [K]')
-    
+
+    ecm.export('C:\Code\pybamm_pnm_couple\save_data', variables, 'var_')
+    ecm.export('C:\Code\pybamm_pnm_couple\save_data', overpotentials, 'eta_')
     print("*" * 30)
     print("ECM Sim time", time.time() - st)
     print("*" * 30)

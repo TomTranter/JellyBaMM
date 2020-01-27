@@ -10,7 +10,8 @@ from pybamm import EvaluatorPython as ep
 import openpnm.topotools as tt
 from copy import deepcopy
     
-def main():
+
+if __name__ == '__main__':
 
     plt.close('all')
     # set logging level
@@ -18,10 +19,10 @@ def main():
     
     # load (1+1D) SPMe model
     wrk = op.Workspace()
-    Nspm = 20
-    Nsteps = 60
+    Nspm = 8
+    Nsteps = 180
     parallel = True
-    e_height = 1.0
+    e_height = 2.0
     max_workers = 5
     #max_workers = int(os.cpu_count() / 2)
     options = {
@@ -97,7 +98,7 @@ def main():
     
     tau_sym = pybamm.standard_parameters_lithium_ion.tau_discharge
     tau = param.process_symbol(tau_sym).evaluate(0)
-    t_end = 600 / tau
+    t_end = 1800 / tau
     t_eval = np.linspace(0, t_end, Nsteps)
     
     
@@ -359,12 +360,12 @@ def main():
     ax.plot(temp)
     plt.title('ECM Resistance [Ohm]')
     
-    #for i, var in enumerate(variables):
-    #    temp = all_time_results[:, :, i]
-    #    fig, ax = plt.subplots()
-    #    for i in range(Nspm):
-    #        ax.plot(temp[:, i])
-    #    plt.title(var)
+    for i, var in enumerate(variables):
+        temp = all_time_results[:, :, i]
+        fig, ax = plt.subplots()
+        for i in range(Nspm):
+            ax.plot(temp[:, i])
+        plt.title(var)
     
     #V_test = V_ecm
     #re_I_local = np.zeros([Nsteps, Nspm])
@@ -388,5 +389,4 @@ def main():
     #        inner_step += 1
     #    re_I_local[i, :] = I_local_pnm
 
-if __name__ == '__main__':
-    main()
+#    main()
