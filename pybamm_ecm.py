@@ -25,19 +25,19 @@ wrk.clear()
 
 if __name__ == "__main__":
     parallel = False
-    Nlayers = 5
+    Nlayers = 19
     hours = 0.25
     layer_spacing = 195e-6
     dtheta = 10
     length_3d = 0.065
     pixel_size = 10.4e-6
-#    Nsteps = np.int(hours*30)  # number of time steps
-    Nsteps = 40
+    Nsteps = np.int(hours*30)  # number of time steps
+#    Nsteps = 40
     max_workers = int(os.cpu_count() / 2)
     I_app = 0.5  # A
     V_over_max = 0.4
     model_name = 'blah'
-    opt = {'domain': 'model',
+    opt = {'domain': 'tomo',
            'Nlayers': Nlayers,
            'cp': 1399.0,
            'rho': 2055.0,
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     print(project)
     T_non_dim_spm = np.ones(len(res_Ts))*T_non_dim
     max_temperatures = []
-    sorted_res_Ts = net['throat.radial_position'][res_Ts].argsort()
+    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
     while np.any(~dead) and outer_step < Nsteps and V_test < V_over_max:
         print("*" * 30)
         print("Outer", outer_step)
@@ -345,9 +345,11 @@ if __name__ == "__main__":
     ax.plot(max_temperatures)
     ax.set_xlabel('Discharge Time [h]')
     ax.set_ylabel('Maximum Temperature [K]')
-
-    ecm.export('C:\Code\pybamm_pnm_couple\save_data', variables, 'var_')
-    ecm.export('C:\Code\pybamm_pnm_couple\save_data', overpotentials, 'eta_')
+    lower_mask = net['throat.spm_resistor_neg_lower'][res_Ts[sorted_res_Ts]]
+    ecm.export('C:\Code\pybamm_pnm_save_data', variables, 'var_', lower_mask=lower_mask)
+    ecm.export('C:\Code\pybamm_pnm_save_data', overpotentials, 'eta_',lower_mask=lower_mask)
+#    tt.plot_connections(net, throats=res_Ts, c=net['throat.spm_resistor_order'][res_Ts])
+    project.export_data(phases=[phase], filename='ecm')
     print("*" * 30)
     print("ECM Sim time", time.time() - st)
     print("*" * 30)

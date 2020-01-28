@@ -209,6 +209,69 @@ def make_spiral_net(Nlayers=3, dtheta=10, spacing=190e-6,
     return prj, arc_edges
 
 
+def _get_spm_order(project):
+    net = project.network
+    # SPM resitor throats mixture of connecting cc's upper and lower
+    res_Ts = net.throats("spm_resistor")
+    # Connecting cc pores - should always be 1 neg and 1 pos
+    conns = net['throat.conns'][res_Ts]
+    neg_Ps = net['pore.neg_cc'] # label
+    pos_Ps = net['pore.pos_cc'] # label
+    # The pore numbers in current resistor order
+    neg_Ps_res_order = conns[neg_Ps[conns]]
+    pos_Ps_res_order = conns[pos_Ps[conns]]
+    # The pore order along cc
+    neg_order = net['pore.neg_cc_order']
+    pos_order = net['pore.pos_cc_order']
+    # CC order as found by indexing in the throat resistor order
+    neg_Ps_cc_res_order = neg_order[neg_Ps_res_order]
+    pos_Ps_cc_res_order = pos_order[pos_Ps_res_order]
+    # Is the order of the negative node lower than the positive node
+    # True for about half
+    neg_lower = neg_Ps_cc_res_order < pos_Ps_cc_res_order
+    print(np.sum(neg_lower))
+    res_order = np.zeros(len(res_Ts))
+    neg_filter = neg_Ps_cc_res_order[neg_lower]
+    pos_filter = pos_Ps_cc_res_order[~neg_lower]
+#    res_order[neg_Ps_cc_res_order[neg_filter.argsort()]] = np.arange(0, np.sum(neg_lower), 1)*-1
+#    res_order[~neg_lower[pos_filter.argsort()]] = np.arange(0, np.sum(~neg_lower), 1)
+    res_order[neg_lower] = neg_filter
+    res_order[~neg_lower] = pos_filter+neg_filter.max()
+    res_order = res_order - res_order.min()
+    res_order = res_order.astype(int)
+    net['throat.spm_resistor_neg_lower'] = False
+    net['throat.spm_resistor_neg_lower'][res_Ts[neg_lower]] = True
+    net['throat.spm_resistor_order'] = -1
+    net['throat.spm_resistor_order'][res_Ts] = res_order
+#    for i in range(len(res_Ts)):
+#    pos_mask = net.pores('pos_cc')
+    
+#    pos_order = pos_order[::-1]
+#    pos_mask = pos_mask[pos_order]
+#    neg_mask = net.pores('neg_cc')
+
+#    neg_mask = neg_mask[neg_order]
+    
+
+def _get_cc_order(project):
+    net = project.network
+    phase = project.phases()['phase_01']
+    for dom in ['neg', 'pos']:
+        phase['throat.entry_pressure'] = 1e6
+        phase['throat.entry_pressure'][net.throats(dom+'_cc')] = 1.0
+        ip = op.algorithms.InvasionPercolation(network=net)
+        ip.setup(phase=phase, entry_pressure='throat.entry_pressure')
+        ip.set_inlets(pores=net.pores(dom+'_tab'))
+        ip.run()
+        order = ip['pore.invasion_sequence'][net.pores(dom+'_cc')]
+#        order = net.pores(dom+'_cc')[order.argsort()]
+        if dom is 'pos':
+            order = order.max() - order
+        net['pore.'+dom+'_cc_order'] = -1
+        net['pore.'+dom+'_cc_order'][net.pores(dom+'_cc')] = order
+    _get_spm_order(project)
+
+
 def make_tomo_net(dtheta=10, spacing=190e-6, length_3d=0.065):
     wrk = op.Workspace()
     cwd = os.getcwd()
@@ -236,6 +299,7 @@ def make_tomo_net(dtheta=10, spacing=190e-6, length_3d=0.065):
     phys = op.physics.GenericPhysics(network=net,
                                      phase=phase,
                                      geometry=geo)
+    _get_cc_order(project)
     return project, arc_edges
 
 
@@ -410,6 +474,7 @@ def make_spm(I_typical, thermal=True, length_3d=0.065, pixel_size=10.4e-6):
             "Upper voltage cut-off [V]": 4.7,
         }
     )
+#    param.update({"Current": "[input]"}, check_already_exists=False)
     param.process_model(model)
     param.process_geometry(geometry)
     var = pybamm.standard_spatial_vars
@@ -614,9 +679,16 @@ def run_ecm(net, alg, V_terminal, plot=False):
     I_local_pnm = alg.rate(throats=net.throats("spm_resistor"), mode="single")
     R_local_pnm = V_local_pnm / I_local_pnm
     if plot:
+        pos_mask = net.pores('pos_cc')
+        pos_order = net['pore.pos_cc_order'][pos_mask].argsort()
+        pos_order = pos_order
+        pos_mask = pos_mask[pos_order]
+        neg_mask = net.pores('neg_cc')
+        neg_order = net['pore.neg_cc_order'][neg_mask].argsort()
+        neg_mask = neg_mask[neg_order]
         plt.figure()
-        plt.plot(alg["pore.potential"][net.pores('pos_cc')])
-        plt.plot(alg["pore.potential"][net.pores('neg_cc')])
+        plt.plot(alg["pore.potential"][pos_mask])
+        plt.plot(alg["pore.potential"][neg_mask])
 
     return (V_local_pnm, I_local_pnm, R_local_pnm)
 
@@ -807,15 +879,20 @@ def _format_key(key):
     return ''.join(key)[:-1]
 
 
-def export(save_dir=None, export_dict=None, prefix=''):
+def export(save_dir=None, export_dict=None, prefix='', lower_mask=None):
     if save_dir is None:
         save_dir = os.getcwd()
     else:
         if not os.path.isdir(save_dir):
             os.mkdir(save_dir)
     for key in export_dict.keys():
-        data = export_dict[key]
-        save_path = os.path.join(save_dir, prefix+_format_key(key))
-        io.savemat(file_name=save_path,
-                   mdict={'data': data},
-                   long_field_names=True)
+        for suffix in ['lower', 'upper']:
+            if suffix is 'lower':
+                mask = lower_mask
+            else:
+                mask = ~lower_mask
+            data = export_dict[key][:, mask]
+            save_path = os.path.join(save_dir, prefix+_format_key(key)+'_'+suffix)
+            io.savemat(file_name=save_path,
+                       mdict={'data': data},
+                       long_field_names=True)
