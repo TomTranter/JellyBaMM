@@ -15,6 +15,7 @@ import ecm
 import os
 import time
 import openpnm.topotools as tt
+from scipy.interpolate import griddata
 
 
 plt.close("all")
@@ -26,15 +27,15 @@ wrk.clear()
 if __name__ == "__main__":
     parallel = False
     Nlayers = 19
-    hours = 0.25
+    hours = 0.1
     layer_spacing = 195e-6
     dtheta = 10
     length_3d = 0.065
     pixel_size = 10.4e-6
-    Nsteps = np.int(hours*30)  # number of time steps
-#    Nsteps = 40
+    Nsteps = np.int(hours*60)  # number of time steps
+#    Nsteps = 6
     max_workers = int(os.cpu_count() / 2)
-    I_app = 0.5  # A
+    I_app = 1.0  # A
     V_over_max = 0.4
     model_name = 'blah'
     opt = {'domain': 'tomo',
@@ -46,8 +47,8 @@ if __name__ == "__main__":
            'heat_transfer_coefficient': 5,
            'length_3d': length_3d,
            'I_app': I_app,
-           'cc_cond_neg': 1e5,
-           'cc_cond_pos': 1e5,
+           'cc_cond_neg': 1e7,
+           'cc_cond_pos': 1e7,
            'dtheta': dtheta,
            'spacing': 1e-5,
            'model_name': model_name}
@@ -113,12 +114,12 @@ if __name__ == "__main__":
         "X-averaged positive particle surface concentration [mol.m-3]": result_template.copy(),
         "X-averaged negative particle surface concentration [mol.m-3]": result_template.copy(),
         "Local ECM resistance [Ohm.m2]": result_template.copy(),
-        "Local ECM voltage [V]": result_template.copy(),
-        "Measured open circuit voltage [V]": result_template.copy(),
+#        "Local ECM voltage [V]": result_template.copy(),
+#        "Measured open circuit voltage [V]": result_template.copy(),
         "Terminal voltage [V]": result_template.copy(),
-        "Change in measured open circuit voltage [V]": result_template.copy(),
+#        "Change in measured open circuit voltage [V]": result_template.copy(),
         "X-averaged total heating [W.m-3]": result_template.copy(),
-        "Time [h]": result_template.copy(),
+#        "Time [h]": result_template.copy(),
         "Current collector current density [A.m-2]": result_template.copy()
     }
     overpotentials = {
@@ -187,6 +188,7 @@ if __name__ == "__main__":
     st = time.time()
     
     all_time_I_local = np.zeros([Nsteps, Nspm])
+    all_time_temperature = np.zeros([Nsteps, Nspm])
 
     sym_tau = pybamm.standard_parameters_lithium_ion.tau_discharge
     tau = param.process_symbol(sym_tau)
@@ -261,7 +263,7 @@ if __name__ == "__main__":
                     saved_sols[i].append(solutions[i])
             # Gather the results for this time step
             results_o = np.ones([Nspm, len(overpotential_keys)])*np.nan
-            for i in sorted_res_Ts:
+            for si, i in enumerate(sorted_res_Ts):
                 if solutions[i].termination != 'final time':
                     dead[i] = True
                 else:
@@ -273,13 +275,13 @@ if __name__ == "__main__":
 #                                u=temp_inputs
 #                                )
                         temp = saved_sols[i][key](saved_sols[i].t[-1])
-                        variables[key][outer_step, i] = temp
+                        variables[key][outer_step, si] = temp
                     for j, key in enumerate(overpotential_keys):
                         temp = overpotentials_eval[key].evaluate(
                                 solutions[i].t[-1], solutions[i].y[:, -1],
                                 u=temp_inputs
                                 )
-                        overpotentials[key][outer_step, i] = temp
+                        overpotentials[key][outer_step, si] = temp
                         results_o[i, j] = temp
 
             # Apply Heat Sources
@@ -292,6 +294,7 @@ if __name__ == "__main__":
             ecm.run_step_transient(project, dim_time_step, opt['T0'])
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data('pore.temperature')[res_Ts]
+            all_time_temperature[outer_step, :] = spm_temperature
             max_temperatures.append(spm_temperature.max())
             T_non_dim_spm = (spm_temperature - T_ref) / Delta_T_spm
             # Get new equivalent resistances
@@ -332,12 +335,14 @@ if __name__ == "__main__":
 #    fig, ax = plt.subplots()
 #    for i in range(Nspm):
     variables['ECM I Local'] = all_time_I_local[:outer_step, sorted_res_Ts]
+    variables['ECM Temperature [K]'] = all_time_temperature[:outer_step, sorted_res_Ts]
 #    ax.plot(all_time_I_local[:outer_step, sorted_res_Ts]/electrode_heights[sorted_res_Ts])
 #    plt.title("I Local [A.m-1]")
     for key in variables.keys():
         fig, ax = plt.subplots()
         ax.plot(variables[key][:, sorted_res_Ts])
         plt.title(key)
+        plt.show()
     
     ecm.plot_phase_data(project, 'pore.temperature')
 
@@ -346,10 +351,24 @@ if __name__ == "__main__":
     ax.set_xlabel('Discharge Time [h]')
     ax.set_ylabel('Maximum Temperature [K]')
     lower_mask = net['throat.spm_resistor_neg_lower'][res_Ts[sorted_res_Ts]]
-    ecm.export('C:\Code\pybamm_pnm_save_data', variables, 'var_', lower_mask=lower_mask)
-    ecm.export('C:\Code\pybamm_pnm_save_data', overpotentials, 'eta_',lower_mask=lower_mask)
+    save_path = 'C:\Code\pybamm_pnm_save_data'
+    ecm.export(project, save_path, variables, 'var_', lower_mask=lower_mask, save_animation=False)
+    ecm.export(project, save_path, overpotentials, 'eta_',lower_mask=lower_mask, save_animation=False)
 #    tt.plot_connections(net, throats=res_Ts, c=net['throat.spm_resistor_order'][res_Ts])
     project.export_data(phases=[phase], filename='ecm')
+    data = variables['ECM Temperature [K]']
+    ecm.animate_data2(project, data, 'ECM_Temperature')
+#    res_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]], axis=1)
+#    x = res_Ts_coords[:, 0]
+#    y = res_Ts_coords[:, 1]
+#    res_Ts_coords_2d = np.vstack((x, y)).T
+#    values = variables['ECM I Local'][0, :]
+#    grid_x, grid_y = np.mgrid[x.min():x.max():2000j, y.min():y.max():2000j]
+#    grid_z0 = griddata(res_Ts_coords_2d, values, (grid_x, grid_y), method='cubic')
+#    plt.figure()
+#    plt.imshow(grid_z0)
+#    ecm.plot_2d(project, variables['ECM I Local'])
+    
     print("*" * 30)
     print("ECM Sim time", time.time() - st)
     print("*" * 30)

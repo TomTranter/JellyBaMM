@@ -12,12 +12,19 @@ from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
 from openpnm.models.physics.generic_source_term import linear
 import pybamm
-import matplotlib.pyplot as plt
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import sys
 import time
 import os
 from scipy import io
+#import matplotlib
+#matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from scipy.interpolate import griddata
+from scipy.interpolate import NearestNDInterpolator
+from matplotlib import gridspec
+import matplotlib.ticker as mtick
 
 
 def plot_topology(net):
@@ -879,7 +886,8 @@ def _format_key(key):
     return ''.join(key)[:-1]
 
 
-def export(save_dir=None, export_dict=None, prefix='', lower_mask=None):
+def export(project, save_dir=None, export_dict=None, prefix='', lower_mask=None,
+           save_animation=False):
     if save_dir is None:
         save_dir = os.getcwd()
     else:
@@ -896,3 +904,205 @@ def export(save_dir=None, export_dict=None, prefix='', lower_mask=None):
             io.savemat(file_name=save_path,
                        mdict={'data': data},
                        long_field_names=True)
+        if save_animation:
+            save_path = os.path.join(save_dir, prefix+_format_key(key))
+            animate_data2(project, export_dict[key], save_path)
+
+
+def _polar_transform(x, y):
+    r = np.sqrt(x**2 + y**2)
+    theta = np.arctan2(y, x)
+    return r, theta
+
+def _cartesian_transform(r, t):
+    x = r*np.cos(t)
+    y = r*np.sin(t)
+    return x, y
+
+def animate_data(project, data, filename):
+    cwd = os.getcwd()
+    input_dir = os.path.join(cwd, 'input')
+    im_soft = np.load(os.path.join(input_dir, 'im_soft.npz'))['arr_0']
+    x_len, y_len = im_soft.shape
+    net = project.network
+    res_Ts = net.throats('spm_resistor')
+    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
+    res_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]], axis=1)
+    x = res_Ts_coords[:, 0]
+    y = res_Ts_coords[:, 1]
+#    data = self.get_processed_variable(var)
+#    r, t = _polar_transform(x, y)
+    coords = np.vstack((x, y)).T
+    X, Y = np.meshgrid(x, y)
+    f = 1.05
+    grid_x, grid_y = np.mgrid[x.min()*f:x.max()*f:np.complex(x_len, 0),
+                              y.min()*f:y.max()*f:np.complex(y_len, 0)]
+    fig = plt.figure()
+    ims = []
+    print('Saving Animation', filename)
+    for t in range(data.shape[0]):
+        print('Processing time step', t)
+        t_data = data[t, :]
+        grid_z0 = griddata(coords, t_data, (grid_x, grid_y), method='nearest')
+        grid_z0[np.isnan(im_soft)] = np.nan
+        ims.append([plt.imshow(grid_z0, vmin= data.min(), vmax=data.max())])
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=5, metadata=dict(artist='Me'), bitrate=1800)
+
+    im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
+                                       blit=True)
+    if '.mp4' not in filename:
+        filename = filename + '.mp4'
+    im_ani.save(filename, writer=writer)
+#    ax = fig.gca(projection='3d')
+#    surf = ax.plot_surface(R, T, data, cmap=cm.viridis,
+#                           linewidth=0, antialiased=False)
+#    fig.colorbar(surf, shrink=0.5, aspect=5)
+#    ax.set_xlabel('$X$', rotation=150)
+#    ax.set_ylabel('$Y$')
+##    ax.set_zlabel(var, rotation=60)
+#    plt.show()
+
+def animate_init():
+    pass
+
+def animate_data2(project, data, filename):
+    cwd = os.getcwd()
+    input_dir = os.path.join(cwd, 'input')
+    im_soft = np.load(os.path.join(input_dir, 'im_soft.npz'))['arr_0']
+    x_len, y_len = im_soft.shape
+    net = project.network
+    res_Ts = net.throats('spm_resistor')
+    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
+    res_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]], axis=1)
+    x = res_Ts_coords[:, 0]
+    y = res_Ts_coords[:, 1]
+#    data = self.get_processed_variable(var)
+#    r, t = _polar_transform(x, y)
+    coords = np.vstack((x, y)).T
+    X, Y = np.meshgrid(x, y)
+    f = 1.05
+    grid_x, grid_y = np.mgrid[x.min()*f:x.max()*f:np.complex(x_len, 0),
+                              y.min()*f:y.max()*f:np.complex(y_len, 0)]
+    title = filename.split("\\")
+    if len(title) == 1:
+        title = title[0]
+    else:
+        title = title[-1]
+    fig = setup_subplots(title)
+#    ims = []
+#    print('Saving Animation', filename)
+#    for t in range(data.shape[0]):
+#        print('Processing time step', t)
+#        t_data = data[t, :]
+#        grid_z0 = griddata(coords, t_data, (grid_x, grid_y), method='nearest')
+#        grid_z0[np.isnan(im_soft)] = np.nan
+#        ims.append([plt.imshow(grid_z0, vmin= data.min(), vmax=data.max())])
+    interp_func = interpolate_timeseries(project, data)
+    func_ani = animation.FuncAnimation(fig=fig,
+                                       func=update_subplots,
+                                       frames=data.shape[0],
+                                       init_func=animate_init,
+                                       fargs=(fig, grid_x, grid_y, interp_func,
+                                              data, np.isnan(im_soft)))
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=2, metadata=dict(artist='Me'), bitrate=1800)
+
+#    im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
+#                                       blit=True)
+    if '.mp4' not in filename:
+        filename = filename + '.mp4'
+    func_ani.save(filename, writer=writer)
+
+
+def update_subplots(t, fig, grid_x, grid_y, interp_func, data, mask):
+    print('Updating animation frame', t)
+    ax1 = fig.axes[0]
+    ax1.clear()
+    ax1c = fig.axes[1]
+    ax1c.clear()
+    ax2 = fig.axes[2]
+    ax2.clear()
+    arr = interp_func(grid_x, grid_y, t)
+    arr[mask] = np.nan
+    vmin = np.min(data)
+    vmax = np.max(data)
+    im = ax1.imshow(arr, vmax=vmax, vmin=vmin)
+    ax1.set_axis_off()
+    plt.colorbar(im, cax=ax1c, format='%.2e')
+    ax2.plot(np.max(data, axis=1), 'k--')
+    ax2.plot(np.min(data, axis=1), 'k--')
+    ax2.plot(np.mean(data, axis=1), 'b--')
+    ax2.plot([t, t], [vmin, vmax], 'r')
+    vrange = vmax-vmin
+    ax2.set_ylim(vmin-vrange*0.05,
+                vmax+vrange*0.05)
+    ax2.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
+    if t == 0:
+        plt.tight_layout()
+    return fig
+
+
+def setup_subplots(title):
+    fig = plt.figure(figsize=(8, 8))
+    gs = gridspec.GridSpec(2, 2, height_ratios=[4, 1], width_ratios=[20, 1])
+    ax1 = plt.subplot(gs[0, 0])
+    ax1c = plt.subplot(gs[0, 1])
+    ax2 = plt.subplot(gs[1, :])
+    plt.title(title)
+#    im = ax1.imshow(interp_func(grid_x, grid_y, t))
+#    plt.colorbar(im, cax=ax1c)
+#    ax2.plot(np.max(data, axis=1), 'k--')
+#    ax2.plot(np.min(data, axis=1), 'k--')
+#    ax2.plot(np.mean(data, axis=1), 'b')
+#    ax2.plot([t, t], [np.min(data), np.max(data[t, :])], 'r--')
+#    plt.tight_layout()
+#    plt.show()
+    return fig
+
+
+def plot_subplots(grid_x, grid_y, interp_func, data, t):
+    fig = plt.figure(figsize=(8, 8))
+    gs = gridspec.GridSpec(2, 2, height_ratios=[4, 1], width_ratios=[8, 1])
+    ax1 = plt.subplot(gs[0, 0])
+    ax1c = plt.subplot(gs[0, 1])
+    ax2 = plt.subplot(gs[1, :])
+    im = ax1.imshow(interp_func(grid_x, grid_y, t))
+    plt.colorbar(im, cax=ax1c)
+    ax2.plot(np.max(data, axis=1), 'k--')
+    ax2.plot(np.min(data, axis=1), 'k--')
+    ax2.plot(np.mean(data, axis=1), 'b')
+    ax2.plot([t, t], [np.min(data), np.max(data[t, :])], 'r--')
+    plt.tight_layout()
+    plt.show()
+    return fig
+
+
+def interpolate_timeseries(project, data):
+    cwd = os.getcwd()
+    input_dir = os.path.join(cwd, 'input')
+    im_soft = np.load(os.path.join(input_dir, 'im_soft.npz'))['arr_0']
+    x_len, y_len = im_soft.shape
+    net = project.network
+    res_Ts = net.throats('spm_resistor')
+    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
+    res_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]], axis=1)
+    x = res_Ts_coords[:, 0]
+    y = res_Ts_coords[:, 1]
+    all_x = []
+    all_y = []
+    all_t = []
+    all_data = []
+    for t in range(data.shape[0]):
+        all_x = all_x + x.tolist()
+        all_y = all_y + y.tolist()
+        all_t = all_t + (np.ones(len(x))*t).tolist()
+        all_data = all_data + data[t, :].tolist()
+    all_x = np.asarray(all_x)
+    all_y = np.asarray(all_y)
+    all_t = np.asarray(all_t)
+    all_data = np.asarray(all_data)
+    points = np.vstack((all_x, all_y, all_t)).T
+    myInterpolator = NearestNDInterpolator(points, all_data)
+    return myInterpolator
+    

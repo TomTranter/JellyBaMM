@@ -190,6 +190,21 @@ for l, _ in itmfrq:
         plt.figure()
         plt.imshow(tmp2)
 
+# get inner section
+cc_all = cc_im > 0
+cc_all = binary_dilation(cc_all, disk(8))
+plt.figure()
+plt.imshow(cc_all)
+lab = label(1-cc_all)
+plt.figure()
+plt.imshow(lab)
+inner_lab = lab[mhs, mhs]
+mask_nan = lab == inner_lab
+im_soft[mask_nan] = 0
+plt.figure()
+im_soft[im_soft==0] = np.nan
+plt.imshow(im_soft)
+
 # Make spiderweb dividing lines
 (inds_x, inds_y) = np.indices(im_soft.shape)
 inds_x -= mhs
