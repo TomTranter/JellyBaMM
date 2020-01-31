@@ -235,19 +235,19 @@ def _get_spm_order(project):
     pos_Ps_cc_res_order = pos_order[pos_Ps_res_order]
     # Is the order of the negative node lower than the positive node
     # True for about half
-    neg_lower = neg_Ps_cc_res_order < pos_Ps_cc_res_order
-    print(np.sum(neg_lower))
+    same_order = neg_Ps_cc_res_order == pos_Ps_cc_res_order
+    print(np.sum(same_order))
     res_order = np.zeros(len(res_Ts))
-    neg_filter = neg_Ps_cc_res_order[neg_lower]
-    pos_filter = pos_Ps_cc_res_order[~neg_lower]
+    neg_filter = neg_Ps_cc_res_order[same_order]
+    pos_filter = pos_Ps_cc_res_order[~same_order]
 #    res_order[neg_Ps_cc_res_order[neg_filter.argsort()]] = np.arange(0, np.sum(neg_lower), 1)*-1
 #    res_order[~neg_lower[pos_filter.argsort()]] = np.arange(0, np.sum(~neg_lower), 1)
-    res_order[neg_lower] = neg_filter
-    res_order[~neg_lower] = pos_filter+neg_filter.max()
+    res_order[same_order] = neg_filter
+    res_order[~same_order] = pos_filter+neg_filter.max()
     res_order = res_order - res_order.min()
     res_order = res_order.astype(int)
-    net['throat.spm_resistor_neg_lower'] = False
-    net['throat.spm_resistor_neg_lower'][res_Ts[neg_lower]] = True
+    net['throat.spm_resistor_same_order'] = False
+    net['throat.spm_resistor_same_order'][res_Ts[same_order]] = True
     net['throat.spm_resistor_order'] = -1
     net['throat.spm_resistor_order'][res_Ts] = res_order
 #    for i in range(len(res_Ts)):
@@ -270,7 +270,10 @@ def _get_cc_order(project):
         ip.setup(phase=phase, entry_pressure='throat.entry_pressure')
         ip.set_inlets(pores=net.pores(dom+'_tab'))
         ip.run()
-        order = ip['pore.invasion_sequence'][net.pores(dom+'_cc')]
+        inv_seq = ip['pore.invasion_sequence'].copy()
+        inv_seq += 1
+        inv_seq[net.pores(dom+'_tab')] = 0
+        order = inv_seq[net.pores(dom+'_cc')]
 #        order = net.pores(dom+'_cc')[order.argsort()]
         if dom is 'pos':
             order = order.max() - order
@@ -283,7 +286,7 @@ def make_tomo_net(dtheta=10, spacing=190e-6, length_3d=0.065):
     wrk = op.Workspace()
     cwd = os.getcwd()
     input_dir = os.path.join(cwd, 'input')
-    wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top_m_cc_ecm.pnm'))
+    wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top_m_cc_new.pnm'))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
@@ -306,7 +309,7 @@ def make_tomo_net(dtheta=10, spacing=190e-6, length_3d=0.065):
     phys = op.physics.GenericPhysics(network=net,
                                      phase=phase,
                                      geometry=geo)
-    _get_cc_order(project)
+#    _get_cc_order(project)
     return project, arc_edges
 
 
@@ -687,12 +690,12 @@ def run_ecm(net, alg, V_terminal, plot=False):
     R_local_pnm = V_local_pnm / I_local_pnm
     if plot:
         pos_mask = net.pores('pos_cc')
-        pos_order = net['pore.pos_cc_order'][pos_mask].argsort()
-        pos_order = pos_order
-        pos_mask = pos_mask[pos_order]
+#        pos_order = net['pore.pos_cc_order'][pos_mask].argsort()
+#        pos_order = pos_order
+#        pos_mask = pos_mask[pos_order]
         neg_mask = net.pores('neg_cc')
-        neg_order = net['pore.neg_cc_order'][neg_mask].argsort()
-        neg_mask = neg_mask[neg_order]
+#        neg_order = net['pore.neg_cc_order'][neg_mask].argsort()
+#        neg_mask = neg_mask[neg_order]
         plt.figure()
         plt.plot(alg["pore.potential"][pos_mask])
         plt.plot(alg["pore.potential"][neg_mask])
@@ -909,12 +912,12 @@ def export(project, save_dir=None, export_dict=None, prefix='', lower_mask=None,
             animate_data2(project, export_dict[key], save_path)
 
 
-def _polar_transform(x, y):
+def polar_transform(x, y):
     r = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y, x)
     return r, theta
 
-def _cartesian_transform(r, t):
+def cartesian_transform(r, t):
     x = r*np.cos(t)
     y = r*np.sin(t)
     return x, y
@@ -1029,7 +1032,7 @@ def update_subplots(t, fig, grid_x, grid_y, interp_func, data, mask):
     vmax = np.max(data)
     im = ax1.imshow(arr, vmax=vmax, vmin=vmin)
     ax1.set_axis_off()
-    plt.colorbar(im, cax=ax1c, format='%.2e')
+    plt.colorbar(im, cax=ax1c, format='%.3e')
     ax2.plot(np.max(data, axis=1), 'k--')
     ax2.plot(np.min(data, axis=1), 'k--')
     ax2.plot(np.mean(data, axis=1), 'b--')
@@ -1037,7 +1040,7 @@ def update_subplots(t, fig, grid_x, grid_y, interp_func, data, mask):
     vrange = vmax-vmin
     ax2.set_ylim(vmin-vrange*0.05,
                 vmax+vrange*0.05)
-    ax2.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
+    ax2.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.3e'))
     if t == 0:
         plt.tight_layout()
     return fig
@@ -1106,3 +1109,71 @@ def interpolate_timeseries(project, data):
     myInterpolator = NearestNDInterpolator(points, all_data)
     return myInterpolator
     
+def reorder_pnm_numbering(network):
+
+    neg_cc_order = network['pore.neg_cc_order'].copy()
+    neg_cc_order[neg_cc_order == -1] = 9999999
+    pos_cc_order = network['pore.pos_cc_order'].copy()
+    pos_cc_order[pos_cc_order == -1] = 9999999
+    res_Ts = network.throats('spm_resistor')
+    conns = network['throat.conns'][res_Ts]
+    neg_Ps = network['pore.neg_cc'] # label
+    pos_Ps = network['pore.pos_cc'] # label
+    # The pore numbers in current resistor order
+    neg_Ps_res_order = conns[neg_Ps[conns]]
+    pos_Ps_res_order = conns[pos_Ps[conns]]
+    # The pore order along cc
+    neg_order = network['pore.neg_cc_order']
+    pos_order = network['pore.pos_cc_order']
+    # CC order as found by indexing in the throat resistor order
+    neg_Ps_cc_res_order = neg_order[neg_Ps_res_order]
+    pos_Ps_cc_res_order = pos_order[pos_Ps_res_order]
+    order_diff = neg_Ps_cc_res_order - pos_Ps_cc_res_order
+    diffs = np.unique(order_diff)
+    if len(diffs) != 2:
+        print('Orders not correct')
+    ordered_neg_Ps = network.pores()[neg_cc_order.argsort()][:network.num_pores('neg_cc')]
+    neg_coords = network['pore.coords'][ordered_neg_Ps]
+    neg_conns = np.vstack((np.arange(0, len(ordered_neg_Ps)-1, 1),
+                           np.arange(0, len(ordered_neg_Ps)-1, 1)+1)).T
+    ordered_pos_Ps = network.pores()[pos_cc_order.argsort()][:network.num_pores('pos_cc')]
+    pos_coords = network['pore.coords'][ordered_pos_Ps]
+    pos_conns = np.vstack((np.arange(0, len(ordered_pos_Ps)-1, 1),
+                           np.arange(0, len(ordered_pos_Ps)-1, 1)+1)).T
+    pos_conns += len(ordered_neg_Ps)
+    interconns_same = np.vstack((np.arange(0, len(ordered_neg_Ps), 1),
+                                 np.arange(0, len(ordered_pos_Ps), 1)+len(ordered_neg_Ps))).T
+    interconns_reverse = np.vstack((np.arange(0, len(ordered_neg_Ps), 1),
+                                    np.arange(0, len(ordered_pos_Ps), 1)+len(ordered_neg_Ps)-36)).T
+    num_free = 36
+    outer_pos = pos_coords[-num_free:]
+    x = outer_pos[:, 0]
+    y = outer_pos[:, 1]
+    r, t = polar_transform(x, y)
+    r_new = np.ones(num_free)*(r.max() + 5e-4)
+    new_x, new_y = cartesian_transform(r_new, t)
+    free_coords = outer_pos.copy()
+    free_coords[:, 0] = new_x
+    free_coords[:, 1] = new_y
+    start = len(ordered_neg_Ps) + len(ordered_pos_Ps) - num_free
+    free_conns = np.vstack((np.arange(0, num_free, 1),
+                            np.arange(0, num_free, 1)+num_free)).T
+    free_conns += start
+
+    new_coords = np.vstack((neg_coords, pos_coords, free_coords))
+    new_conns = np.vstack((neg_conns, pos_conns, interconns_same, interconns_reverse[36:], free_conns))
+    new_net = op.network.GenericNetwork(conns=new_conns, coords=new_coords)
+    
+#    free_conns = np.asarray([[i, i+1] for i in range(36)])
+#    net_free = op.network.GenericNetwork(coords=free_coords, conns=free_conns)
+#net_free['throat.trim'] = True
+#net_free['pore.free_stream'] = True
+#net_free['pore.radial_position'] = mhs
+#net_free['pore.theta'] = free_theta
+#    net_free = op.network.GenericNetwork(coords=free_coords, conns=free_conns)
+#    tt.stitch(new_net, net_free, P_network=new_net.pores()[-num_free:], P_donor=net_free.Ps, len_max=1e-3, method='nearest')
+    
+    fig=tt.plot_connections(new_net, throats=new_net.Ts)
+    fig=tt.plot_coordinates(new_net, pores=new_net.Ps[:-num_free], c='r', fig=fig)
+    fig=tt.plot_coordinates(new_net, pores=new_net.Ps[-num_free:], c='g', fig=fig)
+#    fig=tt.plot_coordinates(net_free, pores=net_free.Ps, c='pink', fig=fig)

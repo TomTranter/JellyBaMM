@@ -27,7 +27,7 @@ wrk.clear()
 if __name__ == "__main__":
     parallel = False
     Nlayers = 19
-    hours = 0.1
+    hours = 1.0
     layer_spacing = 195e-6
     dtheta = 10
     length_3d = 0.065
@@ -73,6 +73,8 @@ if __name__ == "__main__":
     res_Ts = net.throats("spm_resistor")
     electrode_heights = net['throat.electrode_height'][res_Ts]
     typical_height = np.mean(electrode_heights)
+    # This is dodgy - figure out later - might need to initiate each spm with different typical current!!!
+    # Would be better to specify current density
     electrode_heights.fill(typical_height)
     #############################################
     #    electrode_heights.fill(typical_height)
@@ -350,14 +352,14 @@ if __name__ == "__main__":
     ax.plot(max_temperatures)
     ax.set_xlabel('Discharge Time [h]')
     ax.set_ylabel('Maximum Temperature [K]')
-    lower_mask = net['throat.spm_resistor_neg_lower'][res_Ts[sorted_res_Ts]]
+    lower_mask = net['throat.spm_neg_inner'][res_Ts[sorted_res_Ts]]
     save_path = 'C:\Code\pybamm_pnm_save_data'
     ecm.export(project, save_path, variables, 'var_', lower_mask=lower_mask, save_animation=False)
     ecm.export(project, save_path, overpotentials, 'eta_',lower_mask=lower_mask, save_animation=False)
 #    tt.plot_connections(net, throats=res_Ts, c=net['throat.spm_resistor_order'][res_Ts])
-    project.export_data(phases=[phase], filename='ecm')
-    data = variables['ECM Temperature [K]']
-    ecm.animate_data2(project, data, 'ECM_Temperature')
+#    project.export_data(phases=[phase], filename='ecm')
+    data = variables['Current collector current density [A.m-2]']
+    ecm.animate_data2(project, data, 'Current collector current density long')
 #    res_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]], axis=1)
 #    x = res_Ts_coords[:, 0]
 #    y = res_Ts_coords[:, 1]
