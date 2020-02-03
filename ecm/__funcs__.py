@@ -459,9 +459,9 @@ def make_spm(I_typical, thermal=True, length_3d=0.065, pixel_size=10.4e-6):
                 "thermal": "x-lumped",
                 "external submodels": ["thermal"],
             }
-        model = pybamm.lithium_ion.SPM(model_options)
+        model = pybamm.lithium_ion.SPMe(model_options)
     else:
-        model = pybamm.lithium_ion.SPM()
+        model = pybamm.lithium_ion.SPMe()
     geometry = model.default_geometry
     param = model.default_parameter_values
     param.update(
@@ -471,15 +471,15 @@ def make_spm(I_typical, thermal=True, length_3d=0.065, pixel_size=10.4e-6):
             "Current": "[input]",
             "Electrode height [m]": "[input]",
             "Electrode width [m]": length_3d,
-            "Negative electrode thickness [m]": 6.0*pixel_size,
-            "Positive electrode thickness [m]": 9.0*pixel_size,
-            "Separator thickness [m]": 1.0*pixel_size,
-            "Positive current collector thickness [m]": 1.0*pixel_size,
-            "Negative current collector thickness [m]": 1.0*pixel_size,
-#            "Negative tab centre z-coordinate [m]": z_edges[0],
-#            "Positive tab centre z-coordinate [m]": z_edges[-1],
-            "Positive electrode conductivity [S.m-1]": 0.1,
+            "Negative electrode thickness [m]": 8.0*pixel_size,
+            "Positive electrode thickness [m]": 7.0*pixel_size,
+            "Separator thickness [m]": 2.0*pixel_size,
+            "Negative current collector thickness [m]": 2.0*pixel_size,
+            "Positive current collector thickness [m]": 2.0*pixel_size,
+            "Initial concentration in negative electrode [mol.m-3]": 24800,
+            "Initial concentration in positive electrode [mol.m-3]": 27300,
             "Negative electrode conductivity [S.m-1]": 0.1,
+            "Positive electrode conductivity [S.m-1]": 0.1,
             "Lower voltage cut-off [V]": 3.45,
             "Upper voltage cut-off [V]": 4.7,
         }
@@ -685,8 +685,8 @@ def run_ecm(net, alg, V_terminal, plot=False):
     alg.set_value_BC(net.pores("neg_tab"), values=adj)
     #    alg['pore.potential'] -= adj
     alg.run()
-    V_local_pnm = np.abs(alg["pore.potential"][P2] - alg["pore.potential"][P1])
-    I_local_pnm = alg.rate(throats=net.throats("spm_resistor"), mode="single")
+    V_local_pnm = alg["pore.potential"][P2] - alg["pore.potential"][P1]
+    I_local_pnm = alg.rate(throats=net.throats("spm_resistor"), mode="single")*np.sign(V_terminal.flatten())
     R_local_pnm = V_local_pnm / I_local_pnm
     if plot:
         pos_mask = net.pores('pos_cc')
@@ -1177,3 +1177,8 @@ def reorder_pnm_numbering(network):
     fig=tt.plot_coordinates(new_net, pores=new_net.Ps[:-num_free], c='r', fig=fig)
     fig=tt.plot_coordinates(new_net, pores=new_net.Ps[-num_free:], c='g', fig=fig)
 #    fig=tt.plot_coordinates(net_free, pores=net_free.Ps, c='pink', fig=fig)
+
+def check_vlim(sim, high, low):
+    l = sim.solution['Terminal voltage [V]'](sim.solution.t[-1]) > low
+    h = sim.solution['Terminal voltage [V]'](sim.solution.t[-1]) < high
+    return l * h

@@ -23,27 +23,29 @@ plt.close("all")
 pybamm.set_logging_level("INFO")
 wrk = op.Workspace()
 wrk.clear()
+save = False
+plot = False
+animate = True
 
 if __name__ == "__main__":
     parallel = False
     Nlayers = 19
-    hours = 1.0
+    hours = 0.05
     layer_spacing = 195e-6
     dtheta = 10
     length_3d = 0.065
     pixel_size = 10.4e-6
-    Nsteps = np.int(hours*60)  # number of time steps
-#    Nsteps = 6
     max_workers = int(os.cpu_count() / 2)
     I_app = 1.0  # A
-    V_over_max = 0.4
+    Nsteps = np.int(hours*60*I_app)  # number of time steps
+    V_over_max = 1.5
     model_name = 'blah'
     opt = {'domain': 'tomo',
            'Nlayers': Nlayers,
            'cp': 1399.0,
            'rho': 2055.0,
            'K0': 1.0,
-           'T0': 303,
+           'T0': 298.15,
            'heat_transfer_coefficient': 5,
            'length_3d': length_3d,
            'I_app': I_app,
@@ -113,15 +115,17 @@ if __name__ == "__main__":
     result_template = np.ones([Nsteps, Nspm])
     result_template.fill(np.nan)
     variables = {
+        "Negative electrode average extent of lithiation": result_template.copy(),
+        "Positive electrode average extent of lithiation": result_template.copy(),
+        "X-averaged negative particle surface concentration [mol.m-3]": result_template.copy(), 
         "X-averaged positive particle surface concentration [mol.m-3]": result_template.copy(),
-        "X-averaged negative particle surface concentration [mol.m-3]": result_template.copy(),
-        "Local ECM resistance [Ohm.m2]": result_template.copy(),
+#        "Local ECM resistance [Ohm.m2]": result_template.copy(),
 #        "Local ECM voltage [V]": result_template.copy(),
 #        "Measured open circuit voltage [V]": result_template.copy(),
         "Terminal voltage [V]": result_template.copy(),
 #        "Change in measured open circuit voltage [V]": result_template.copy(),
         "X-averaged total heating [W.m-3]": result_template.copy(),
-#        "Time [h]": result_template.copy(),
+        "Time [h]": result_template.copy(),
         "Current collector current density [A.m-2]": result_template.copy()
     }
     overpotentials = {
@@ -160,7 +164,7 @@ if __name__ == "__main__":
                     u=temp_inputs
                 )
     R = temp / I_typical
-    V_ecm = temp
+    V_ecm = temp.flatten()
     print(R)
     R_max = R[0] * 1e6
     # Initialize with a guess for the terminal voltage
@@ -237,6 +241,7 @@ if __name__ == "__main__":
             else:
                 V_test *= 1 + (diff * damping)
             inner_step += 1
+            print(I_app, inner_step, V_test, tot_I_local_pnm)
         if V_test < V_over_max:
             print("N inner", inner_step, 'time per step',
                   (time.time()-t_ecm_start)/inner_step)
@@ -272,10 +277,6 @@ if __name__ == "__main__":
                     temp_inputs = {"Current": I_local_pnm[i],
                                    'Electrode height [m]': electrode_heights[i]}
                     for key in variable_keys:
-#                        temp = variables_eval[key].evaluate(
-#                                solutions[i].t[-1], solutions[i].y[:, -1],
-#                                u=temp_inputs
-#                                )
                         temp = saved_sols[i][key](saved_sols[i].t[-1])
                         variables[key][outer_step, si] = temp
                     for j, key in enumerate(overpotential_keys):
@@ -328,48 +329,39 @@ if __name__ == "__main__":
     if parallel:
         ecm.shutdown_pool(pool)
 
+    if plot:
+        variables['ECM sigma local'] = 1/local_R[sorted_res_Ts, :outer_step].T
+        variables['ECM I Local'] = all_time_I_local[:outer_step, sorted_res_Ts]
+        variables['ECM Temperature [K]'] = all_time_temperature[:outer_step, sorted_res_Ts]
     
-#    fig, ax = plt.subplots()
-#    for i in range(Nspm):
-#    ax.plot(1/local_R[sorted_res_Ts, :outer_step].T)
-    variables['ECM sigma local'] = 1/local_R[sorted_res_Ts, :outer_step].T
-#    plt.title("Sigma Local [S]")
-#    fig, ax = plt.subplots()
-#    for i in range(Nspm):
-    variables['ECM I Local'] = all_time_I_local[:outer_step, sorted_res_Ts]
-    variables['ECM Temperature [K]'] = all_time_temperature[:outer_step, sorted_res_Ts]
-#    ax.plot(all_time_I_local[:outer_step, sorted_res_Ts]/electrode_heights[sorted_res_Ts])
-#    plt.title("I Local [A.m-1]")
-    for key in variables.keys():
+        if outer_step < Nsteps:
+            for key in variables.keys():
+                variables[key] = variables[key][:outer_step-1, :]
+    
+        for key in variables.keys():
+            fig, ax = plt.subplots()
+            ax.plot(variables[key][:, sorted_res_Ts])
+            plt.title(key)
+            plt.show()
+        
+        ecm.plot_phase_data(project, 'pore.temperature')
+    
         fig, ax = plt.subplots()
-        ax.plot(variables[key][:, sorted_res_Ts])
-        plt.title(key)
-        plt.show()
-    
-    ecm.plot_phase_data(project, 'pore.temperature')
+        ax.plot(max_temperatures)
+        ax.set_xlabel('Discharge Time [h]')
+        ax.set_ylabel('Maximum Temperature [K]')
+        lower_mask = net['throat.spm_neg_inner'][res_Ts[sorted_res_Ts]]
 
-    fig, ax = plt.subplots()
-    ax.plot(max_temperatures)
-    ax.set_xlabel('Discharge Time [h]')
-    ax.set_ylabel('Maximum Temperature [K]')
-    lower_mask = net['throat.spm_neg_inner'][res_Ts[sorted_res_Ts]]
-    save_path = 'C:\Code\pybamm_pnm_save_data'
-    ecm.export(project, save_path, variables, 'var_', lower_mask=lower_mask, save_animation=False)
-    ecm.export(project, save_path, overpotentials, 'eta_',lower_mask=lower_mask, save_animation=False)
-#    tt.plot_connections(net, throats=res_Ts, c=net['throat.spm_resistor_order'][res_Ts])
-#    project.export_data(phases=[phase], filename='ecm')
-    data = variables['Current collector current density [A.m-2]']
-    ecm.animate_data2(project, data, 'Current collector current density long')
-#    res_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]], axis=1)
-#    x = res_Ts_coords[:, 0]
-#    y = res_Ts_coords[:, 1]
-#    res_Ts_coords_2d = np.vstack((x, y)).T
-#    values = variables['ECM I Local'][0, :]
-#    grid_x, grid_y = np.mgrid[x.min():x.max():2000j, y.min():y.max():2000j]
-#    grid_z0 = griddata(res_Ts_coords_2d, values, (grid_x, grid_y), method='cubic')
-#    plt.figure()
-#    plt.imshow(grid_z0)
-#    ecm.plot_2d(project, variables['ECM I Local'])
+    if save:
+        save_path = 'C:\Code\pybamm_pnm_save_data_10A'
+        ecm.export(project, save_path, variables, 'var_', lower_mask=lower_mask, save_animation=animate)
+        ecm.export(project, save_path, overpotentials, 'eta_',lower_mask=lower_mask, save_animation=animate)
+        project.export_data(phases=[phase], filename='ecm')
+
+    if animate:
+        data = variables['Current collector current density [A.m-2]']
+        ecm.animate_data2(project, data, 'Current collector current density test')
+
     
     print("*" * 30)
     print("ECM Sim time", time.time() - st)

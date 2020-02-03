@@ -10,11 +10,11 @@ import matplotlib.pyplot as plt
 plt.close('all')
 pybamm.set_logging_level('INFO')
 
-I_typical = 2.0
+I_typical = 1.0
 e_height = 0.5
 
 def current_function(t):
-    return pybamm.InputParameter("Current")
+    return pybamm.InputParameter("Current Density")*pybamm.geometric_parameters.A_cc
 
 increment_current=True
 model = pybamm.lithium_ion.SPM()
@@ -24,14 +24,15 @@ param.update(
     {
         "Typical current [A]": I_typical,
         "Current function [A]": current_function,
-        "Current": "[input]",
+        "Current Density": "[input]",
+        "Electrode width [m]": 1.0, 
         "Electrode height [m]": "[input]",
     }
 )
 param.process_model(model)
 param.process_geometry(geometry)
 inputs= {
-        "Current": I_typical,
+        "Current Density": I_typical,
         "Electrode height [m]": e_height,
         }
 A_cc = param.process_symbol(pybamm.geometric_parameters.A_cc).evaluate(u=inputs)
@@ -54,13 +55,13 @@ currents = []
 for i, t in enumerate(dt):
     I_app = I_typical+(i/100)
     sim.step(dt=t, inputs=  {
-                            "Current": I_app,
+                            "Current Density": I_app,
                             "Electrode height [m]": e_height,
                             }, save=True)
     currents.append(I_app)
 plt.figure()
 plt.plot(currents)
-plt.plot(sim.solution["Current collector current density [A.m-2]"](sim.solution.t)*A_cc, 'r--')
+plt.plot(sim.solution["Current collector current density [A.m-2]"](sim.solution.t), 'r--')
 plt.figure()
 plt.plot(sim.solution["Measured open circuit voltage [V]"](sim.solution.t))
 plt.figure()
