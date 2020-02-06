@@ -362,18 +362,20 @@ net['throat.neg_cc'] = False
 net['throat.pos_cc'] = False
 
 net['throat.spm_resistor'] = True
-net['throat.spm_resistor_order'] = -1
-net['throat.spm_resistor_order'][net['throat.spm_resistor']] = np.arange(0, net.num_throats('spm_resistor'), 1).astype(int)
-net['throat.spm_neg_inner'] = False
-net['throat.spm_pos_inner'] = False
-net['throat.spm_neg_inner'][(net['throat.spm_resistor_order'] > -1) * (net['throat.spm_resistor_order'] < len(neg_inner_conns))]
-net['throat.spm_pos_inner'][(net['throat.spm_resistor_order'] > -1) * (net['throat.spm_resistor_order'] >= len(neg_inner_conns))]
 pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
 neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
 net['throat.neg_cc'][neg_cc_Ts] = True
 net['throat.pos_cc'][pos_cc_Ts] = True
 net['throat.spm_resistor'][neg_cc_Ts] = False
 net['throat.spm_resistor'][pos_cc_Ts] = False
+net['throat.spm_resistor_order'] = -1
+net['throat.spm_resistor_order'][net['throat.spm_resistor']] = np.arange(0, net.num_throats('spm_resistor'), 1).astype(int)
+net['throat.spm_neg_inner'] = False
+net['throat.spm_pos_inner'] = False
+net['throat.spm_neg_inner'][(net['throat.spm_resistor_order'] > -1) * (net['throat.spm_resistor_order'] < len(neg_inner_conns))] = True
+net['throat.spm_pos_inner'][(net['throat.spm_resistor_order'] > -1) * (net['throat.spm_resistor_order'] >= len(neg_inner_conns))] = True
+
+
 net['pore.neg_tab'] = False
 net['pore.pos_tab'] = False
 net['pore.neg_tab'][net.pores(['inner', 'neg_cc', 'terminal'], mode='and')] = True
@@ -395,8 +397,10 @@ free_conns = np.vstack((np.arange(0, num_free, 1),
 free_conns += start
 tt.extend(net, pore_coords=free_coords, throat_conns=free_conns, labels=['free_stream'])
 net['pore.arc_index'][net['pore.free_stream']] = net['pore.arc_index'][net['pore.outer']]
+
+
 fig = plt.figure()
-#plt.imshow(im_soft.T)
+plt.imshow(im_soft.T)
 fig=tt.plot_connections(net, throats=net.throats('neg_cc'), c='r', fig=fig)
 fig=tt.plot_connections(net, throats=net.throats('pos_cc'), c='b', fig=fig)
 fig=tt.plot_connections(net, throats=net.throats('spm_resistor'), c='k', fig=fig)
@@ -731,6 +735,8 @@ mean = mhs * pixel_size
 net['pore.coords'][:, 0] -= mean
 net['pore.coords'][:, 1] -= mean
 net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
+net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
+net['throat.arc_length'] = net['throat.radial_position']*np.deg2rad(dtheta)
 #net['pore.mirror'] = False
 #net['pore.mirror'][net.pores('*_m')] = True
 #net['throat.separator'] = False
