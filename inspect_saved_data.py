@@ -86,7 +86,7 @@ def format_label(i):
         var_axis_name = var_axis_name + ' [' + units[i]+']'
         return var_axis_name
 
-var2plot = 0
+var2plot = 3
 
 
 same_axis = True

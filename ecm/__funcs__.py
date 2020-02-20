@@ -514,7 +514,7 @@ def make_spm(I_typical, config):
         {
             "Typical current [A]": I_typical,
             "Current function [A]": current_function,
-            "Current": "[input]",
+#            "Current": "[input]",
             "Electrode height [m]": "[input]",
             "Electrode width [m]": length_3d,
             "Negative electrode thickness [m]": t_neg_electrode*pixel_size,
@@ -530,7 +530,7 @@ def make_spm(I_typical, config):
             "Upper voltage cut-off [V]": 4.7,
         }
     )
-#    param.update({"Current": "[input]"}, check_already_exists=False)
+    param.update({"Current": "[input]"}, check_already_exists=False)
     param.process_model(model)
     param.process_geometry(geometry)
     var = pybamm.standard_spatial_vars
@@ -612,19 +612,18 @@ def step_spm(zipped):
     else:
         external_variables = None
     if ~dead:
-#        print(inputs)
-#        print(built_model.timescale_eval)
-#        built_model.timescale_eval = built_model.timescale.evaluate(u=inputs)
+        built_model.timescale_eval = built_model.timescale.evaluate(u=inputs)
         if solution is not None:
-            solved_len = solver.y0.shape[0]
-            solver.y0 = solution.y[:solved_len, -1]
-            solver.t = solution.t[-1]
-#            pass
+#            solved_len = solver.y0.shape[0]
+#            solver.y0 = solution.y[:solved_len, -1]
+#            solver.t = solution.t[-1]
+            pass
 #            solved_len = built_model.y0.shape[0]
 #            built_model.y0 = solution.y[:solved_len, -1]
         solution = solver.step(
-#            old_solution=solution,
-            model=built_model, dt=dt, external_variables=external_variables, inputs=inputs
+            old_solution=solution,
+            model=built_model, dt=dt, external_variables=external_variables, inputs=inputs,
+            npts=2,
         )
 #        sim.step(dt=dt, inputs=inputs,
 #                 external_variables=external_variables,
@@ -1439,9 +1438,11 @@ def run_simulation(I_app, save_path, config):
     ###########################################################################
     result_template = np.ones([Nsteps, Nspm])
     result_template.fill(np.nan)
-    variables = {
+    lithiations = {
         "Negative electrode average extent of lithiation": result_template.copy(),
         "Positive electrode average extent of lithiation": result_template.copy(),
+    }
+    variables = {
         "X-averaged negative particle surface concentration [mol.m-3]": result_template.copy(), 
         "X-averaged positive particle surface concentration [mol.m-3]": result_template.copy(),
         "Terminal voltage [V]": result_template.copy(),
@@ -1451,10 +1452,10 @@ def run_simulation(I_app, save_path, config):
 #        "Local ECM resistance [Ohm]": result_template.copy(),
     }
     overpotentials = {
-        "X-averaged reaction overpotential [V]": result_template.copy(),
-        "X-averaged concentration overpotential [V]": result_template.copy(),
-        "X-averaged electrolyte ohmic losses [V]": result_template.copy(),
-        "X-averaged solid phase ohmic losses [V]": result_template.copy(),
+        "X-averaged battery reaction overpotential [V]": result_template.copy(),
+        "X-averaged battery concentration overpotential [V]": result_template.copy(),
+        "X-averaged battery electrolyte ohmic losses [V]": result_template.copy(),
+        "X-averaged battery solid phase ohmic losses [V]": result_template.copy(),
         "Change in measured open circuit voltage [V]": result_template.copy(),
     }
     param = spm_sim.parameter_values
@@ -1528,8 +1529,8 @@ def run_simulation(I_app, save_path, config):
     sym_tau = pybamm.standard_parameters_lithium_ion.tau_discharge
     tau = param.process_symbol(sym_tau)
     tau_typical = tau.evaluate(u=temp_inputs)
-    t_end = hours*3600 / tau_typical
-#    t_end = hours*3600
+#    t_end = hours*3600 / tau_typical
+    t_end = hours*3600
     dt = t_end / (Nsteps - 1)
     tau_spm = []
     for i in range(Nspm):
@@ -1537,9 +1538,9 @@ def run_simulation(I_app, save_path, config):
         tau_input = {'Electrode height [m]': electrode_heights[i]}
         tau_spm.append(temp_tau.evaluate(u=tau_input))
     tau_spm = np.asarray(tau_spm)
-    dim_time_step = convert_time(spm_sim.parameter_values,
-                                 dt, to='seconds', inputs=temp_inputs)
-#    dim_time_step = dt
+#    dim_time_step = convert_time(spm_sim.parameter_values,
+#                                 dt, to='seconds', inputs=temp_inputs)
+    dim_time_step = dt
     dead = np.zeros(Nspm, dtype=bool)
     if config.getboolean('RUN', 'parallel'):
         pool = setup_pool(max_workers, pool_type='Process')
@@ -1577,8 +1578,8 @@ def run_simulation(I_app, save_path, config):
             terminal_voltages[outer_step] = V_test
             # I_local_pnm should now sum to match the total applied current
             # Run the spms for the the new I_locals for the next time interval
-            time_steps = np.ones(Nspm) * dt * (tau_typical/tau_spm)
-#            time_steps = np.ones(Nspm) * dt
+#            time_steps = np.ones(Nspm) * dt * (tau_typical/tau_spm)
+            time_steps = np.ones(Nspm) * dt
             bundle_inputs = zip(spm_models, spm_solvers,
                                 solutions, I_local_pnm, electrode_heights,
                                 time_steps, T_non_dim_spm, dead)
@@ -1600,6 +1601,13 @@ def run_simulation(I_app, save_path, config):
                 else:
                     temp_inputs = {"Current": I_local_pnm[i],
                                    'Electrode height [m]': electrode_heights[i]}
+                    for key in lithiations.keys():
+                        if 'Negative' in key:
+                            x=0
+                        else:
+                            x=1
+                        temp = solutions[i][key](solutions[i].t[-1], x=x)
+                        lithiations[key][outer_step, si] = temp
                     for key in variable_keys:
                         temp = solutions[i][key](solutions[i].t[-1])
 #                        temp2 = spm_models[i].variables[key].evaluate(t=solutions[i].t[-1],
@@ -1665,7 +1673,7 @@ def run_simulation(I_app, save_path, config):
     variables['ECM I Local'] = all_time_I_local[:outer_step, sorted_res_Ts]
     variables['Temperature [K]'] = all_time_temperature[:outer_step, sorted_res_Ts]
 
-
+    variables.update(lithiations)
     if outer_step < Nsteps:
         for key in variables.keys():
             variables[key] = variables[key][:outer_step-1, :]
