@@ -4,7 +4,7 @@
 Created on Thu Dec  5 13:14:46 2019
 
 @author: tom
-"""
+.............."""
 
 import pybamm
 import openpnm as op
@@ -16,18 +16,18 @@ import sys
 
 plt.close("all")
 
-pybamm.set_logging_level("INFO")
+#pybamm.set_logging_level("INFO")
 wrk = op.Workspace()
 wrk.clear()
 
 
 if __name__ == "__main__":
-#    save_root = 'C:\\Code\\pybamm_pnm_case1b'
-    save_root = sys.argv[-1]
+    save_root = 'C:\\Code\\pybamm_pnm_case1'
+#    save_root = sys.argv[-1]
     print(save_root)
     config = configparser.ConfigParser()
     config.read(os.path.join(save_root, 'config.txt'))
-
+    print(ecm.lump_thermal_props(config))
     for sec in config.sections():
         print('='*67)
         print(sec)

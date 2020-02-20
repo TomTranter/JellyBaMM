@@ -159,7 +159,7 @@ if __name__ == '__main__':
     typical_height = spacing
     temperature = 303.0
     
-    spm_sim = ecm.make_spm(I_typical=I_typical, thermal=False)
+    spm_sim = ecm.make_spm(I_typical=I_typical)
     spm_models = [spm_sim.built_model for i in range(Nspm)]
     spm_solvers = [spm_sim.solver for i in range(Nspm)]
     #spm_params = [spm_sim.parameter_values for i in range(Nspm)]

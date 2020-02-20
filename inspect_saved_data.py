@@ -33,7 +33,8 @@ saved_vars = ['var_Current_collector_current_density',
               'var_X-averaged_positive_particle_surface_concentration',
               'var_X-averaged_total_heating',
               'var_ECM_I_Local',
-              'var_ECM_sigma_local',
+              'var_ECM_R_local',
+              'var_Local_ECM_resistance',
               'var_Time',
               'eta_Change_in_measured_open_circuit_voltage',
               'eta_X-averaged_concentration_overpotential',
@@ -51,7 +52,8 @@ units = ['A.m-2',
          'mol.m-3',
          'W.m-3',
          'A',
-         'S.m-1',
+         'Ohm',
+         'Ohm',
          'h',
          'V',
          'V',
@@ -84,20 +86,20 @@ def format_label(i):
         var_axis_name = var_axis_name + ' [' + units[i]+']'
         return var_axis_name
 
-var2plot = 1
+var2plot = 0
 
 
 same_axis = True
 
 if __name__ == "__main__":
-    save_parent = 'C:\\Code\\pybamm_pnm_case5'
+    save_parent = 'C:\\Code\\pybamm_pnm_case1'
 #    save_parent = sys.argv[-1]
     if same_axis:
-        fig, axes = plt.subplots(1, 2, figsize=(20, 15), sharex=True, sharey=True)
+        fig, axes = plt.subplots(1, 2, figsize=(10, 7.5), sharex=True, sharey=True)
     else:
-        fig, axes = plt.subplots(3, 2, figsize=(20, 15), sharex=True)
-    for ti, prefix in enumerate(['', 'b']):
-        for ax_int, sub in enumerate(['1A', '2A', '3A']):
+        fig, axes = plt.subplots(3, 2, figsize=(10, 7.5), sharex=True)
+    for ti, prefix in enumerate(['']):
+        for ax_int, sub in enumerate(['1A']):
             amps = float(sub[0])
             save_root = save_parent + prefix + '\\' + sub
             cwd = os.getcwd()

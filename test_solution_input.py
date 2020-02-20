@@ -17,7 +17,7 @@ def current_function(t):
     return pybamm.InputParameter("Current Density")*pybamm.geometric_parameters.A_cc
 
 increment_current=True
-model = pybamm.lithium_ion.SPM()
+model = pybamm.lithium_ion.DFN()
 geometry = model.default_geometry
 param = model.default_parameter_values
 param.update(

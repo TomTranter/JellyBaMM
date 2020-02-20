@@ -25,14 +25,14 @@ if __name__ == "__main__":
     save_parent = 'C:\\Code\\pybamm_pnm_case1'
 #    save_parent = sys.argv[-1]
     for prefix in ['']:#, 'b']:
-        for sub in ['5A']:#, '2A', '3A', '4A', '5A']:
+        for sub in ['1A']:#, '2A', '3A', '4A', '5A']:
             save_root = save_parent + prefix + '\\' + sub
-            file_lower = os.path.join(save_root, 'var_ECM_sigma_local_lower')
-            file_upper = os.path.join(save_root, 'var_ECM_sigma_local_upper')
+            file_lower = os.path.join(save_root, 'var_Current_collector_current_density_lower')
+            file_upper = os.path.join(save_root, 'var_Current_collector_current_density_upper')
             data_lower = io.loadmat(file_lower)['data']
             data_upper = io.loadmat(file_upper)['data']
-            file_lower = os.path.join(save_root, 'var_Negative_electrode_average_extent_of_lithiation_lower')
-            file_upper = os.path.join(save_root, 'var_Negative_electrode_average_extent_of_lithiation_upper')
+            file_lower = os.path.join(save_root, 'var_Temperature_lower')
+            file_upper = os.path.join(save_root, 'var_Temperature_upper')
             temp_lower = io.loadmat(file_lower)['data']
             temp_upper = io.loadmat(file_upper)['data']
             cwd = os.getcwd()
@@ -53,8 +53,8 @@ if __name__ == "__main__":
             weights = net['throat.arc_length'][net.throats('spm_resistor')]
             weights = None
             variables = {}
-            plot_left='Total overpotential [V]'
-            plot_right='Negative electrode average extent of lithiation [-]'
+            plot_left='Current Collector Current Density [A.m-2]'
+            plot_right='Temperature [K]'
             plot_time ='Time [h]'
             overpotentials = [
                               'eta_Change_in_measured_open_circuit_voltage',
@@ -69,10 +69,10 @@ if __name__ == "__main__":
                     variables['Total overpotential [V]'] = ecm.load_and_amalgamate(save_root, sv)
                 else:
                     variables['Total overpotential [V]'] += ecm.load_and_amalgamate(save_root, sv)
-
+            variables[plot_left] = data_amalg
             variables[plot_right] = temp_amalg
             variables[plot_time] = time_amalg
 
-            save_path = os.path.join(save_root, 'total overpotential and lithiation')
+            save_path = os.path.join(save_root, 'Current collector current density')
             ecm.animate_data3(project, variables, plot_left, plot_right, weights,
                               filename=save_path)

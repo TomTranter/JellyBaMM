@@ -25,17 +25,19 @@ from matplotlib import gridspec
 import matplotlib.ticker as mtick
 from pybamm import EvaluatorPython as ep
 from matplotlib import cm
+import json
 
 
 def plot_topology(net):
     inner = net["pore.inner"]
     outer = net["pore.outer"]
-    fig = pconn(net, throats=net.throats("throat.neg_cc"), c="blue")
+    fig = plt.figure(figsize=(15, 15))
+    fig = pconn(net, throats=net.throats("throat.neg_cc"), c="blue", fig=fig)
     fig = pconn(net, throats=net.throats("throat.pos_cc"), c="red", fig=fig)
     fig = pcoord(net, pores=net["pore.neg_cc"], c="blue", fig=fig)
     fig = pcoord(net, pores=net["pore.pos_cc"], c="red", fig=fig)
-    fig = pcoord(net, pores=net["pore.neg_tab"], c="blue", s=100, fig=fig)
-    fig = pcoord(net, pores=net["pore.pos_tab"], c="red", s=100, fig=fig)
+    fig = pcoord(net, pores=net["pore.neg_tab"], c="blue", s=300, fig=fig)
+    fig = pcoord(net, pores=net["pore.pos_tab"], c="red", s=300, fig=fig)
     fig = pcoord(net, pores=inner, c="pink", fig=fig)
     fig = pcoord(net, pores=outer, c="yellow", fig=fig)
     fig = pcoord(net, pores=net.pores('free_stream'), c="green", fig=fig)
@@ -299,6 +301,7 @@ def make_tomo_net(config):
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
+    update_tabs(project, config)
     arc_edges = [0.0]
     Ps = net.pores('neg_cc')
     Nunit = net['pore.cell_id'][Ps].max() + 1
@@ -404,7 +407,7 @@ def spm_1p1D(Nunit, Nsteps, I_app, total_length):
     # set logging level
     pybamm.set_logging_level("INFO")
 
-    # load (1+1D) SPMe model
+    # load (1+1D) model
     options = {
         "current collector": "potential pair",
         "dimensionality": 1,
@@ -490,14 +493,21 @@ def make_spm(I_typical, config):
     sub = 'PHYSICS'
     neg_elec_econd = config.getfloat(sub, 'neg_elec_econd')
     pos_elec_econd = config.getfloat(sub, 'pos_elec_econd')
+    model_cfg = config.get('RUN', 'model')
+    if model_cfg == 'SPM':
+        model_class = pybamm.lithium_ion.SPM
+    elif model_cfg == 'SPMe':
+        model_class = pybamm.lithium_ion.SPMe
+    else:
+        model_class = pybamm.lithium_ion.DFN
     if thermal:
         model_options = {
                 "thermal": "x-lumped",
                 "external submodels": ["thermal"],
             }
-        model = pybamm.lithium_ion.SPMe(model_options)
+        model = model_class(model_options)
     else:
-        model = pybamm.lithium_ion.SPMe()
+        model = model_class()
     geometry = model.default_geometry
     param = model.default_parameter_values
     param.update(
@@ -603,12 +613,18 @@ def step_spm(zipped):
         external_variables = None
     if ~dead:
 #        print(inputs)
+#        print(built_model.timescale_eval)
+#        built_model.timescale_eval = built_model.timescale.evaluate(u=inputs)
         if solution is not None:
             solved_len = solver.y0.shape[0]
             solver.y0 = solution.y[:solved_len, -1]
             solver.t = solution.t[-1]
+#            pass
+#            solved_len = built_model.y0.shape[0]
+#            built_model.y0 = solution.y[:solved_len, -1]
         solution = solver.step(
-            built_model, dt, external_variables=external_variables, inputs=inputs
+#            old_solution=solution,
+            model=built_model, dt=dt, external_variables=external_variables, inputs=inputs
         )
 #        sim.step(dt=dt, inputs=inputs,
 #                 external_variables=external_variables,
@@ -771,26 +787,34 @@ def setup_geometry(net, dtheta, spacing, length_3d):
 def setup_thermal(project, config):
     sub = 'PHYSICS'
     T0 = config.getfloat(sub, 'T0')
-    cp = config.getfloat(sub, 'cp')
-    rho = config.getfloat(sub, 'rho')
-    K0 = config.getfloat(sub, 'K0')
+#    cp = config.getfloat(sub, 'cp')
+#    rho = config.getfloat(sub, 'rho')
+#    K0 = config.getfloat(sub, 'K0')
+    lumpy_therm = lump_thermal_props(config)
+    cp = lumpy_therm['lump_Cp']
+    rho = lumpy_therm['lump_rho']
+
     heat_transfer_coefficient = config.getfloat(sub, 'heat_transfer_coefficient')
     net = project.network
     geo = project.geometries()['geo_01']
 #    phase = op.phases.GenericPhase(network=net)
     phase = project.phases()['phase_01']
     phys = project.physics()['phys_01']
-    alpha = K0 / (cp * rho)
+#    alpha = K0 / (cp * rho)
     hc = heat_transfer_coefficient / (cp * rho)
     # Set up Phase and Physics
     phase["pore.temperature"] = T0
-    phase["pore.thermal_conductivity"] = alpha  # [W/(m.K)]
+#    phase["pore.thermal_conductivity"] = alpha_spiral  # [W/(m.K)]
+    alpha_spiral = lumpy_therm['alpha_spiral']
+    alpha_radial = lumpy_therm['alpha_radial']
     phys["throat.conductance"] = (
-        alpha * geo["throat.area"] / geo["throat.length"]
+        1.0 * geo["throat.area"] / geo["throat.length"]
     )
-    # Reduce separator conductance
+    # Apply anisotropic heat conduction
     Ts = net.throats("spm_resistor")
-    phys["throat.conductance"][Ts] *= 0.1
+    phys["throat.conductance"][Ts] *= alpha_radial
+    Ts = net.throats("spm_resistor", mode='not')
+    phys["throat.conductance"][Ts] *= alpha_spiral
     # Free stream convective flux
     Ts = net.throats("free_stream")
     phys["throat.conductance"][Ts] = geo["throat.area"][Ts] * hc
@@ -1066,15 +1090,70 @@ def animate_data2(project=None, variables=None,
         filename = filename + '.mp4'
     func_ani.save(filename, writer=writer, dpi=300)
 
+
+def animate_data3(project=None, variables=None,
+                  plot_left='Current collector current density [A.m-2]',
+                  plot_right='Temperature [K]', weights=None, filename=None):
+    cwd = os.getcwd()
+    input_dir = os.path.join(cwd, 'input')
+    im_spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
+    title = filename.split("\\")
+    if len(title) == 1:
+        title = title[0]
+    else:
+        title = title[-1]
+    fig = setup_subplots(plot_left, plot_right)
+    mask = np.isnan(im_spm_map)
+    spm_map_copy = im_spm_map.copy()
+    spm_map_copy[np.isnan(spm_map_copy)] = -1
+    spm_map_copy = spm_map_copy.astype(int)
+    time_var = 'Time [h]'
+    time = variables[time_var]
+    func_ani = animation.FuncAnimation(fig=fig,
+                                       func=update_both_subplots2,
+                                       frames=time.shape[0],
+                                       init_func=animate_init,
+                                       fargs=(fig, project,
+                                              variables,
+                                              [plot_left, plot_right],
+                                              spm_map_copy, mask,
+                                              time_var, time, weights))
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=2, metadata=dict(artist='Tom Tranter'), bitrate=-1)
+
+#    im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
+#                                       blit=True)
+    if '.mp4' not in filename:
+        filename = filename + '.mp4'
+    func_ani.save(filename, writer=writer, dpi=300)
+
+
 def update_both_subplots(t, fig, grid_x, grid_y, project, variables,
                          interp_funcs, plot_vars, mask, time_var, time, weights):
     for i, side in enumerate(['left', 'right']):
         data = variables[plot_vars[i]]
 #        interp_func = interpolate_timeseries(project, data)
+        if i == 0:
+            global_range = False
+        else:
+            global_range = False
         fig  = update_subplots(t, fig, grid_x, grid_y, interp_funcs[i],
-                               data, plot_vars[i], mask, time_var, time, weights, side=side)
+                               data, plot_vars[i], mask, time_var, time, weights, side=side, global_range=global_range)
 
-def update_subplots(t, fig, grid_x, grid_y, interp_func, data, data_name, mask, time_var, time, weights, side='left'):
+
+def update_both_subplots2(t, fig, project, variables, plot_vars, spm_map, mask, time_var, time, weights):
+    for i, side in enumerate(['left', 'right']):
+        data = variables[plot_vars[i]]
+#        interp_func = interpolate_timeseries(project, data)
+        if i == 0:
+            global_range = False
+        else:
+            global_range = False
+        fig  = update_subplots(t, fig, data, plot_vars[i], spm_map, mask, time_var, time, weights, side=side, global_range=global_range)
+
+
+def update_subplots(t, fig, data, data_name,
+                    spm_map, mask, time_var, time, weights, side='left', global_range=True):
     print('Updating animation ' + side + ' frame', t)
     if side == 'left':
         ax1 = fig.axes[0]
@@ -1090,22 +1169,35 @@ def update_subplots(t, fig, grid_x, grid_y, interp_func, data, data_name, mask, 
     ax1.set(title=data_name)
     ax2.set(xlabel=time_var)
 #    ax3.set(ylabel=plot_right)
-    arr = interp_func(grid_x, grid_y, t)
+    
+    arr = np.ones_like(spm_map).astype(float)
+    t_data = data[t, :]
+    arr[~mask] = t_data[spm_map][~mask]
     arr[mask] = np.nan
-    vmin = np.min(data)
-    vmax = np.max(data)
+    gmin = np.min(data)
+    gmax = np.max(data)
+    if global_range:
+        vmin = np.min(data)
+        vmax = np.max(data)
+    else:
+        vmin = np.min(data[t, :])
+        vmax = np.max(data[t, :])
     im = ax1.imshow(arr, vmax=vmax, vmin=vmin, cmap=cm.inferno)
 #    ax1.set_axis_off()
-    cbar = plt.colorbar(im, cax=ax1c, orientation="horizontal", format='%.3e')
-    cbar.ax.locator_params(nbins=5)
+    cbar = plt.colorbar(im, cax=ax1c, orientation="horizontal", format='%.2f')
+    cbar.ax.locator_params(nbins=6)
     ax2.plot(time, np.max(data, axis=1), 'k--')
     ax2.plot(time, np.min(data, axis=1), 'k--')
-    ax2.plot(time, np.mean(data*weights, axis=1)/np.mean(weights), 'b--')
+    if weights is not None:
+        ax2.plot(time, np.mean(data*weights, axis=1)/np.mean(weights), 'b--')
+    else:
+        ax2.plot(time, np.mean(data, axis=1), 'b--')
     ax2.plot([time[t], time[t]], [vmin, vmax], 'r')
-    vrange = vmax-vmin
-    ax2.set_ylim(vmin-vrange*0.05,
-                vmax+vrange*0.05)
-    ax2.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.3e'))
+    grange = gmax-gmin
+#    if global_range:
+    ax2.set_ylim(gmin-grange*0.05,
+                gmax+grange*0.05)
+    ax2.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
     ax2.yaxis.tick_right()
     if t == 0:
         plt.tight_layout()
@@ -1139,6 +1231,47 @@ def plot_subplots(grid_x, grid_y, interp_func, data, t):
     plt.tight_layout()
     plt.show()
     return fig
+
+
+def interpolate_spm_number(project):
+    cwd = os.getcwd()
+    input_dir = os.path.join(cwd, 'input')
+    im_soft = np.load(os.path.join(input_dir, 'im_soft.npz'))['arr_0']
+    x_len, y_len = im_soft.shape
+    net = project.network
+    res_Ts = net.throats('spm_resistor')
+    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
+    res_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]], axis=1)
+    x = res_Ts_coords[:, 0]
+    y = res_Ts_coords[:, 1]
+    all_x = []
+    all_y = []
+    all_t = []
+    all_data = []
+    data = np.arange(0, len(res_Ts))[np.newaxis, :]
+    data = data.astype(float)
+    for t in range(data.shape[0]):
+        all_x = all_x + x.tolist()
+        all_y = all_y + y.tolist()
+        all_t = all_t + (np.ones(len(x))*t).tolist()
+        all_data = all_data + data[t, :].tolist()
+    all_x = np.asarray(all_x)
+    all_y = np.asarray(all_y)
+    all_t = np.asarray(all_t)
+    all_data = np.asarray(all_data)
+    points = np.vstack((all_x, all_y, all_t)).T
+    myInterpolator = NearestNDInterpolator(points, all_data)
+    f = 1.05
+    grid_x, grid_y = np.mgrid[x.min()*f:x.max()*f:np.complex(x_len, 0),
+                              y.min()*f:y.max()*f:np.complex(y_len, 0)]
+    arr = myInterpolator(grid_x, grid_y, 0)
+    arr[np.isnan(im_soft)] = np.nan
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    ax1.imshow(im_soft)
+    ax2.imshow(arr)
+    np.savez('im_spm_map', arr)
+#    return myInterpolator
+
 
 
 def interpolate_timeseries(project, data):
@@ -1259,11 +1392,11 @@ def run_simulation(I_app, save_path, config):
         project, arc_edges = make_spiral_net(config)
     else:
         project, arc_edges = make_tomo_net(config)
-        
     #    project, arc_edges = ecm.make_spiral_net(Nlayers, dtheta,
     #                                             spacing=layer_spacing,
     #                                             pos_tabs=[0], neg_tabs=[-1])
     net = project.network
+    plot_topology(net)
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
     # connections between cc layers
@@ -1314,7 +1447,8 @@ def run_simulation(I_app, save_path, config):
         "Terminal voltage [V]": result_template.copy(),
         "X-averaged total heating [W.m-3]": result_template.copy(),
         "Time [h]": result_template.copy(),
-        "Current collector current density [A.m-2]": result_template.copy()
+        "Current collector current density [A.m-2]": result_template.copy(),
+#        "Local ECM resistance [Ohm]": result_template.copy(),
     }
     overpotentials = {
         "X-averaged reaction overpotential [V]": result_template.copy(),
@@ -1329,36 +1463,38 @@ def run_simulation(I_app, save_path, config):
     Delta_T_spm = Delta_T * (typical_height/electrode_heights)
     T_ref = param.process_symbol(temp_parms.T_ref).evaluate()
     T0 = config.getfloat('PHYSICS', 'T0')
-    cp = config.getfloat('PHYSICS', 'cp')
-    rho = config.getfloat('PHYSICS', 'rho')
+    lumpy_therm = lump_thermal_props(config)
+    cp = lumpy_therm['lump_Cp']
+    rho = lumpy_therm['lump_rho']
     T_non_dim = (T0 - T_ref) / Delta_T
     spm_sol = step_spm((spm_sim.built_model,
                         spm_sim.solver,
                         None, I_typical, typical_height, 1e-6,
                         T_non_dim, False))
     # Create dictionaries of evaluator functions from the discretized model
-    variables_eval = {}
-    overpotentials_eval = {}
+#    variables_eval = {}
+#    overpotentials_eval = {}
     
-    for var in variables.keys():
-        variables_eval[var] = ep(spm_sim.built_model.variables[var])
-    for var in overpotentials.keys():
-        overpotentials_eval[var] = ep(spm_sim.built_model.variables[var])
+#    for var in variables.keys():
+#        variables_eval[var] = ep(spm_sim.built_model.variables[var])
+#    for var in overpotentials.keys():
+#        overpotentials_eval[var] = ep(spm_sim.built_model.variables[var])
     variable_keys = list(variables.keys())
     overpotential_keys = list(overpotentials.keys())
     
 #    temp = ecm.evaluate_python(variables_eval, spm_sol, inputs=temp_inputs)
     temp = 0.0
     for j, key in enumerate(overpotential_keys):
-        temp -= overpotentials_eval[key].evaluate(
-                    spm_sol.t[-1], spm_sol.y[:, -1],
-                    u=temp_inputs
-                )
+#        temp -= overpotentials_eval[key].evaluate(
+#                    spm_sol.t[-1], spm_sol.y[:, -1],
+#                    u=temp_inputs
+#                )
+        temp -= spm_sol[key](spm_sol.t[-1])
     R = temp / I_typical
     guess_R = R*typical_height/electrode_heights
     V_ecm = temp.flatten()
     print(R)
-    R_max = R[0] * 1e6
+    R_max = R * 1e6
     # Initialize with a guess for the terminal voltage
     alg = setup_ecm_alg(project, config, guess_R)
     phys = project.physics()['phys_01']
@@ -1370,15 +1506,16 @@ def run_simulation(I_app, save_path, config):
     print("R local pnm", R_local_pnm, "[Ohm]")
 
     spm_models = [spm_sim.built_model for i in range(Nspm)]
-    spm_solvers = [spm_sim.solver for i in range(Nspm)]
+#    spm_solvers = [spm_sim.solver for i in range(Nspm)]
+    spm_solvers = [pybamm.CasadiSolver() for i in range(Nspm)]
     spm_params = [spm_sim.parameter_values for i in range(Nspm)]
 
-    solutions = [
-        spm_sol for i in range(Nspm)
-    ]
-#    saved_sols = [
-#        None for i in range(Nspm)
+#    solutions = [
+#        spm_sol for i in range(Nspm)
 #    ]
+    solutions = [
+        None for i in range(Nspm)
+    ]
     terminal_voltages = np.ones(Nsteps)*np.nan
     V_test = V_ecm
     tol = 1e-5
@@ -1392,6 +1529,7 @@ def run_simulation(I_app, save_path, config):
     tau = param.process_symbol(sym_tau)
     tau_typical = tau.evaluate(u=temp_inputs)
     t_end = hours*3600 / tau_typical
+#    t_end = hours*3600
     dt = t_end / (Nsteps - 1)
     tau_spm = []
     for i in range(Nspm):
@@ -1401,6 +1539,7 @@ def run_simulation(I_app, save_path, config):
     tau_spm = np.asarray(tau_spm)
     dim_time_step = convert_time(spm_sim.parameter_values,
                                  dt, to='seconds', inputs=temp_inputs)
+#    dim_time_step = dt
     dead = np.zeros(Nspm, dtype=bool)
     if config.getboolean('RUN', 'parallel'):
         pool = setup_pool(max_workers, pool_type='Process')
@@ -1439,6 +1578,7 @@ def run_simulation(I_app, save_path, config):
             # I_local_pnm should now sum to match the total applied current
             # Run the spms for the the new I_locals for the next time interval
             time_steps = np.ones(Nspm) * dt * (tau_typical/tau_spm)
+#            time_steps = np.ones(Nspm) * dt
             bundle_inputs = zip(spm_models, spm_solvers,
                                 solutions, I_local_pnm, electrode_heights,
                                 time_steps, T_non_dim_spm, dead)
@@ -1462,12 +1602,18 @@ def run_simulation(I_app, save_path, config):
                                    'Electrode height [m]': electrode_heights[i]}
                     for key in variable_keys:
                         temp = solutions[i][key](solutions[i].t[-1])
+#                        temp2 = spm_models[i].variables[key].evaluate(t=solutions[i].t[-1],
+#                                                                      y=solutions[i].y[:, -1],
+#                                                                      u={"X-averaged cell temperature": T_non_dim_spm[i],
+#                                                                         "Current": I_local_pnm[i],
+#                                                                         'Electrode height [m]': electrode_heights[i]})
                         variables[key][outer_step, si] = temp
                     for j, key in enumerate(overpotential_keys):
-                        temp = overpotentials_eval[key].evaluate(
-                                solutions[i].t[-1], solutions[i].y[:, -1],
-                                u=temp_inputs
-                                )
+                        temp = solutions[i][key](solutions[i].t[-1])
+#                        temp = overpotentials_eval[key].evaluate(
+#                                solutions[i].t[-1], solutions[i].y[:, -1],
+#                                u=temp_inputs
+#                                )
                         overpotentials[key][outer_step, si] = temp
                         results_o[i, j] = temp
 
@@ -1486,6 +1632,7 @@ def run_simulation(I_app, save_path, config):
             T_non_dim_spm = (spm_temperature - T_ref) / Delta_T_spm
             # Get new equivalent resistances
             temp_R = calc_R_new(results_o, I_local_pnm)
+#            temp_R = variables["Local ECM resistance [Ohm]"][outer_step, :]
             # Update ecm conductivities for the spm_resistor throats
             sig = 1 / temp_R
             if np.any(temp_R > R_max):
@@ -1514,7 +1661,7 @@ def run_simulation(I_app, save_path, config):
     if config.getboolean('RUN', 'parallel'):
         shutdown_pool(pool)
 
-    variables['ECM sigma local'] = 1/local_R[sorted_res_Ts, :outer_step].T
+    variables['ECM R local'] = local_R[sorted_res_Ts, :outer_step].T
     variables['ECM I Local'] = all_time_I_local[:outer_step, sorted_res_Ts]
     variables['Temperature [K]'] = all_time_temperature[:outer_step, sorted_res_Ts]
 
@@ -1550,10 +1697,73 @@ def run_simulation(I_app, save_path, config):
         project.export_data(phases=[phase], filename='ecm')
 
     if config.getboolean('OUTPUT', 'animate'):
-        ani_path = os.path.join(save_path, 'Current collector current density')
-        animate_data2(project, variables, weights=electrode_heights, filename=ani_path)
+#        ani_path = os.path.join(save_path, 'Current collector current density')
+#        animate_data2(project, variables, weights=electrode_heights, filename=ani_path)
+        pass
 
     print("*" * 30)
     print("ECM Sim time", time.time() - st)
     print("*" * 30)
     return project, variables, solutions
+
+def update_tabs(project, config):
+    net = project.network
+    sec = 'GEOMETRY'
+    pos_Ps = net.pores('pos_cc')
+    neg_Ps = net.pores('neg_cc')
+    pos_ints = json.loads(config.get(sec, 'pos_tabs'))
+    neg_ints = json.loads(config.get(sec, 'neg_tabs'))
+    pos_tabs = pos_Ps[pos_ints]
+    neg_tabs = neg_Ps[neg_ints]
+    net['pore.pos_tab'] = False
+    net['pore.neg_tab'] = False
+    net['pore.pos_tab'][pos_tabs] = True
+    net['pore.neg_tab'][neg_tabs] = True
+
+
+def load_and_amalgamate(save_root, var_name):
+    file_lower = os.path.join(save_root, var_name+'_lower')
+    file_upper = os.path.join(save_root, var_name+'_upper')
+    data_lower = io.loadmat(file_lower)['data']
+    data_upper = io.loadmat(file_upper)['data']
+    data_amalg = np.hstack((data_lower, data_upper))
+    return data_amalg
+
+def lump_thermal_props(config):
+    sec = 'THICKNESS'
+    pixel_size = config.getfloat(sec, 'pixel_size')
+    lens = np.array([config.getfloat(sec, 'neg_electrode'),
+                     config.getfloat(sec, 'pos_electrode'),
+                     config.getfloat(sec, 'neg_cc')/2,
+                     config.getfloat(sec, 'pos_cc')/2,
+                     config.getfloat(sec, 'sep')])
+    lens *= pixel_size
+    sec = 'MATERIAL'
+    rhos = np.array([config.getfloat(sec, 'neg_rho'),
+                     config.getfloat(sec, 'pos_rho'),
+                     config.getfloat(sec, 'neg_cc_rho'),
+                     config.getfloat(sec, 'pos_cc_rho'),
+                     config.getfloat(sec, 'sep_rho')])
+    rho_lump = np.sum(lens*rhos)/np.sum(lens)
+    Cps = np.array([config.getfloat(sec, 'neg_cp'),
+                    config.getfloat(sec, 'pos_cp'),
+                    config.getfloat(sec, 'neg_cc_cp'),
+                    config.getfloat(sec, 'pos_cc_cp'),
+                    config.getfloat(sec, 'sep_cp')])
+    Cp_lump = np.sum(lens*rhos*Cps)/np.sum(lens*rhos)
+    ks = np.array([config.getfloat(sec, 'neg_k'),
+                   config.getfloat(sec, 'pos_k'),
+                   config.getfloat(sec, 'neg_cc_k'),
+                   config.getfloat(sec, 'pos_cc_k'),
+                   config.getfloat(sec, 'sep_k')])
+    alphas = ks / (rhos * Cps)
+    res = 1 / alphas
+    print(res)
+    R_radial = np.sum(lens*res)/np.sum(lens)
+    R_spiral = np.sum(lens)/np.sum(lens/res)
+    out = {'alpha_radial': 1/R_radial,
+           'alpha_spiral': 1/R_spiral,
+           'lump_rho': rho_lump,
+           'lump_Cp': Cp_lump}
+    return out
+    
