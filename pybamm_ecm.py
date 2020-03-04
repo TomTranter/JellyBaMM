@@ -22,8 +22,9 @@ wrk.clear()
 
 
 if __name__ == "__main__":
-    save_root = 'C:\\Code\\pybamm_pnm_case1'
-#    save_root = sys.argv[-1]
+#    save_root = 'C:\\Code\\pybamm_pnm_case4_Chen2020c'
+    save_root = sys.argv[-1]
+#    save_root = os.getcwd()
     print(save_root)
     config = configparser.ConfigParser()
     config.read(os.path.join(save_root, 'config.txt'))

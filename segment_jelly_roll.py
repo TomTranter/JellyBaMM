@@ -398,12 +398,38 @@ free_conns += start
 tt.extend(net, pore_coords=free_coords, throat_conns=free_conns, labels=['free_stream'])
 net['pore.arc_index'][net['pore.free_stream']] = net['pore.arc_index'][net['pore.outer']]
 
+def plot_resistors(net, Ts, c, fig):
+    conns = net['throat.conns'][Ts]
+    coords = net['pore.coords']
+    v = coords[conns[:, 1]] - coords[conns[:, 0]]
+    z = np.array([0, 0, 1])
+    perp = np.cross(v, z)
+    v_lens = np.linalg.norm(v, axis=1)
+    v_unit = v / np.vstack((v_lens, v_lens, v_lens)).T
+    v_unit_perp = perp / np.vstack((v_lens, v_lens, v_lens)).T
+    zigzag = np.array([0, 0, 0, 0, 0, 0, 1, -1, -1, 1, 1, -1, -1, 1, 1, -1, -1, 1, 0, 0, 0, 0, 0, 0])
+    segs = len(zigzag)
+    p_start = coords[conns[:, 0]]
+    x_all = [p_start[:, 0]]
+    y_all = [p_start[:, 1]]
+    for i in range(segs):
+        p_end = p_start + v*(1/segs) + perp*(2/segs)*zigzag[i]
+        x_all.append(p_end[:, 0])
+        y_all.append(p_end[:, 1])
+#        for t in range(len(p_start)):
+#            plt.plot([p_start[t, 0], p_end[t, 0]], [p_start[t, 1], p_end[t, 1]], c=c)
+        p_start = p_end
+    x_all = np.asarray(x_all)
+    y_all = np.asarray(y_all)
+#    print(x_all.shape)
+    plt.plot(x_all, y_all, c=c)
+    return fig
 
-fig = plt.figure()
-plt.imshow(im_soft.T)
-fig=tt.plot_connections(net, throats=net.throats('neg_cc'), c='r', fig=fig)
-fig=tt.plot_connections(net, throats=net.throats('pos_cc'), c='b', fig=fig)
-fig=tt.plot_connections(net, throats=net.throats('spm_resistor'), c='k', fig=fig)
+fig, ax = plt.subplots(figsize=(12, 12))
+
+fig=plot_resistors(net, net.throats('neg_cc'), c='r', fig=fig)
+fig=plot_resistors(net, net.throats('pos_cc'), c='b', fig=fig)
+fig=plot_resistors(net, net.throats('spm_resistor'), c='k', fig=fig)
 fig=tt.plot_coordinates(net, pores=net.pores('neg_cc'), c='r', fig=fig)
 fig=tt.plot_coordinates(net, pores=net.pores('pos_cc'), c='b', fig=fig)
 fig=tt.plot_coordinates(net, pores=net.pores('surface'), c='k', fig=fig)
@@ -412,11 +438,15 @@ fig=tt.plot_coordinates(net, pores=net.pores('inner'), c='purple', fig=fig)
 fig=tt.plot_coordinates(net, pores=net.pores('terminal'), c='y', s=100, fig=fig)
 fig=tt.plot_coordinates(net, pores=net.pores('free_stream'), c='g', fig=fig)
 fig=tt.plot_connections(net, throats=net.throats('free_stream'), c='g', fig=fig)
-
-ecm.plot_topology(net)
-
-fig=tt.plot_connections(net, throats=net.Ts)
-fig=tt.plot_coordinates(net, pores=net.Ps, c=net['pore.arc_index'], fig=fig)
+plt.savefig('tomo_res_net', dpi=600)
+plt.imshow(im_soft.T)
+ax.set_xlim(950, 1150)
+ax.set_ylim(950, 1150)
+plt.savefig('tomo_res_net_zoom', dpi=600)
+#ecm.plot_topology(net)
+#
+#fig=tt.plot_connections(net, throats=net.Ts)
+#fig=tt.plot_coordinates(net, pores=net.Ps, c=net['pore.arc_index'], fig=fig)
 ###############################################################################
 if 1 == 2:
     # Perform triangulation of coordinates to define connections
@@ -727,24 +757,26 @@ if make_new_layers:
             new_layer = np.asarray(new_layer)
             new_conns = np.vstack((new_layer, new_layer-len(new_layer))).T
             tt.extend(net, throat_conns=new_conns, labels='interconnection')
+save_files = False
+if save_files:
+    #plot_domain(net)
+    prj = wrk['sim_01']
+    net['pore.coords'] *= pixel_size
+    mean = mhs * pixel_size
+    net['pore.coords'][:, 0] -= mean
+    net['pore.coords'][:, 1] -= mean
+    net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
+    net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
+    net['throat.arc_length'] = net['throat.radial_position']*np.deg2rad(dtheta)
+    #net['pore.mirror'] = False
+    #net['pore.mirror'][net.pores('*_m')] = True
+    #net['throat.separator'] = False
+    #Ts = net.throats(["layer_7", "layer_7_m", "layer_8", "layer_8_m"])
+    #net['throat.separator'][Ts] = True
     
-#plot_domain(net)
-prj = wrk['sim_01']
-net['pore.coords'] *= pixel_size
-mean = mhs * pixel_size
-net['pore.coords'][:, 0] -= mean
-net['pore.coords'][:, 1] -= mean
-net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
-net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
-net['throat.arc_length'] = net['throat.radial_position']*np.deg2rad(dtheta)
-#net['pore.mirror'] = False
-#net['pore.mirror'][net.pores('*_m')] = True
-#net['throat.separator'] = False
-#Ts = net.throats(["layer_7", "layer_7_m", "layer_8", "layer_8_m"])
-#net['throat.separator'][Ts] = True
-prj.export_data(filename='tomography_m_new')
-wrk.save_project(project=prj, filename=os.path.join(path, 'MJ141-mid-top_m_cc_new'))
-#tt.plot_coordinates(net, net.Ps, c=net['pore.cell_id'])
-
-#show_Ps = np.in1d(net['pore.cell_id'], np.arange(0, 650, 10))
-#tt.plot_coordinates(net, net.Ps[show_Ps], c=net['pore.cell_id'][show_Ps])
+    #tt.plot_coordinates(net, net.Ps, c=net['pore.cell_id'])
+    
+    #show_Ps = np.in1d(net['pore.cell_id'], np.arange(0, 650, 10))
+    #tt.plot_coordinates(net, net.Ps[show_Ps], c=net['pore.cell_id'][show_Ps])
+    prj.export_data(filename='tomography_m_new')
+    wrk.save_project(project=prj, filename=os.path.join(path, 'MJ141-mid-top_m_cc_new'))

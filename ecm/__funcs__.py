@@ -26,6 +26,7 @@ import matplotlib.ticker as mtick
 from pybamm import EvaluatorPython as ep
 from matplotlib import cm
 import json
+import math
 
 
 def plot_topology(net):
@@ -80,7 +81,7 @@ def spiral(r, dr, ntheta=36, n=10):
 
 def make_spiral_net(config):
     sub = 'GEOMETRY'
-    Nlayers = config.get(sub, 'Nlayers')
+    Nlayers = config.getint(sub, 'Nlayers')
     dtheta = config.getint(sub, 'dtheta')
     spacing = config.getfloat(sub, 'layer_spacing')
     pos_tabs = config.getint(sub, 'pos_tabs')
@@ -125,6 +126,7 @@ def make_spiral_net(config):
         if i == 0:
             arc_edges = np.cumsum(np.deg2rad(dtheta) * rad)
             arc_edges -= arc_edges[0]
+
     # Make interlayer connections after rolling
     Ps_neg_cc = net.pores("neg_cc")
     Ps_pos_cc = net.pores("pos_cc")
@@ -158,6 +160,8 @@ def make_spiral_net(config):
         op.topotools.trim(network=net, throats=trim_Ts)
     Ts = net.find_neighbor_throats(pores=net.pores('pos_cc'), mode='xor')
 
+    net['throat.radial_position'] = net.interpolate_data("pore.radial_position")
+    net['throat.arc_length'] = np.deg2rad(dtheta) * net["throat.radial_position"]
     net["throat.pos_cc"] = False
     net["throat.neg_cc"] = False
     net["throat.pos_cc"][pos_cc_Ts] = True
@@ -165,7 +169,8 @@ def make_spiral_net(config):
     net["throat.spm_resistor"] = True
     net["throat.spm_resistor"][pos_cc_Ts] = False
     net["throat.spm_resistor"][neg_cc_Ts] = False
-
+    net['throat.spm_resistor_order'] = -1
+    net['throat.spm_resistor_order'][net["throat.spm_resistor"]] = np.arange(np.sum(net["throat.spm_resistor"]))
     Ps = net['throat.conns'][Ts].flatten()
     Ps, counts = np.unique(Ps.flatten(), return_counts=True)
     boundary = Ps[counts == 1]
@@ -494,6 +499,8 @@ def make_spm(I_typical, config):
     neg_elec_econd = config.getfloat(sub, 'neg_elec_econd')
     pos_elec_econd = config.getfloat(sub, 'pos_elec_econd')
     model_cfg = config.get('RUN', 'model')
+    vlim_lower = config.getfloat('RUN', 'vlim_lower')
+    vlim_upper = config.getfloat('RUN', 'vlim_upper')
     if model_cfg == 'SPM':
         model_class = pybamm.lithium_ion.SPM
     elif model_cfg == 'SPMe':
@@ -510,6 +517,8 @@ def make_spm(I_typical, config):
         model = model_class()
     geometry = model.default_geometry
     param = model.default_parameter_values
+#    param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.NCA_Kim2011)
+    param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.Chen2020)
     param.update(
         {
             "Typical current [A]": I_typical,
@@ -522,12 +531,12 @@ def make_spm(I_typical, config):
             "Separator thickness [m]": t_sep*pixel_size,
             "Negative current collector thickness [m]": t_neg_cc*pixel_size,
             "Positive current collector thickness [m]": t_pos_cc*pixel_size,
-            "Initial concentration in negative electrode [mol.m-3]": neg_conc,
-            "Initial concentration in positive electrode [mol.m-3]": pos_conc,
-            "Negative electrode conductivity [S.m-1]": neg_elec_econd,
-            "Positive electrode conductivity [S.m-1]": pos_elec_econd,
-            "Lower voltage cut-off [V]": 3.45,
-            "Upper voltage cut-off [V]": 4.7,
+#            "Initial concentration in negative electrode [mol.m-3]": neg_conc,
+#            "Initial concentration in positive electrode [mol.m-3]": pos_conc,
+#            "Negative electrode conductivity [S.m-1]": neg_elec_econd,
+#            "Positive electrode conductivity [S.m-1]": pos_elec_econd,
+#            "Lower voltage cut-off [V]": vlim_lower,
+#            "Upper voltage cut-off [V]": vlim_upper,
         }
     )
     param.update({"Current": "[input]"}, check_already_exists=False)
@@ -623,7 +632,7 @@ def step_spm(zipped):
         solution = solver.step(
             old_solution=solution,
             model=built_model, dt=dt, external_variables=external_variables, inputs=inputs,
-            npts=2,
+            npts=2, save=False
         )
 #        sim.step(dt=dt, inputs=inputs,
 #                 external_variables=external_variables,
@@ -838,7 +847,7 @@ def apply_heat_source(project, Q):
                    mode='max')
 
 
-def run_step_transient(project, time_step, BC_value):
+def run_step_transient(project, time_step, BC_value, third=True):
     # To Do - test whether this needs to be transient
     net = project.network
     phase = project.phases()['phase_01']
@@ -872,13 +881,17 @@ def run_step_transient(project, time_step, BC_value):
     alg.set_IC(values=T0)
     bulk_Ps = net.pores("free_stream", mode="not")
     alg.set_source("pore.source", bulk_Ps)
-    alg.set_value_BC(net.pores("free_stream"), values=BC_value)
+    if third:
+        Ps = net.pores('free_stream')[net['pore.arc_index'][net.pores('free_stream')] < 12]
+    else:
+        Ps = net.pores('free_stream')
+    alg.set_value_BC(Ps, values=BC_value)
     alg.run()
     print(
         "Max Temp",
-        alg["pore.temperature"].max(),
+        np.around(alg["pore.temperature"].max(), 3),
         "Min Temp",
-        alg["pore.temperature"].min(),
+        np.around(alg["pore.temperature"].min(), 3),
     )
     phase["pore.temperature"] = alg["pore.temperature"]
     project.purge_object(alg)
@@ -1107,7 +1120,7 @@ def animate_data3(project=None, variables=None,
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
     time_var = 'Time [h]'
-    time = variables[time_var]
+    time = variables[time_var][:, 0]
     func_ani = animation.FuncAnimation(fig=fig,
                                        func=update_both_subplots2,
                                        frames=time.shape[0],
@@ -1173,8 +1186,8 @@ def update_subplots(t, fig, data, data_name,
     t_data = data[t, :]
     arr[~mask] = t_data[spm_map][~mask]
     arr[mask] = np.nan
-    gmin = np.min(data)
-    gmax = np.max(data)
+    gmin = np.min(data[~np.isnan(data)])
+    gmax = np.max(data[~np.isnan(data)])
     if global_range:
         vmin = np.min(data)
         vmax = np.max(data)
@@ -1187,10 +1200,18 @@ def update_subplots(t, fig, data, data_name,
     cbar.ax.locator_params(nbins=6)
     ax2.plot(time, np.max(data, axis=1), 'k--')
     ax2.plot(time, np.min(data, axis=1), 'k--')
-    if weights is not None:
-        ax2.plot(time, np.mean(data*weights, axis=1)/np.mean(weights), 'b--')
-    else:
-        ax2.plot(time, np.mean(data, axis=1), 'b--')
+    means = np.zeros(data.shape[0])
+    std_devs = np.zeros(data.shape[0])
+    if weights is None:
+        weights = np.ones_like(data[0, :])
+    for _t in range(data.shape[0]):
+        (mean, std_dev) = weighted_avg_and_std(data[_t, :], weights)
+        means[_t] = mean
+        std_devs[_t] = std_dev
+    ax2.plot(time, means, 'b--')
+    ax2.fill_between(time,
+                     means-std_devs,
+                     means+std_devs)
     ax2.plot([time[t], time[t]], [vmin, vmax], 'r')
     grange = gmax-gmin
 #    if global_range:
@@ -1370,7 +1391,7 @@ def reorder_pnm_numbering(network):
     fig=tt.plot_coordinates(new_net, pores=new_net.Ps[-num_free:], c='g', fig=fig)
 #    fig=tt.plot_coordinates(net_free, pores=net_free.Ps, c='pink', fig=fig)
 
-def check_vlim(solution, high, low):
+def check_vlim(solution, low, high):
     l = solution['Terminal voltage [V]'](solution.t[-1]) > low
     h = solution['Terminal voltage [V]'](solution.t[-1]) < high
     return l * h
@@ -1384,8 +1405,8 @@ def check_vlim(solution, high, low):
 def run_simulation(I_app, save_path, config):
     max_workers = int(os.cpu_count() / 2)
     hours = config.getfloat('RUN', 'hours')
-    Nsteps = np.int(hours*60*I_app)  # number of time steps
-    V_over_max = 1.5
+    Nsteps = np.int(hours*60*I_app)+1  # number of time steps
+    V_over_max = 2.0
     ###########################################################################
     if config.get('GEOMETRY', 'domain') == 'model':
         project, arc_edges = make_spiral_net(config)
@@ -1402,6 +1423,7 @@ def run_simulation(I_app, save_path, config):
     Nspm = net.num_throats('spm_resistor')
     res_Ts = net.throats("spm_resistor")
     electrode_heights = net['throat.electrode_height'][res_Ts]
+    print('Total Electrode Height', np.around(np.sum(electrode_heights), 2), 'm')
     typical_height = np.mean(electrode_heights)
     # This is dodgy - figure out later - might need to initiate each spm with different typical current!!!
     # Would be better to specify current density
@@ -1552,6 +1574,7 @@ def run_simulation(I_app, save_path, config):
     while np.any(~dead) and outer_step < Nsteps and V_test < V_over_max:
         print("*" * 30)
         print("Outer", outer_step)
+        print("Elapsed Simulation Time", np.around((outer_step)*dt,2), 's')
         # Find terminal voltage that satisfy ecm total currents for R
         current_match = False
         max_inner_steps = 1000
@@ -1574,6 +1597,7 @@ def run_simulation(I_app, save_path, config):
         if V_test < V_over_max:
             print("N inner", inner_step, 'time per step',
                   (time.time()-t_ecm_start)/inner_step)
+            print("Over-voltage", np.around(V_test, 2), 'V')
             all_time_I_local[outer_step, :] = I_local_pnm
             terminal_voltages[outer_step] = V_test
             # I_local_pnm should now sum to match the total applied current
@@ -1583,6 +1607,7 @@ def run_simulation(I_app, save_path, config):
             bundle_inputs = zip(spm_models, spm_solvers,
                                 solutions, I_local_pnm, electrode_heights,
                                 time_steps, T_non_dim_spm, dead)
+            t_spm_start = time.time()
             if config.getboolean('RUN', 'parallel'):
                 solutions = pool_spm(
                         bundle_inputs,
@@ -1593,8 +1618,12 @@ def run_simulation(I_app, save_path, config):
                 solutions = serial_spm(
                     bundle_inputs
                 )
+            print('Finished stepping SPMs in ',
+                  np.around((time.time()-t_spm_start), 2), 's')
+            print('Solution size', solutions[0].t.shape)
             # Gather the results for this time step
             results_o = np.ones([Nspm, len(overpotential_keys)])*np.nan
+            t_eval_start = time.time()
             for si, i in enumerate(sorted_res_Ts):
                 if solutions[i].termination != 'final time':
                     dead[i] = True
@@ -1624,7 +1653,8 @@ def run_simulation(I_app, save_path, config):
 #                                )
                         overpotentials[key][outer_step, si] = temp
                         results_o[i, j] = temp
-
+            print('Finished evaluating SPMs in ',
+                  np.around((time.time()-t_eval_start), 2), 's')
             # Apply Heat Sources
             # To Do: make this better
             Q = variables["X-averaged total heating [W.m-3]"][outer_step, :]
@@ -1655,13 +1685,20 @@ def run_simulation(I_app, save_path, config):
                 sig[np.isnan(temp_R)] = 1/R_max
             phys["throat.electrical_conductance"][res_Ts] = sig
             local_R[:, outer_step] = temp_R
-            if not check_vlim(solutions[0], 4.0, 3.5):
+            if solutions[0].t.shape[0] > 1:
+                if not check_vlim(solutions[0],
+                                  config.getfloat('RUN', 'vlim_lower'),
+                                  config.getfloat('RUN', 'vlim_upper')):
+                    dead.fill(True)
+                    print('VOLTAGE LIMITS EXCEEDED')
+            else:
                 dead.fill(True)
-            print("N Dead", np.sum(dead))
-            if np.any(dead):
-                fig = tt.plot_connections(net, res_Ts[dead], c='r')
-                fig = tt.plot_connections(net, res_Ts[~dead], c='g', fig=fig)
-                plt.title('Dead SPM: step '+str(outer_step))
+                print(solutions[0].termination)
+#            print("N Dead", np.sum(dead))
+#            if np.any(dead):
+#                fig = tt.plot_connections(net, res_Ts[dead], c='r')
+#                fig = tt.plot_connections(net, res_Ts[~dead], c='g', fig=fig)
+#                plt.title('Dead SPM: step '+str(outer_step))
             outer_step += 1
 
 
@@ -1697,6 +1734,7 @@ def run_simulation(I_app, save_path, config):
         
 
     if config.getboolean('OUTPUT', 'save'):
+        print('Saving to', save_path)
         lower_mask = net['throat.spm_neg_inner'][res_Ts[sorted_res_Ts]]
         export(project, save_path, variables, 'var_',
                lower_mask=lower_mask, save_animation=False)
@@ -1727,15 +1765,6 @@ def update_tabs(project, config):
     net['pore.neg_tab'] = False
     net['pore.pos_tab'][pos_tabs] = True
     net['pore.neg_tab'][neg_tabs] = True
-
-
-def load_and_amalgamate(save_root, var_name):
-    file_lower = os.path.join(save_root, var_name+'_lower')
-    file_upper = os.path.join(save_root, var_name+'_upper')
-    data_lower = io.loadmat(file_lower)['data']
-    data_upper = io.loadmat(file_upper)['data']
-    data_amalg = np.hstack((data_lower, data_upper))
-    return data_amalg
 
 def lump_thermal_props(config):
     sec = 'THICKNESS'
@@ -1774,4 +1803,14 @@ def lump_thermal_props(config):
            'lump_rho': rho_lump,
            'lump_Cp': Cp_lump}
     return out
-    
+
+def weighted_avg_and_std(values, weights):
+    """
+    Return the weighted average and standard deviation.
+
+    values, weights -- Numpy ndarrays with the same shape.
+    """
+    average = np.average(values, weights=weights)
+    # Fast and numerically precise:
+    variance = np.average((values-average)**2, weights=weights)
+    return (average, math.sqrt(variance))
