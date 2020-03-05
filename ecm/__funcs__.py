@@ -735,6 +735,35 @@ def make_1D_net(Nunit, R, spacing, pos_tabs, neg_tabs):
     return net.project
 
 
+def get_cc_heat(net, alg, V_terminal, cp, rho):
+    neg_Ts = net["throat.conns"][net.throats("neg_cc")]
+    nP1 = neg_Ts[:, 0]
+    nP2 = neg_Ts[:, 1]
+    pos_Ts = net["throat.conns"][net.throats("pos_cc")]
+    pP1 = pos_Ts[:, 0]
+    pP2 = pos_Ts[:, 1]
+    adj = np.random.random(1) / 1e3
+    alg.set_value_BC(net.pores("pos_tab"), values=V_terminal + adj)
+    alg.set_value_BC(net.pores("neg_tab"), values=adj)
+    alg.run()
+    dV_neg = alg["pore.potential"][nP2] - alg["pore.potential"][nP1]
+    dV_pos = alg["pore.potential"][pP2] - alg["pore.potential"][pP1]
+    I_neg = alg.rate(throats=net.throats("neg_cc"), mode="single")
+    I_pos = alg.rate(throats=net.throats("pos_cc"), mode="single")
+    Pow_neg = np.abs(dV_neg * I_neg)/(cp * rho)
+    Pow_pos = np.abs(dV_pos * I_pos)/(cp * rho)
+    net['throat.cc_power_loss'] = 0.0
+    net['throat.cc_power_loss'][net.throats("neg_cc")] = Pow_neg
+    net['throat.cc_power_loss'][net.throats("pos_cc")] = Pow_pos
+    net.add_model(propname='pore.cc_power_loss',
+                  model=op.models.misc.from_neighbor_throats,
+                  throat_prop='throat.cc_power_loss',
+                  mode='max')
+#    spmTs = net["throat.conns"][net.throats("spm_resistor")]
+#    net['pore.cc_power_loss'] = net['pore.cc_power_loss']
+#    tot_cc_power_loss = np.sum(net['pore.cc_power_loss'][spmTs], axis=1)
+#    return np.mean(net['pore.cc_power_loss'][spmTs], axis=1)
+
 def run_ecm(net, alg, V_terminal, plot=False):
     potential_pairs = net["throat.conns"][net.throats("spm_resistor")]
     P1 = potential_pairs[:, 0]
@@ -847,14 +876,16 @@ def apply_heat_source(project, Q):
                    mode='max')
 
 
-def run_step_transient(project, time_step, BC_value, third=True):
+def run_step_transient(project, time_step, BC_value, third=False):
     # To Do - test whether this needs to be transient
     net = project.network
     phase = project.phases()['phase_01']
     phys = project.physics()['phys_01']
     Q_scaled = phys['pore.heat_source']
     phys["pore.A1"] = 0.0
-    phys["pore.A2"] = Q_scaled * net["pore.volume"]
+    Q_cc = net['pore.cc_power_loss']
+    phys["pore.A2"] = Q_scaled * net["pore.volume"] + Q_cc
+#    phys["pore.A2"] = Q_scaled * net["pore.volume"]
     # Heat Source
     T0 = phase['pore.temperature']
     t_step = float(time_step/10)
@@ -1101,139 +1132,6 @@ def animate_data2(project=None, variables=None,
     if '.mp4' not in filename:
         filename = filename + '.mp4'
     func_ani.save(filename, writer=writer, dpi=300)
-
-
-def animate_data3(project=None, variables=None,
-                  plot_left='Current collector current density [A.m-2]',
-                  plot_right='Temperature [K]', weights=None, filename=None):
-    cwd = os.getcwd()
-    input_dir = os.path.join(cwd, 'input')
-    im_spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
-    title = filename.split("\\")
-    if len(title) == 1:
-        title = title[0]
-    else:
-        title = title[-1]
-    fig = setup_subplots(plot_left, plot_right)
-    mask = np.isnan(im_spm_map)
-    spm_map_copy = im_spm_map.copy()
-    spm_map_copy[np.isnan(spm_map_copy)] = -1
-    spm_map_copy = spm_map_copy.astype(int)
-    time_var = 'Time [h]'
-    time = variables[time_var][:, 0]
-    func_ani = animation.FuncAnimation(fig=fig,
-                                       func=update_both_subplots2,
-                                       frames=time.shape[0],
-                                       init_func=animate_init,
-                                       fargs=(fig, project,
-                                              variables,
-                                              [plot_left, plot_right],
-                                              spm_map_copy, mask,
-                                              time_var, time, weights))
-    Writer = animation.writers['ffmpeg']
-    writer = Writer(fps=2, metadata=dict(artist='Tom Tranter'), bitrate=-1)
-
-#    im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
-#                                       blit=True)
-    if '.mp4' not in filename:
-        filename = filename + '.mp4'
-    func_ani.save(filename, writer=writer, dpi=300)
-
-
-def update_both_subplots(t, fig, grid_x, grid_y, project, variables,
-                         interp_funcs, plot_vars, mask, time_var, time, weights):
-    for i, side in enumerate(['left', 'right']):
-        data = variables[plot_vars[i]]
-#        interp_func = interpolate_timeseries(project, data)
-        if i == 0:
-            global_range = False
-        else:
-            global_range = False
-        fig  = update_subplots(t, fig, grid_x, grid_y, interp_funcs[i],
-                               data, plot_vars[i], mask, time_var, time, weights, side=side, global_range=global_range)
-
-
-def update_both_subplots2(t, fig, project, variables, plot_vars, spm_map, mask, time_var, time, weights):
-    for i, side in enumerate(['left', 'right']):
-        data = variables[plot_vars[i]]
-#        interp_func = interpolate_timeseries(project, data)
-        if i == 0:
-            global_range = False
-        else:
-            global_range = False
-        fig  = update_subplots(t, fig, data, plot_vars[i], spm_map, mask, time_var, time, weights, side=side, global_range=global_range)
-
-
-def update_subplots(t, fig, data, data_name,
-                    spm_map, mask, time_var, time, weights, side='left', global_range=True):
-    print('Updating animation ' + side + ' frame', t)
-    if side == 'left':
-        ax1 = fig.axes[0]
-        ax1c = fig.axes[1]
-        ax2 = fig.axes[2]
-    else:
-        ax1 = fig.axes[3]
-        ax1c = fig.axes[4]
-        ax2 = fig.axes[5]
-    ax1.clear()
-    ax1c.clear()
-    ax2.clear()
-    ax1.set(title=data_name)
-    ax2.set(xlabel=time_var)
-#    ax3.set(ylabel=plot_right)
-    
-    arr = np.ones_like(spm_map).astype(float)
-    t_data = data[t, :]
-    arr[~mask] = t_data[spm_map][~mask]
-    arr[mask] = np.nan
-    gmin = np.min(data[~np.isnan(data)])
-    gmax = np.max(data[~np.isnan(data)])
-    if global_range:
-        vmin = np.min(data)
-        vmax = np.max(data)
-    else:
-        vmin = np.min(data[t, :])
-        vmax = np.max(data[t, :])
-    im = ax1.imshow(arr, vmax=vmax, vmin=vmin, cmap=cm.inferno)
-#    ax1.set_axis_off()
-    cbar = plt.colorbar(im, cax=ax1c, orientation="horizontal", format='%.2f')
-    cbar.ax.locator_params(nbins=6)
-    ax2.plot(time, np.max(data, axis=1), 'k--')
-    ax2.plot(time, np.min(data, axis=1), 'k--')
-    means = np.zeros(data.shape[0])
-    std_devs = np.zeros(data.shape[0])
-    if weights is None:
-        weights = np.ones_like(data[0, :])
-    for _t in range(data.shape[0]):
-        (mean, std_dev) = weighted_avg_and_std(data[_t, :], weights)
-        means[_t] = mean
-        std_devs[_t] = std_dev
-    ax2.plot(time, means, 'b--')
-    ax2.fill_between(time,
-                     means-std_devs,
-                     means+std_devs)
-    ax2.plot([time[t], time[t]], [vmin, vmax], 'r')
-    grange = gmax-gmin
-#    if global_range:
-    ax2.set_ylim(gmin-grange*0.05,
-                gmax+grange*0.05)
-    ax2.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
-    ax2.yaxis.tick_right()
-    if t == 0:
-        plt.tight_layout()
-    return fig
-
-
-def setup_subplots(plot_left, plot_right):
-    fig = plt.figure(figsize=(14, 8))
-    gs = gridspec.GridSpec(3, 2, height_ratios=[12, 1, 4], width_ratios=[1, 1])
-    plt.subplot(gs[0, 0])
-    plt.subplot(gs[1, 0])
-    plt.subplot(gs[2, 0])
-    plt.subplot(gs[0, 1])
-    plt.subplot(gs[1, 1])
-    plt.subplot(gs[2, 1])
-    return fig
 
 
 def plot_subplots(grid_x, grid_y, interp_func, data, t):
@@ -1571,6 +1469,10 @@ def run_simulation(I_app, save_path, config):
     T_non_dim_spm = np.ones(len(res_Ts))*T_non_dim
     max_temperatures = []
     sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
+    try:
+        thermal_third = config.getboolean('RUN', 'third')
+    except:
+        thermal_third = False
     while np.any(~dead) and outer_step < Nsteps and V_test < V_over_max:
         print("*" * 30)
         print("Outer", outer_step)
@@ -1594,6 +1496,7 @@ def run_simulation(I_app, save_path, config):
                 V_test *= 1 + (diff * damping)
             inner_step += 1
 #            print(I_app, inner_step, V_test, tot_I_local_pnm)
+        get_cc_heat(net, alg, V_test, cp, rho)
         if V_test < V_over_max:
             print("N inner", inner_step, 'time per step',
                   (time.time()-t_ecm_start)/inner_step)
@@ -1662,7 +1565,7 @@ def run_simulation(I_app, save_path, config):
             Q[np.isnan(Q)] = 0.0
             apply_heat_source(project, Q)
             # Calculate Global Temperature
-            run_step_transient(project, dim_time_step, T0)
+            run_step_transient(project, dim_time_step, T0, thermal_third)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data('pore.temperature')[res_Ts]
             all_time_temperature[outer_step, :] = spm_temperature
@@ -1804,13 +1707,3 @@ def lump_thermal_props(config):
            'lump_Cp': Cp_lump}
     return out
 
-def weighted_avg_and_std(values, weights):
-    """
-    Return the weighted average and standard deviation.
-
-    values, weights -- Numpy ndarrays with the same shape.
-    """
-    average = np.average(values, weights=weights)
-    # Fast and numerically precise:
-    variance = np.average((values-average)**2, weights=weights)
-    return (average, math.sqrt(variance))

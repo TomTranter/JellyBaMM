@@ -25,10 +25,10 @@ wrk.clear()
 
 
 if __name__ == "__main__":
-    save_parent = 'C:\\Code\\pybamm_pnm_case4_Chen2020'
+    save_parent = 'C:\\Code\\pybamm_pnm_couple'
 #    save_parent = sys.argv[-1]
     for prefix in ['']:#, 'b']:
-        for sub in ['10A']:#, '2A', '3A', '4A', '5A']:
+        for sub in ['4A_Q_cc']:#, '2A', '3A', '4A', '5A']:
             save_root = save_parent + prefix + '\\' + sub
             file_lower = os.path.join(save_root, 'var_Current_collector_current_density_lower')
             file_upper = os.path.join(save_root, 'var_Current_collector_current_density_upper')
@@ -77,21 +77,21 @@ if __name__ == "__main__":
             variables[plot_time] = time_amalg
 
             save_path = os.path.join(save_root, 'Current collector current density')
-#            ecm.animate_data3(project, variables, plot_left, plot_right, weights,
-#                              filename=save_path)
-            int_weights = np.around(weights/weights.min()*100, 0).astype(int)
-            plt.figure()
-            all_args = []
-            all_ks = []
-            for t in range(data_amalg.shape[0]-1):
-                print(t)
-                data_t = data_amalg[t, :]
-                full_data_t = np.repeat(data_t, int_weights)
-                sample = np.random.choice(full_data_t, 5000)
-                args = dist.fit(sample)
-                all_args.append(args)
-                all_ks.append(kstest(sample, 'lognorm', args=args))
-                start = data_t.min()
-                end = data_t.max()
-                x = np.linspace(start, end, 1000)
-                plt.plot(x, dist.pdf(x, *args))
+            ecm.animate_data3(project, variables, plot_left, plot_right, weights,
+                              filename=save_path)
+#            int_weights = np.around(weights/weights.min()*100, 0).astype(int)
+#            plt.figure()
+#            all_args = []
+#            all_ks = []
+#            for t in range(data_amalg.shape[0]-1):
+#                print(t)
+#                data_t = data_amalg[t, :]
+#                full_data_t = np.repeat(data_t, int_weights)
+#                sample = np.random.choice(full_data_t, 5000)
+#                args = dist.fit(sample)
+#                all_args.append(args)
+#                all_ks.append(kstest(sample, 'lognorm', args=args))
+#                start = data_t.min()
+#                end = data_t.max()
+#                x = np.linspace(start, end, 1000)
+#                plt.plot(x, dist.pdf(x, *args))

@@ -11,6 +11,12 @@ import matplotlib.pyplot as plt
 import openpnm as op
 import math
 from matplotlib import cm
+import configparser
+import matplotlib.animation as animation
+from scipy.interpolate import griddata
+from scipy.interpolate import NearestNDInterpolator
+from matplotlib import gridspec
+import matplotlib.ticker as mtick
 
 
 prop_cycle = plt.rcParams['axes.prop_cycle']
@@ -18,7 +24,7 @@ colors = prop_cycle.by_key()['color']
 
 
 input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-root = 'C:\\Code'
+root = 'D:\\pybamm_pnm_results\\Chen2020'
 base = 'pybamm_pnm_case'
 wrk = op.Workspace()
 
@@ -69,18 +75,18 @@ def get_cases():
             '2_Chen2020',
             '3_Chen2020',
             '4_Chen2020',
+            '1_Chen2020c_third',
+            '2_Chen2020c_third',
+            '3_Chen2020c_third',
+            '4_Chen2020c_third',
             '1_Chen2020b',
             '2_Chen2020b',
             '3_Chen2020b',
             '4_Chen2020b',
             '4_Chen2020_econd',
             '4_Chen2020_lowk',
-            '4_Chen2020_third'
-#            '1_Chen2020c',
-#            '2_Chen2020c',
-#            '3_Chen2020c',
-#            '4_Chen2020c',
-#            '4_Chen2020_lowecond',
+            '4_Chen2020_third',
+            '4_Chen2020_lowecond_third',
             ]
     full = [base + case for case in cases]
     return full
@@ -106,7 +112,25 @@ def format_label(i):
     var_axis_name = var_axis_name + ' [' + units[i]+']'
     return var_axis_name
 
+def config2dict(config):
+    temp = {}
+    for sec in config.sections():
+        temp[sec] = {}
+        for key in config[sec]:
+            temp[sec][key] = config.get(sec, key)
+    return temp
+
+def compare_config(config_a, config_b):
+    for sec in config_a.keys():
+        for option in config_a[sec].keys():
+            if 'i_app' not in option:
+                opt_a = config_a[sec][option]
+                opt_b = config_b[sec][option]
+                if opt_a != opt_b:
+                    print(sec, option, opt_a, opt_b)
+
 def load_all_data():
+    config = configparser.ConfigParser()
     net = get_net()
     weights = get_weights(net)
     cases = get_cases()
@@ -116,6 +140,8 @@ def load_all_data():
     for ci, case in enumerate(cases):
         case_folder = os.path.join(root, case)
         data[ci] = {}
+        config.read(os.path.join(case_folder, 'config.txt'))
+        data[ci]['config'] = config2dict(config)
         for amp in amps:
             amp_folder = os.path.join(case_folder, str(amp)+'A')
             data[ci][amp] = {}
@@ -245,3 +271,129 @@ def multi_var_subplot(data, case_list, amp_list, var_list, normed=False):
         ax = axes[vi]
         combined_subplot(data, case_list, amp_list, var=var_list[vi], normed=normed, ax=ax)
     return fig, axes
+
+def animate_init():
+    pass
+
+def animate_data4(data, case, amp, variables=None, filename=None):
+    net = get_net()
+    weights = get_weights(net)
+    project = net.project
+    im_spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
+    title = filename.split("\\")
+    if len(title) == 1:
+        title = title[0]
+    else:
+        title = title[-1]
+    plot_left = format_label(variables[0])
+    plot_right = format_label(variables[1])
+    fig = setup_animation_subplots(plot_left, plot_right)
+    mask = np.isnan(im_spm_map)
+    spm_map_copy = im_spm_map.copy()
+    spm_map_copy[np.isnan(spm_map_copy)] = -1
+    spm_map_copy = spm_map_copy.astype(int)
+    time_var = 'Time [h]'
+    time = data[case][amp][10]['mean']
+    vars2plot = {}
+    vars2plot[plot_left] = data[case][amp][variables[0]]['data']
+    vars2plot[plot_right] = data[case][amp][variables[1]]['data']
+    func_ani = animation.FuncAnimation(fig=fig,
+                                       func=update_multi_animation_subplots,
+#                                       frames=time.shape[0],
+                                       frames=5,
+                                       init_func=animate_init,
+                                       fargs=(fig, project,
+                                              vars2plot,
+                                              [plot_left, plot_right],
+                                              spm_map_copy, mask,
+                                              time_var, time, weights))
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=2, metadata=dict(artist='Tom Tranter'), bitrate=-1)
+
+#    im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
+#                                       blit=True)
+    if '.mp4' not in filename:
+        filename = filename + '.mp4'
+    func_ani.save(filename, writer=writer, dpi=300)
+
+def setup_animation_subplots(plot_left, plot_right):
+    fig = plt.figure(figsize=(14, 8))
+    gs = gridspec.GridSpec(3, 2, height_ratios=[12, 1, 4], width_ratios=[1, 1])
+    plt.subplot(gs[0, 0])
+    plt.subplot(gs[1, 0])
+    plt.subplot(gs[2, 0])
+    plt.subplot(gs[0, 1])
+    plt.subplot(gs[1, 1])
+    plt.subplot(gs[2, 1])
+    return fig
+
+
+def update_multi_animation_subplots(t, fig, project, variables, plot_vars, spm_map, mask, time_var, time, weights):
+    for i, side in enumerate(['left', 'right']):
+        data = variables[plot_vars[i]]
+        if i == 0:
+            global_range = False
+        else:
+            global_range = False
+        fig  = update_animation_subplot(t, fig, data, plot_vars[i], spm_map, mask, time_var, time, weights, side=side, global_range=global_range)
+
+
+def update_animation_subplot(t, fig, data, data_name,
+                             spm_map, mask, time_var, time, weights,
+                             side='left', global_range=True):
+    print('Updating animation ' + side + ' frame', t)
+    if side == 'left':
+        ax1 = fig.axes[0]
+        ax1c = fig.axes[1]
+        ax2 = fig.axes[2]
+    else:
+        ax1 = fig.axes[3]
+        ax1c = fig.axes[4]
+        ax2 = fig.axes[5]
+    ax1.clear()
+    ax1c.clear()
+    ax2.clear()
+    ax1.set(title=data_name)
+    ax2.set(xlabel=time_var)
+#    ax3.set(ylabel=plot_right)
+    
+    arr = np.ones_like(spm_map).astype(float)
+    t_data = data[t, :]
+    arr[~mask] = t_data[spm_map][~mask]
+    arr[mask] = np.nan
+    gmin = np.min(data[~np.isnan(data)])
+    gmax = np.max(data[~np.isnan(data)])
+    if global_range:
+        vmin = np.min(data)
+        vmax = np.max(data)
+    else:
+        vmin = np.min(data[t, :])
+        vmax = np.max(data[t, :])
+    im = ax1.imshow(arr, vmax=vmax, vmin=vmin, cmap=cm.inferno)
+#    ax1.set_axis_off()
+    cbar = plt.colorbar(im, cax=ax1c, orientation="horizontal", format='%.2f')
+    cbar.ax.locator_params(nbins=6)
+    ax2.plot(time, np.max(data, axis=1), 'k--')
+    ax2.plot(time, np.min(data, axis=1), 'k--')
+    means = np.zeros(data.shape[0])
+    std_devs = np.zeros(data.shape[0])
+    if weights is None:
+        weights = np.ones_like(data[0, :])
+    for _t in range(data.shape[0]):
+        (mean, std_dev) = weighted_avg_and_std(data[_t, :], weights)
+        means[_t] = mean
+        std_devs[_t] = std_dev
+    ax2.plot(time, means, 'b--')
+    ax2.fill_between(time,
+                     means-std_devs,
+                     means+std_devs)
+    ax2.plot([time[t], time[t]], [vmin, vmax], 'r')
+    grange = gmax-gmin
+#    if global_range:
+    ax2.set_ylim(gmin-grange*0.05,
+                gmax+grange*0.05)
+    ax2.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
+    ax2.yaxis.tick_right()
+    if t == 0:
+        plt.tight_layout()
+    return fig
