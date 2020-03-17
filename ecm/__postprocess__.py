@@ -17,6 +17,7 @@ from scipy.interpolate import griddata
 from scipy.interpolate import NearestNDInterpolator
 from matplotlib import gridspec
 import matplotlib.ticker as mtick
+import pandas as pd
 
 
 prop_cycle = plt.rcParams['axes.prop_cycle']
@@ -26,6 +27,10 @@ colors = prop_cycle.by_key()['color']
 input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
 root = 'D:\\pybamm_pnm_results\\Chen2020_Q_cc'
 base = 'pybamm_pnm_case'
+exp_root = 'D:\\pybamm_pnm_results\\experimental'
+exp_files = ['MJ1_0.5C.csv',
+             'MJ1_1.0C.csv',
+             'MJ1_1.5C.csv']
 wrk = op.Workspace()
 
 def get_saved_var_names():
@@ -69,31 +74,78 @@ def get_saved_var_units():
     return units
 
 def get_cases():
-    
     cases = [
             '1_Chen2020',
             '2_Chen2020',
+            '5_Chen2020',
             '3_Chen2020',
             '4_Chen2020',
             '1_Chen2020c',
             '2_Chen2020c',
+            '5_Chen2020c',
             '3_Chen2020c',
             '4_Chen2020c',
             '1_Chen2020b',
             '2_Chen2020b',
+            '5_Chen2020b',
             '3_Chen2020b',
             '4_Chen2020b',
-#            '1_Chen2020c_third',
-#            '2_Chen2020c_third',
-#            '3_Chen2020c_third',
-#            '4_Chen2020c_third',
+            '1_Chen2020c_third',
+            '2_Chen2020c_third',
+            '5_Chen2020c_third',
+            '3_Chen2020c_third',
+            '4_Chen2020c_third',
+            '1_Chen2020d',
+            '2_Chen2020d',
+            '5_Chen2020d',
+            '3_Chen2020d',
+            '4_Chen2020d',
 #            '4_Chen2020_econd',
 #            '4_Chen2020_lowk',
 #            '4_Chen2020_third',
 #            '4_Chen2020_lowecond_third',
             ]
     full = [base + case for case in cases]
-    return full
+    cases = {
+            0: {'file': full[0], 'htc': 5, 'tabs': 1},
+            1: {'file': full[1], 'htc': 10, 'tabs': 1},
+            2: {'file': full[2], 'htc': 28, 'tabs': 1},
+            3: {'file': full[3], 'htc': 50, 'tabs': 1},
+            4: {'file': full[4], 'htc': 100, 'tabs': 1},
+            5: {'file': full[5], 'htc': 5, 'tabs': 2},
+            6: {'file': full[6], 'htc': 10, 'tabs': 2},
+            7: {'file': full[7], 'htc': 28, 'tabs': 2},
+            8: {'file': full[8], 'htc': 50, 'tabs': 2},
+            9: {'file': full[9], 'htc': 100, 'tabs': 2},
+            10: {'file': full[10], 'htc': 5, 'tabs': 5},
+            11: {'file': full[11], 'htc': 10, 'tabs': 5},
+            12: {'file': full[12], 'htc': 28, 'tabs': 5},
+            13: {'file': full[13], 'htc': 50, 'tabs': 5},
+            14: {'file': full[14], 'htc': 100, 'tabs': 5},
+            15: {'file': full[15], 'htc': 5, 'tabs': 2},
+            16: {'file': full[16], 'htc': 10, 'tabs': 2},
+            17: {'file': full[17], 'htc': 28, 'tabs': 2},
+            18: {'file': full[18], 'htc': 50, 'tabs': 2},
+            19: {'file': full[19], 'htc': 100, 'tabs': 2},
+            20: {'file': full[20], 'htc': 5, 'tabs': 2},
+            21: {'file': full[21], 'htc': 10, 'tabs': 2},
+            22: {'file': full[22], 'htc': 28, 'tabs': 2},
+            23: {'file': full[23], 'htc': 30, 'tabs': 2},
+            24: {'file': full[24], 'htc': 100, 'tabs': 2},}
+    
+    return cases
+
+def get_case_details(key):
+    cases = get_cases()    
+    return cases[key]['htc'], cases[key]['tabs']
+
+def format_case(x, a, expanded=True):
+    htc, tabs = get_case_details(x)
+    if expanded:
+        text = 'Case ' +abc(x)+': h='+str(htc)+' [W.m-2.K-1] #tabs='+str(tabs) +': I='+str(a)+ ' [A]'
+    else:
+        text = 'Case ' +abc(x)+': I='+str(a)+ ' [A]'
+    return text
 
 def abc(x):
     alphabet = np.array(['a', 'b', 'c', 'd',
@@ -152,8 +204,8 @@ def load_all_data():
     amps = get_amp_cases()
     variables = get_saved_var_names()
     data = {}
-    for ci, case in enumerate(cases):
-        case_folder = os.path.join(root, case)
+    for ci in range(len(cases.keys())):
+        case_folder = os.path.join(root, cases[ci]['file'])
         data[ci] = {}
         config.read(os.path.join(case_folder, 'config.txt'))
         data[ci]['config'] = config2dict(config)
@@ -212,11 +264,11 @@ def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k', ax=Non
     dmax = data[case][amp][var]['max']
     if normed:
         ax.plot(cap, dmin/dmean, c=c)
-        ax.plot(cap, dmean/dmean, c=c, label='Case '+abc(case)+': Amps='+str(amp))
+        ax.plot(cap, dmean/dmean, c=c, label='Case '+abc(case)+': I = '+str(amp)+ '[A]')
         ax.plot(cap, dmax/dmean, c=c)
     else:
         ax.plot(cap, dmin, c=c)
-        ax.plot(cap, dmean, c=c, label='Case '+abc(case)+': Amps='+str(amp))
+        ax.plot(cap, dmean, c=c, label=format_case(case, amp, expanded=False))
         ax.plot(cap, dmax, c=c)
     ax.set
     return ax
@@ -234,7 +286,7 @@ def chargeogram(data, case_list, amp_list, group='neg'):
     Ts = net.throats('spm_'+group+'_inner')
     roll_pos = np.cumsum(net['throat.arc_length'][Ts])
     norm_roll_pos = roll_pos/roll_pos[-1]
-    norm_roll_pos *= 100
+#    norm_roll_pos *= 100
     Nspm = net.num_throats('spm_resistor')
     if group == 'neg':
         spm_ids = np.arange(Nspm)[:len(Ts)]
@@ -258,12 +310,23 @@ def chargeogram(data, case_list, amp_list, group='neg'):
                 data_2d[i, :] = hdata*100
         
             centers = (bins[1:] + bins[:-1])/2
-            x_data, y_data = np.meshgrid( centers,
-                                          norm_roll_pos )
+            x_data, y_data = np.meshgrid( norm_roll_pos,
+                                          centers
+                                           )
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
-            im = ax.pcolormesh(x_data-100, y_data, heatmap, cmap=cm.coolwarm, vmin=0.0, vmax=100)
-            ax.set_title('Case '+abc(case)+': Amps='+str(amp))
+            im = ax.pcolormesh(x_data, y_data-100, heatmap.T, cmap=cm.coolwarm, vmin=0.0, vmax=100)
+            ax.set_title(format_case(case, amp, expanded=False))
+#            if ai == 0 and ci == 1:
+#                ax.set_ylabel()
+            if ci == len(case_list) - 1:
+                ax.set_xlabel('Normalized roll position')
+            cbar = plt.colorbar(im, ax=ax)
+            cbar.ax.locator_params(nbins=6)
+    fig.suptitle('Current Density Distribution \n' +
+                 'Percentage deviation from mean: '+format_label(0))
+
+    return fig
 
 def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
     wrk.clear()
@@ -273,7 +336,7 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
     fig, axes = plt.subplots(nrows, ncols,
                              figsize=(int(5*ncols), int(5*nrows)),
                              sharex=True,
-                             sharey=False)
+                             sharey=True)
 #    var = 0  # Current density
     Ts = net.throats('spm_'+group+'_inner')
     roll_pos = np.cumsum(net['throat.arc_length'][Ts])
@@ -298,6 +361,7 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
                 mean = data[case][amp][var]['mean'][0]
                 data_amalg /= mean
                 data_amalg *= 100
+                data_amalg -= 100
 #            spm_ids = np.argwhere(net['pore.arc_index'][net['throat.conns'][Ts]][:, 0] < 37 )
             filtered_data = data_amalg[:, spm_ids]
 #            fmin = np.int(np.floor(filtered_data.min()))
@@ -324,9 +388,18 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
 #        y_data = y_list[i]
 #        heatmap = data_list[i]
             im = ax.pcolormesh(x_data, y_data, heatmap, cmap=cm.inferno)
-            ax.set_title('Case '+abc(case)+': Amps='+str(amp))
+            ax.set_title(format_case(case, amp))
+            if ai == 0:
+                ax.set_ylabel('Capacity [Ah]')
+            if ci == len(case_list) - 1:
+                ax.set_xlabel('Normalized Roll Position')
             cbar = plt.colorbar(im, ax=ax)
             cbar.ax.locator_params(nbins=6)
+    if normed:
+        fig.suptitle('Percentage deviation from mean: \n'+format_label(var))
+    else:
+        fig.suptitle(format_label(var))
+    return fig
 
 
 def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None):
@@ -480,7 +553,7 @@ def update_animation_subplot(t, fig, data, data_name,
 def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]], global_range=False, dp=3):
     soc_arr = np.asarray(soc_list)
     (nrows, ncols) = soc_arr.shape
-    fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12), sharex=True, sharey=True)
     spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
     spm_map_copy = spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
@@ -489,6 +562,9 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
     mask = np.isnan(spm_map)
     arr = np.ones_like(spm_map).astype(float)
     soc = get_SOC_vs_cap(data, case, amp)[:, 1]
+    gmax = -1e12
+    gmin = 1e12
+    arrs = []
     for ir in range(nrows):
         for ic in range(ncols):
             ax = axes[ir][ic]
@@ -497,16 +573,31 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
             t_data = var_data[t, :]
             arr[~mask] = t_data[spm_map_copy][~mask]
             arr[mask] = np.nan
+#            if global_range:
+#                vmin = np.min(var_data)
+#                vmax = np.max(var_data)
+#            else:
+            vmin = np.min(var_data[t, :])
+            vmax = np.max(var_data[t, :])
+            if vmin < gmin:
+                gmin = vmin
+            if vmax > gmax:
+                gmax = vmax
+            arrs.append(arr.copy())
+    for ir in range(nrows):
+        for ic in range(ncols):
+            ax = axes[ir][ic]
+            soc_target = soc_arr[ir][ic]
+            t = np.argmin((soc-soc_target)**2)
+            arr = arrs.pop(0)
             if global_range:
-                vmin = np.min(var_data)
-                vmax = np.max(var_data)
+                im = ax.imshow(arr, vmax=gmax, vmin=gmin, cmap=cm.inferno)
             else:
-                vmin = np.min(var_data[t, :])
-                vmax = np.max(var_data[t, :])
-            im = ax.imshow(arr, vmax=vmax, vmin=vmin, cmap=cm.inferno)
+                im = ax.imshow(arr,  cmap=cm.inferno)
             ax.set_axis_off()
             plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
             ax.set_title('SOC: '+str(np.around(soc[t], 2)))
+            fig.suptitle(format_case(case, amp) + '\n' + format_label(var))
     return fig
 
 def get_SOC_vs_cap(data, case, amp):
@@ -517,3 +608,10 @@ def get_SOC_vs_cap(data, case, amp):
     soc = lith - lith[-1]
     soc = soc/soc.max()
     return np.vstack((cap, soc)).T
+
+def load_experimental():
+    data_list = []
+    for ef in exp_files:
+        fp = os.path.join(exp_root, ef)
+        data_list.append(pd.read_csv(fp))
+    return data_list

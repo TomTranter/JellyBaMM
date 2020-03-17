@@ -13,55 +13,83 @@ root = 'D:\\pybamm_pnm_results\\Chen2020_Q_cc'
 save_im_path = 'D:\\pybamm_pnm_results\\figures'
 plt.close('all')
 
-tab_1 = [0, 1, 2, 3]
-tab_2 = [4, 5, 6, 7]
-tab_5 = [8, 9, 10, 11]
-tab_2_third = [12, 13, 14, 15]
-even_third = [6, 7, 14, 15]
+savefigs = True
+
+tab_1 = [0, 1, 2, 3, 4]
+tab_2 = [5, 6, 7, 8, 9]
+tab_5 = [10, 11, 12, 13, 14]
+tab_2_third = [15, 16, 17, 18, 19]
+
 amps = ecm.get_amp_cases()
 d = ecm.load_all_data()
 cases = ecm.get_cases()
 soc_list=[[0.9, 0.8, 0.7],[0.6, 0.5, 0.4],[0.3, 0.2, 0.1]]
-# Base Case 5.25 Amps - HTC 100 - 1 Tab
-fig1 = ecm.jellyroll_subplot(d, 3, 5.25, var=0, soc_list=soc_list, global_range=False, dp=1)
-plt.savefig(os.path.join(save_im_path, 'fig1.png'), dpi=600)
-# Base Case all Amps - HTC 5 - 2 Tabs
-fig2 = ecm.multi_var_subplot(d, [0], amps, [0, 1])
-plt.savefig(os.path.join(save_im_path, 'fig2.png'), dpi=600)
-## All HTC cases - 1 tabs, 10 A
-fig3 = ecm.multi_var_subplot(d, [0, 1, 2, 3], [amps[-1]], [0, 1])
-plt.savefig(os.path.join(save_im_path, 'fig3.png'), dpi=600)
-# 2nd Case 5.25 Amps - HTC 100 - 2 Tab
-fig4 = ecm.jellyroll_subplot(d, 7, 5.25, var=0, soc_list=soc_list, global_range=False, dp=1)
-plt.savefig(os.path.join(save_im_path, 'fig4.png'), dpi=600)
-# 3rd Case 5.25 Amps - HTC 100 - 5 Tab
-fig5 = ecm.jellyroll_subplot(d, 11, 5.25, var=0, soc_list=soc_list, global_range=False, dp=1)
-plt.savefig(os.path.join(save_im_path, 'fig5.png'), dpi=600)
-# All Tabs, all currents HTC 5
-fig6 = ecm.spacetime(d, [0, 4, 8], amps, var=0, group='pos', normed=True)
-plt.savefig(os.path.join(save_im_path, 'fig6.png'), dpi=600)
-# All Tabs, all currents HTC 100
-fig7 = ecm.spacetime(d, [3, 7, 11], amps, var=0, group='pos', normed=True)
-plt.savefig(os.path.join(save_im_path, 'fig7.png'), dpi=600)
-# All Tabs, all currents HTC 5
-fig8 = ecm.chargeogram(d, [0, 4, 8], amps, group='pos')
-plt.savefig(os.path.join(save_im_path, 'fig8.png'), dpi=600)
-### All HTC cases - 2 tabs, 10 A
-#fig4 = ecm.multi_var_subplot(d, [4, 5, 6, 7], [amps[-1]], [0, 1])
-### All HTC cases - 5 tabs, 10 A
-#fig5 = ecm.multi_var_subplot(d, [8, 9, 10, 11], [amps[-1]], [0, 1])
-### 100 HTC cases - 2 tabs, 4, 10 A - neg_cc_econd
-##fig6 = ecm.multi_var_subplot(d, [3, 12], [6, 10], [0, 1])
-### 100 HTC cases - 2 tabs, 4, 10 A - variable k
-##fig7 = ecm.multi_var_subplot(d, [3, 13], [4, 10], [0, 1])
-### Base Case all Amps - Average Heating
-#fig8 = ecm.multi_var_subplot(d, [0], amps, [7, 1])
-#
-#filename = os.path.join(root, cases[0])
-#filename = os.path.join(filename, 'current_density_and_temperature')
-#
-fig9 = ecm.spacetime(d, [3, 7, 11 ], amps, var=0, group='pos', normed=True)
-#fig9 = ecm.spacetime(d, [4, 5, 6, 7], amps, var=0, group='pos', normed=False)
-#fig9 = ecm.spacetime(d, [8, 9, 10, 11], amps, var=1, group='pos', normed=False)
+#mini_soc_list=[[0.99, 0.98, 0.97],[0.96, 0.95, 0.94],[0.93, 0.92, 0.91]]
+mini_soc_list=[[0.09, 0.08],[0.07, 0.06]]
+grp = 'neg'
 
+# Base Case 5.25 Amps - HTC 28 - 1 Tab
+fig1 = ecm.jellyroll_subplot(d, 2, amps[-1], var=0, soc_list=soc_list, global_range=False, dp=1)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig1.png'), dpi=600)
+# Base Case all Amps - HTC 28 - 2 Tabs
+fig2 = ecm.multi_var_subplot(d, [0], amps, [0, 1])
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig2.png'), dpi=600)
+## All HTC cases - 1 tabs, 10 A
+fig3 = ecm.multi_var_subplot(d, tab_1, [amps[-1]], [0, 1])
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig3.png'), dpi=600)
+# 2nd Case 5.25 Amps - HTC 100 - 2 Tab
+fig4 = ecm.jellyroll_subplot(d, 7, amps[-1], var=0, soc_list=soc_list, global_range=False, dp=1)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig4.png'), dpi=600)
+# 3rd Case 5.25 Amps - HTC 100 - 5 Tab
+fig5 = ecm.jellyroll_subplot(d, 12, amps[-1], var=0, soc_list=soc_list, global_range=False, dp=1)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig5.png'), dpi=600)
+# All Tabs, all currents HTC 5
+fig6 = ecm.spacetime(d, [0, 5, 10], amps, var=0, group=grp, normed=True)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig6.png'), dpi=600)
+# All Tabs, highest currents HTC 5
+fig7 = ecm.multi_var_subplot(d, [0, 5, 10], [amps[-1]], [0, 1])
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig7.png'), dpi=600)
+# All Tabs, highest currents HTC 100
+fig8 = ecm.multi_var_subplot(d, [4, 9, 14], [amps[-1]], [0, 1])
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig8.png'), dpi=600)
+# All Tabs, all currents HTC 5
+fig9a = ecm.spacetime(d, [0, 5, 10], amps, var=0, group=grp, normed=True)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig9a.png'), dpi=600)
+fig9b = ecm.chargeogram(d, [0, 5, 10], amps, group=grp)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig9b.png'), dpi=600)
+# All Tabs, all currents HTC 100
+fig10a = ecm.spacetime(d, [4, 9, 14], amps, var=0, group=grp, normed=True)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig10a.png'), dpi=600)
+fig10b = ecm.chargeogram(d, [4, 9, 14], amps, group=grp)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig10b.png'), dpi=600)
+fig11a = ecm.spacetime(d, [9, 17, 19], amps, var=0, group=grp, normed=True)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig11a.png'), dpi=600)
+fig11b = ecm.chargeogram(d, [9, 17, 19], amps, group=grp)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig11b.png'), dpi=600)
+# Third Heating
+fig12 = ecm.jellyroll_subplot(d, 19, 5.25, var=0, soc_list=soc_list, global_range=False)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig12.png'), dpi=600)
 #ecm.animate_data4(d, 0, 10, [0, 1], 'test_new_ani')
+exp_data = ecm.load_experimental()
+sim_data = [d[2][1.75], d[2][3.5], d[2][5.25]]
+fig, ax = plt.subplots()
+for i in range(3):
+    ed = exp_data[i]
+    sd = sim_data[i]
+    plt.scatter(ed['Q discharge [mA.h]'].values, ed['Temperature [K]'].values)
+    plt.plot(sd['capacity']*1000, sd[1]['mean'])
