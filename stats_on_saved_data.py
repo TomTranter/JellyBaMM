@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import os
 from scipy import io
 import numpy as np
-from scipy.stats import lognorm as dist, kstest
+from scipy.stats import lognorm, gumbel_l, gumbel_r, kstest
 import ecm
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm

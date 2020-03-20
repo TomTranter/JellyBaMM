@@ -90,11 +90,11 @@ def get_cases():
             '5_Chen2020b',
             '3_Chen2020b',
             '4_Chen2020b',
-            '1_Chen2020c_third',
-            '2_Chen2020c_third',
-            '5_Chen2020c_third',
-            '3_Chen2020c_third',
-            '4_Chen2020c_third',
+            '1_Chen2020_third',
+            '2_Chen2020_third',
+            '5_Chen2020_third',
+            '3_Chen2020_third',
+            '4_Chen2020_third',
             '1_Chen2020d',
             '2_Chen2020d',
             '5_Chen2020d',
@@ -122,11 +122,11 @@ def get_cases():
             12: {'file': full[12], 'htc': 28, 'tabs': 5},
             13: {'file': full[13], 'htc': 50, 'tabs': 5},
             14: {'file': full[14], 'htc': 100, 'tabs': 5},
-            15: {'file': full[15], 'htc': 5, 'tabs': 2},
-            16: {'file': full[16], 'htc': 10, 'tabs': 2},
-            17: {'file': full[17], 'htc': 28, 'tabs': 2},
-            18: {'file': full[18], 'htc': 50, 'tabs': 2},
-            19: {'file': full[19], 'htc': 100, 'tabs': 2},
+            15: {'file': full[15], 'htc': 5, 'tabs': 1},
+            16: {'file': full[16], 'htc': 10, 'tabs': 1},
+            17: {'file': full[17], 'htc': 28, 'tabs': 1},
+            18: {'file': full[18], 'htc': 50, 'tabs': 1},
+            19: {'file': full[19], 'htc': 100, 'tabs': 1},
             20: {'file': full[20], 'htc': 5, 'tabs': 2},
             21: {'file': full[21], 'htc': 10, 'tabs': 2},
             22: {'file': full[22], 'htc': 28, 'tabs': 2},
@@ -388,7 +388,7 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
 #        y_data = y_list[i]
 #        heatmap = data_list[i]
             im = ax.pcolormesh(x_data, y_data, heatmap, cmap=cm.inferno)
-            ax.set_title(format_case(case, amp))
+            ax.set_title(format_case(case, amp, expanded=False))
             if ai == 0:
                 ax.set_ylabel('Capacity [Ah]')
             if ci == len(case_list) - 1:

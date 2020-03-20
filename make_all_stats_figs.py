@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Mar  5 08:14:54 2020
+Created on Thu Mar 19 13:43:52 2020
 
 @author: Tom
 """
@@ -9,16 +9,19 @@ import ecm
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from scipy.stats import lognorm, gumbel_l, gumbel_r, norm, cauchy, kstest
+from scipy.stats import kstest
 from sklearn.preprocessing import StandardScaler
 import scipy
 import pandas as pd
-# Turn off code warnings (this is not recommended for routine use)
+from matplotlib import cm
 import warnings
+from scipy import io
+
 warnings.filterwarnings("ignore")
 
+input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
 root = 'D:\\pybamm_pnm_results\\Chen2020_Q_cc'
-save_im_path = 'D:\\pybamm_pnm_results\\figures'
+#save_im_path = 'D:\\pybamm_pnm_results\\figures'
 plt.close('all')
 
 savefigs = True
@@ -33,21 +36,9 @@ amps = ecm.get_amp_cases()
 d = ecm.load_all_data()
 cases = ecm.get_cases()
 soc_list=[[0.9, 0.8, 0.7],[0.6, 0.5, 0.4],[0.3, 0.2, 0.1]]
-#mini_soc_list=[[0.99, 0.98, 0.97],[0.96, 0.95, 0.94],[0.93, 0.92, 0.91]]
 mini_soc_list=[[0.09, 0.08],[0.07, 0.06]]
 grp = 'neg'
 
-
-data = d[0][5.25][0]['data']
-
-#x = np.linspace(data_spm.min(), data_spm.max(), 101)
-#dists = {'norm': norm,
-#         'lognorm': lognorm,
-#         'gumbel_l': gumbel_l,
-#         'gumbel_r':gumbel_r,
-#         'cauchy': cauchy}
-#args = []
-#keys = list(dists.keys())
 
 def plot_one_spm_dist(data_spm, dist_name, args=None):
     dist = getattr(scipy.stats, dist_name)
@@ -135,25 +126,7 @@ def find_best_fit(y, report_results=False):
     args = dist.fit(y)
     return best_dist_name, best_chi_square, dist, args, dist.mean(*args), dist.std(*args)
 
-#def fit_all_spm(data):
-dist_names = []
-chi_squares = []
-args = []
-means = []
-stds = []
-for i in range(data.shape[1]):
-    dist_name, chi_square, dist, arg, dist_mean, dist_std = find_best_fit(data[:, i])
-    dist_names.append(dist_name)
-    chi_squares.append(chi_square)
-    args.append(arg)
-    means.append(dist_mean)
-    stds.append(dist_std)
-    print(i, dist_name, dist_mean, dist_std)
-
-input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-from matplotlib import cm
 def jellyroll_one_plot(data, title, dp=3):
-
     fig, ax = plt.subplots()
     spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
     spm_map_copy = spm_map.copy()
@@ -169,85 +142,50 @@ def jellyroll_one_plot(data, title, dp=3):
     ax.set_title(title)
     return fig
 
-means = np.asarray(means)
-stds = np.asarray(stds)
-chi_squares = np.asarray(chi_squares)
-
-jellyroll_one_plot(np.log(stds), 'Current Density Distribution Log(STD)')
-jellyroll_one_plot(means, 'Current Density Distribution Means')
-jellyroll_one_plot(chi_squares, 'Current Density Distribution Chi-Square')
-
-
-
-# Base Case 5.25 Amps - HTC 28 - 1 Tab
-fig1 = ecm.jellyroll_subplot(d, 2, amps[-1], var=0, soc_list=soc_list, global_range=False, dp=1)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig1.png'), dpi=600)
-# Base Case all Amps - HTC 28 - 2 Tabs
-fig2 = ecm.multi_var_subplot(d, [0], amps, [0, 1])
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig2.png'), dpi=600)
-## All HTC cases - 1 tabs, 10 A
-fig3 = ecm.multi_var_subplot(d, tab_1, [amps[-1]], [0, 1])
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig3.png'), dpi=600)
-# 2nd Case 5.25 Amps - HTC 100 - 2 Tab
-fig4 = ecm.jellyroll_subplot(d, 7, amps[-1], var=0, soc_list=soc_list, global_range=False, dp=1)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig4.png'), dpi=600)
-# 3rd Case 5.25 Amps - HTC 100 - 5 Tab
-fig5 = ecm.jellyroll_subplot(d, 12, amps[-1], var=0, soc_list=soc_list, global_range=False, dp=1)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig5.png'), dpi=600)
-# All Tabs, all currents HTC 5
-fig6 = ecm.spacetime(d, [0, 5, 10], amps, var=0, group=grp, normed=True)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig6.png'), dpi=600)
-# All Tabs, highest currents HTC 5
-fig7 = ecm.multi_var_subplot(d, [0, 5, 10], [amps[-1]], [0, 1])
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig7.png'), dpi=600)
-# All Tabs, highest currents HTC 100
-fig8 = ecm.multi_var_subplot(d, [4, 9, 14], [amps[-1]], [0, 1])
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig8.png'), dpi=600)
-# All Tabs, all currents HTC 5
-fig9a = ecm.spacetime(d, [0, 5, 10], amps, var=0, group=grp, normed=True)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig9a.png'), dpi=600)
-fig9b = ecm.chargeogram(d, [0, 5, 10], amps, group=grp)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig9b.png'), dpi=600)
-# All Tabs, all currents HTC 100
-fig10a = ecm.spacetime(d, [4, 9, 14], amps, var=0, group=grp, normed=True)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig10a.png'), dpi=600)
-fig10b = ecm.chargeogram(d, [4, 9, 14], amps, group=grp)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig10b.png'), dpi=600)
-fig11a = ecm.spacetime(d, [9, 17, 19], amps, var=0, group=grp, normed=True)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig11a.png'), dpi=600)
-fig11b = ecm.chargeogram(d, [9, 17, 19], amps, group=grp)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig11b.png'), dpi=600)
-# Third Heating
-fig12 = ecm.jellyroll_subplot(d, 19, 5.25, var=0, soc_list=soc_list, global_range=False)
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'fig12.png'), dpi=600)
-
-exp_data = ecm.load_experimental()
-#sim_data = [d[2][1.75], d[2][3.5], d[2][5.25]]
-fig, ax = plt.subplots()
-for i in range(3):
-    ed = exp_data[i]
-    sd = d[2][amps[i]]
-    ax.scatter(ed['Q discharge [mA.h]'].values/1000, ed['Temperature [K]'].values)
-    ax.plot(sd['capacity'], sd[1]['mean'], label='I='+str(amps[i])+' [A]')
-ax.set_xlabel('Capacity [Ah]')
-ax.set_ylabel('Temperature [K]')
-plt.legend()
-
-if savefigs:
-    plt.savefig(os.path.join(save_im_path, 'figX.png'), dpi=600)
-
+cases = ecm.get_cases()
+amps = ecm.get_amp_cases()
+d = ecm.load_all_data()
+for key in cases.keys():
+#for key in [0]:
+    case_path =  os.path.join(root, cases[key]['file'])
+    for amp in amps:
+        amp_path = os.path.join(case_path, str(amp)+'A')
+        print(amp_path)
+        save_file = os.path.join(amp_path, 'current_density_case_'+str(key)+'_amp_'+str(amp))
+        data = d[key][amp][0]['data']
+        dist_names = []
+        chi_squares = []
+        args = []
+        means = []
+        stds = []
+        for i in range(data.shape[1]):
+            dist_name, chi_square, dist, arg, dist_mean, dist_std = find_best_fit(data[:, i])
+            dist_names.append(dist_name)
+            chi_squares.append(chi_square)
+            args.append(arg)
+            means.append(dist_mean)
+            stds.append(dist_std)
+#            print(i, dist_name, dist_mean, dist_std)
+        
+        means = np.asarray(means)
+        stds = np.asarray(stds)
+        chi_squares = np.asarray(chi_squares)
+        
+        jellyroll_one_plot(np.log(stds), 'Current Density Distribution Log(STD)')
+        io.savemat(file_name=save_file+'_std',
+                   mdict={'data': stds},
+                   long_field_names=True)
+        if savefigs:
+            plt.savefig(os.path.join(save_file+'_log_std.png'), dpi=600)
+        jellyroll_one_plot(means, 'Current Density Distribution Means')
+        io.savemat(file_name=save_file+'_mean',
+                   mdict={'data': means},
+                   long_field_names=True)
+        if savefigs:
+            plt.savefig(os.path.join(save_file+'_mean.png'), dpi=600)
+        jellyroll_one_plot(chi_squares, 'Current Density Distribution Chi-Square')
+        io.savemat(file_name=save_file+'_chi',
+                   mdict={'data': chi_squares},
+                   long_field_names=True)
+        if savefigs:
+            plt.savefig(os.path.join(save_file+'_chi_sq.png'), dpi=600)
