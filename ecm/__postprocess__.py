@@ -18,14 +18,14 @@ from scipy.interpolate import NearestNDInterpolator
 from matplotlib import gridspec
 import matplotlib.ticker as mtick
 import pandas as pd
-
+from string import ascii_lowercase
 
 prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = prop_cycle.by_key()['color']
 
 
-input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-root = 'D:\\pybamm_pnm_results\\Chen2020_Q_cc'
+input_dir = 'C:\\Code\\pybamm_pnm\\input'
+root = 'C:\\Users\\Tom\\Documents\\Chen2020_v3'
 base = 'pybamm_pnm_case'
 exp_root = 'D:\\pybamm_pnm_results\\experimental'
 exp_files = ['MJ1_0.5C.csv',
@@ -95,11 +95,11 @@ def get_cases():
             '5_Chen2020_third',
             '3_Chen2020_third',
             '4_Chen2020_third',
-            '1_Chen2020d',
-            '2_Chen2020d',
-            '5_Chen2020d',
-            '3_Chen2020d',
-            '4_Chen2020d',
+#            '1_Chen2020d',
+#            '2_Chen2020d',
+#            '5_Chen2020d',
+#            '3_Chen2020d',
+#            '4_Chen2020d',
 #            '4_Chen2020_econd',
 #            '4_Chen2020_lowk',
 #            '4_Chen2020_third',
@@ -127,11 +127,12 @@ def get_cases():
             17: {'file': full[17], 'htc': 28, 'tabs': 1},
             18: {'file': full[18], 'htc': 50, 'tabs': 1},
             19: {'file': full[19], 'htc': 100, 'tabs': 1},
-            20: {'file': full[20], 'htc': 5, 'tabs': 2},
-            21: {'file': full[21], 'htc': 10, 'tabs': 2},
-            22: {'file': full[22], 'htc': 28, 'tabs': 2},
-            23: {'file': full[23], 'htc': 30, 'tabs': 2},
-            24: {'file': full[24], 'htc': 100, 'tabs': 2},}
+#            20: {'file': full[20], 'htc': 5, 'tabs': 2},
+#            21: {'file': full[21], 'htc': 10, 'tabs': 2},
+#            22: {'file': full[22], 'htc': 28, 'tabs': 2},
+#            23: {'file': full[23], 'htc': 30, 'tabs': 2},
+#            24: {'file': full[24], 'htc': 100, 'tabs': 2},
+            }
     
     return cases
 
@@ -139,12 +140,15 @@ def get_case_details(key):
     cases = get_cases()    
     return cases[key]['htc'], cases[key]['tabs']
 
-def format_case(x, a, expanded=True):
+def format_case(x, a, expanded=False, print_amps=True):
     htc, tabs = get_case_details(x)
     if expanded:
         text = 'Case ' +abc(x)+': h='+str(htc)+' [W.m-2.K-1] #tabs='+str(tabs) +': I='+str(a)+ ' [A]'
     else:
-        text = 'Case ' +abc(x)+': I='+str(a)+ ' [A]'
+        if print_amps:
+            text = 'Case ' +abc(x)+': I='+str(a)+ ' [A]'
+        else:
+            text = 'Case ' +abc(x)
     return text
 
 def abc(x):
@@ -255,7 +259,7 @@ def weighted_avg_and_std(values, weights):
     variance = np.average((values-average)**2, weights=weights)
     return (average, math.sqrt(variance))
 
-def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k', ax=None):
+def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k', ax=None, print_amps=True):
     if ax is None:
         fig, ax = plt.subplots()
     cap = data[case][amp]['capacity']
@@ -263,13 +267,13 @@ def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k', ax=Non
     dmean = data[case][amp][var]['mean']
     dmax = data[case][amp][var]['max']
     if normed:
-        ax.plot(cap, dmin/dmean, c=c)
+        ax.plot(cap, dmin/dmean, c=c, linestyle='dashed')
         ax.plot(cap, dmean/dmean, c=c, label='Case '+abc(case)+': I = '+str(amp)+ '[A]')
-        ax.plot(cap, dmax/dmean, c=c)
+        ax.plot(cap, dmax/dmean, c=c, linestyle='dashed')
     else:
-        ax.plot(cap, dmin, c=c)
-        ax.plot(cap, dmean, c=c, label=format_case(case, amp, expanded=False))
-        ax.plot(cap, dmax, c=c)
+        ax.plot(cap, dmin, c=c, linestyle='dashed')
+        ax.plot(cap, dmean, c=c, label=format_case(case, amp, expanded=False, print_amps=print_amps))
+        ax.plot(cap, dmax, c=c, linestyle='dashed')
     ax.set
     return ax
 
@@ -281,7 +285,7 @@ def chargeogram(data, case_list, amp_list, group='neg'):
     fig, axes = plt.subplots(nrows, ncols,
                              figsize=(int(5*ncols), int(5*nrows)),
                              sharex=True,
-                             sharey=True)
+                             sharey=False)
     var = 0  # Current density
     Ts = net.throats('spm_'+group+'_inner')
     roll_pos = np.cumsum(net['throat.arc_length'][Ts])
@@ -301,8 +305,8 @@ def chargeogram(data, case_list, amp_list, group='neg'):
             data_amalg *= 100
 #            spm_ids = np.argwhere(net['pore.arc_index'][net['throat.conns'][Ts]][:, 0] < 37 )
             filtered_data = data_amalg[:, spm_ids]
-            fmin = np.int(np.floor(filtered_data.min()))
-            fmax = np.int(np.ceil(filtered_data.max()))
+            fmin = np.int(np.floor(filtered_data.min()))-1
+            fmax = np.int(np.ceil(filtered_data.max()))+1
             nbins = fmax-fmin
             data_2d = np.zeros([len(spm_ids), nbins], dtype=float)
             for i in range(len(spm_ids)):
@@ -310,29 +314,32 @@ def chargeogram(data, case_list, amp_list, group='neg'):
                 data_2d[i, :] = hdata*100
         
             centers = (bins[1:] + bins[:-1])/2
+#            centers += 0.5
             x_data, y_data = np.meshgrid( norm_roll_pos,
-                                          centers
+                                          bins
                                            )
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
-            im = ax.pcolormesh(x_data, y_data-100, heatmap.T, cmap=cm.coolwarm, vmin=0.0, vmax=100)
+            im = ax.pcolormesh(x_data, y_data-100, heatmap.T, cmap=cm.inferno)
+#            im = ax.imshow(heatmap.T, cmap=cm.coolwarm, aspect='auto')
             ax.set_title(format_case(case, amp, expanded=False))
 #            if ai == 0 and ci == 1:
 #                ax.set_ylabel()
             if ci == len(case_list) - 1:
                 ax.set_xlabel('Normalized roll position')
             cbar = plt.colorbar(im, ax=ax)
-            cbar.ax.locator_params(nbins=6)
-    fig.suptitle('Current Density Distribution \n' +
-                 'Percentage deviation from mean: '+format_label(0))
+            ax.grid(True)
+#            cbar.ax.locator_params(nbins=6)
+#    fig.suptitle('Current Density Distribution \n' +
+#                 'Percentage deviation from mean: '+format_label(0))
 
     return fig
 
 def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
     wrk.clear()
     net = get_net()
-    nrows = len(case_list)
-    ncols = len(amp_list)
+    nrows = len(amp_list)
+    ncols = len(case_list)
     fig, axes = plt.subplots(nrows, ncols,
                              figsize=(int(5*ncols), int(5*nrows)),
                              sharex=True,
@@ -353,7 +360,10 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
     data_list = []
     for ci, case in enumerate(case_list):
         for ai, amp in enumerate(amp_list):
-            ax = axes[ci][ai]
+            if nrows > 1:
+                ax = axes[ci][ai]
+            else:
+                ax = axes[ci]
             data_amalg = data[case][amp][var]['data'].copy()
             ax_list.append(ax)
             cap = data[case][amp]['capacity']
@@ -391,37 +401,57 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
             ax.set_title(format_case(case, amp, expanded=False))
             if ai == 0:
                 ax.set_ylabel('Capacity [Ah]')
-            if ci == len(case_list) - 1:
+            if (ci == len(case_list) - 1) or nrows == 1:
                 ax.set_xlabel('Normalized Roll Position')
             cbar = plt.colorbar(im, ax=ax)
             cbar.ax.locator_params(nbins=6)
-    if normed:
-        fig.suptitle('Percentage deviation from mean: \n'+format_label(var))
-    else:
-        fig.suptitle(format_label(var))
+#    if normed:
+#        fig.suptitle('Percentage deviation from mean: \n'+format_label(var))
+#    else:
+#        fig.suptitle(format_label(var))
     return fig
 
 
-def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None):
+def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None, legend=False):
     if ax is None:
         fig, ax = plt.subplots()
     col_array = np.asarray(colors)
+    if len(amp_list) < 2:
+        print_amps=False
+    else:
+        print_amps=True
     for case in case_list:
         for amp in amp_list:
             c = col_array[0]
-            ax = min_mean_max_subplot(data, case, amp, var, normed, c=c, ax=ax)
+            ax = min_mean_max_subplot(data, case, amp, var, normed, c=c, ax=ax, print_amps=print_amps)
             col_array = np.roll(col_array, -1)
     ax.set_xlabel('Capacity [Ah]')
     ax.set_ylabel(format_label(var))
-    plt.legend()
+    if legend:
+        ax.legend()
 
 def multi_var_subplot(data, case_list, amp_list, var_list, normed=False):
-    nrows = 1
-    ncols = len(var_list)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(int(5*ncols), int(5*nrows)))
-    for vi in range(ncols):
-        ax = axes[vi]
-        combined_subplot(data, case_list, amp_list, var=var_list[vi], normed=normed, ax=ax)
+    nrows, ncols = np.shape(var_list)
+#    ncols = len(var_list)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(int(6*ncols), int(4*nrows)))
+    abc = ascii_lowercase
+    subi = 0
+    for ri in range(nrows):
+        for ci in range(ncols):
+            ax = axes[ri][ci]
+            var = var_list[ri][ci]
+            if subi == 0:
+                legend = True
+            else:
+                legend = False
+            combined_subplot(data, case_list, amp_list, var=var,
+                             normed=normed, ax=ax, legend=legend)
+            t = ax.text(0.0, 1.0, abc[subi], transform=ax.transAxes,
+                        fontsize=14, va='top')
+            t.set_bbox(dict(facecolor='white', alpha=1.0, edgecolor='black'))
+            ax.grid()
+            subi += 1
+    plt.tight_layout()
     return fig, axes
 
 def animate_init():
@@ -553,7 +583,11 @@ def update_animation_subplot(t, fig, data, data_name,
 def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]], global_range=False, dp=3):
     soc_arr = np.asarray(soc_list)
     (nrows, ncols) = soc_arr.shape
-    fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12), sharex=True, sharey=True)
+    if global_range:
+        fcols = ncols+1
+    else:
+        fcols = ncols
+    fig, axes = plt.subplots(nrows, fcols, figsize=(12, 12), sharex=True, sharey=True)
     spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
     spm_map_copy = spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
@@ -595,9 +629,18 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
             else:
                 im = ax.imshow(arr,  cmap=cm.inferno)
             ax.set_axis_off()
-            plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
+            if not global_range:
+                cbar = plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
+            else:
+                if ic == ncols - 1:
+                    cbar = plt.colorbar(im, cax=axes[ir][-1], format='%.'+str(dp)+'f')
+            if ic == ncols - 1:
+                cbar.set_label(format_label(var))
             ax.set_title('SOC: '+str(np.around(soc[t], 2)))
-            fig.suptitle(format_case(case, amp) + '\n' + format_label(var))
+#            fig.suptitle(format_case(case, amp, expanded=True))
+#    if global_range:
+#        cbar = plt.colorbar(im, ax=axes[:][-1], format='%.'+str(dp)+'f')
+#        cbar.set_label(format_label(var))
     return fig
 
 def get_SOC_vs_cap(data, case, amp):
