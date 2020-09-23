@@ -18,8 +18,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-root = 'C:\\Users\\Tom\\Documents\\Chen2020_v3'
-save_im_path = 'C:\\Users\\Tom\Documents\\Chen2020_v3\\figures'
+root = 'C:\\Users\\tom\\Documents\\Chen2020_v3'
+save_im_path = 'C:\\Users\\tom\Documents\\Chen2020_v3\\figures'
 plt.close('all')
 
 savefigs = True

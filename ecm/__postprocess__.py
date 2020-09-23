@@ -24,8 +24,8 @@ prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = prop_cycle.by_key()['color']
 
 
-input_dir = 'C:\\Code\\pybamm_pnm\\input'
-root = 'C:\\Users\\Tom\\Documents\\Chen2020_v3'
+input_dir = 'C:\\Users\\tom\\code\\pybamm_pnm\\input'
+root = 'C:\\Users\\tom\\Documents\\Chen2020_v3'
 base = 'pybamm_pnm_case'
 exp_root = 'D:\\pybamm_pnm_results\\experimental'
 exp_files = ['MJ1_0.5C.csv',
