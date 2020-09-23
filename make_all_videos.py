@@ -9,7 +9,7 @@ import ecm
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-root = 'D:\\pybamm_pnm_results\\Chen2020_Q_cc'
+root = 'D:\\pybamm_pnm_results\\Chen2020_v3'
 cases = ecm.get_cases()
 amps = ecm.get_amp_cases()
 d = ecm.load_all_data()

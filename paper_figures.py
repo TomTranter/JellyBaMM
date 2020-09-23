@@ -15,9 +15,11 @@ import scipy
 import pandas as pd
 # Turn off code warnings (this is not recommended for routine use)
 import warnings
+import pybamm
+
 warnings.filterwarnings("ignore")
 
-root = 'D:\\pybamm_pnm_results\\Chen2020_Q_cc'
+root = 'D:\\pybamm_pnm_results\\Chen2020_v3'
 save_im_path = 'D:\\pybamm_pnm_results\\figures'
 plt.close('all')
 
@@ -48,6 +50,29 @@ data = d[0][5.25][0]['data']
 #         'cauchy': cauchy}
 #args = []
 #keys = list(dists.keys())
+
+
+#param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.Chen2020)
+#neg_OCP = param['Negative electrode OCP [V]'][1]
+#pos_OCP = param['Positive electrode OCP [V]'][1]
+#neg_dUdT = param['Negative electrode OCP entropic change data [V.K-1]'][1]
+#pos_dUdT = param['Positive electrode OCP entropic change data [V.K-1]'][1]
+#plt.figure()
+#plt.plot(neg_OCP[:, 0], neg_OCP[:, 1], 'b', label='Negative OCP [V]')
+#plt.plot(pos_OCP[:, 0], pos_OCP[:, 1], 'r', label='Positive OCP [V]')
+#plt.legend()
+#plt.figure()
+#plt.plot(neg_dUdT[:, 0], neg_dUdT[:, 1]*1e3, 'b', label='Negative dUdT [mV/K]')
+#plt.plot(pos_dUdT[:, 0], pos_dUdT[:, 1]*1e3, 'r', label='Positive dUdT [mV/K]')
+#plt.legend()
+#
+#def neg_dUdT(sto, c_n_max):
+#    return pybamm.FunctionParameter("Negative electrode OCP entropic change data [V.K-1]", sto)
+#def pos_dUdT(sto, c_n_max):
+#    return pybamm.FunctionParameter("Positive electrode OCP entropic change data [V.K-1]", sto)
+#
+#param["Negative electrode OCP entropic change [V.K-1]"] = neg_dUdT
+#param["Positive electrode OCP entropic change [V.K-1]"] = pos_dUdT
 
 def plot_one_spm_dist(data_spm, dist_name, args=None):
     dist = getattr(scipy.stats, dist_name)
@@ -134,48 +159,48 @@ def find_best_fit(y, report_results=False):
     dist = getattr(scipy.stats, best_dist_name)
     args = dist.fit(y)
     return best_dist_name, best_chi_square, dist, args, dist.mean(*args), dist.std(*args)
-
-#def fit_all_spm(data):
-dist_names = []
-chi_squares = []
-args = []
-means = []
-stds = []
-for i in range(data.shape[1]):
-    dist_name, chi_square, dist, arg, dist_mean, dist_std = find_best_fit(data[:, i])
-    dist_names.append(dist_name)
-    chi_squares.append(chi_square)
-    args.append(arg)
-    means.append(dist_mean)
-    stds.append(dist_std)
-    print(i, dist_name, dist_mean, dist_std)
-
-input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-from matplotlib import cm
-def jellyroll_one_plot(data, title, dp=3):
-
-    fig, ax = plt.subplots()
-    spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
-    spm_map_copy = spm_map.copy()
-    spm_map_copy[np.isnan(spm_map_copy)] = -1
-    spm_map_copy = spm_map_copy.astype(int)
-    mask = np.isnan(spm_map)
-    arr = np.ones_like(spm_map).astype(float)
-    arr[~mask] = data[spm_map_copy][~mask]
-    arr[mask] = np.nan
-    im = ax.imshow(arr,  cmap=cm.inferno)
-    ax.set_axis_off()
-    plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
-    ax.set_title(title)
-    return fig
-
-means = np.asarray(means)
-stds = np.asarray(stds)
-chi_squares = np.asarray(chi_squares)
-
-jellyroll_one_plot(np.log(stds), 'Current Density Distribution Log(STD)')
-jellyroll_one_plot(means, 'Current Density Distribution Means')
-jellyroll_one_plot(chi_squares, 'Current Density Distribution Chi-Square')
+if 1==2:
+    #def fit_all_spm(data):
+    dist_names = []
+    chi_squares = []
+    args = []
+    means = []
+    stds = []
+    for i in range(data.shape[1]):
+        dist_name, chi_square, dist, arg, dist_mean, dist_std = find_best_fit(data[:, i])
+        dist_names.append(dist_name)
+        chi_squares.append(chi_square)
+        args.append(arg)
+        means.append(dist_mean)
+        stds.append(dist_std)
+        print(i, dist_name, dist_mean, dist_std)
+    
+    input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
+    from matplotlib import cm
+    def jellyroll_one_plot(data, title, dp=3):
+    
+        fig, ax = plt.subplots(figsize=(12, 12))
+        spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
+        spm_map_copy = spm_map.copy()
+        spm_map_copy[np.isnan(spm_map_copy)] = -1
+        spm_map_copy = spm_map_copy.astype(int)
+        mask = np.isnan(spm_map)
+        arr = np.ones_like(spm_map).astype(float)
+        arr[~mask] = data[spm_map_copy][~mask]
+        arr[mask] = np.nan
+        im = ax.imshow(arr,  cmap=cm.inferno)
+        ax.set_axis_off()
+        plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
+        ax.set_title(title)
+        return fig
+    
+    means = np.asarray(means)
+    stds = np.asarray(stds)
+    chi_squares = np.asarray(chi_squares)
+    
+    jellyroll_one_plot(np.log(stds), 'Current Density Distribution Log(STD)')
+    jellyroll_one_plot(means, 'Current Density Distribution Means')
+    jellyroll_one_plot(chi_squares, 'Current Density Distribution Chi-Square')
 
 
 
@@ -184,7 +209,7 @@ fig1 = ecm.jellyroll_subplot(d, 2, amps[-1], var=0, soc_list=soc_list, global_ra
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig1.png'), dpi=600)
 # Base Case all Amps - HTC 28 - 2 Tabs
-fig2 = ecm.multi_var_subplot(d, [0], amps, [0, 1])
+fig2 = ecm.multi_var_subplot(d, [0], amps, [2, 0], landscape=False)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig2.png'), dpi=600)
 ## All HTC cases - 1 tabs, 10 A
@@ -235,7 +260,14 @@ if savefigs:
 fig12 = ecm.jellyroll_subplot(d, 19, 5.25, var=0, soc_list=soc_list, global_range=False)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig12.png'), dpi=600)
-
+fig13 = jellyroll_one_plot(d[19][5.25][1]['data'][-1, :],
+                           'Temperature [K] with uneven cooling\n' +
+                           ecm.format_case(19, 5.25, True))
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig13.png'), dpi=600)
+fig14 = ecm.multi_var_subplot(d, [2, 4, 17, 19], [5.25], [0, 1])
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'fig14.png'), dpi=600)
 exp_data = ecm.load_experimental()
 #sim_data = [d[2][1.75], d[2][3.5], d[2][5.25]]
 fig, ax = plt.subplots()
@@ -251,3 +283,6 @@ plt.legend()
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'figX.png'), dpi=600)
 
+figY = ecm.jellyroll_subplot(d, 19, 5.25, var=1, soc_list=[[0.9, 0.7],[0.5, 0.3]], global_range=False, dp=1)
+if savefigs:
+    plt.savefig(os.path.join(save_im_path, 'figY.png'), dpi=600)

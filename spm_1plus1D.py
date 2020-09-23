@@ -9,10 +9,14 @@ import os
 from pybamm import EvaluatorPython as ep
 import openpnm.topotools as tt
 from copy import deepcopy
-    
+import configparser
 
 if __name__ == '__main__':
-
+    save_root = os.getcwd()
+    print(save_root)
+    config = configparser.ConfigParser()
+    config.read(os.path.join(save_root, 'config.txt'))
+    print(ecm.lump_thermal_props(config))
     plt.close('all')
     # set logging level
     #pybamm.set_logging_level("INFO")
@@ -99,7 +103,7 @@ if __name__ == '__main__':
     tau_sym = pybamm.standard_parameters_lithium_ion.tau_discharge
     tau = param.process_symbol(tau_sym).evaluate(0)
     t_end = 1800 / tau
-    t_eval = np.linspace(0, t_end, Nsteps)
+    t_eval = np.linspace(0, 1800, Nsteps)
     
     
     sim.solve(t_eval)
@@ -113,7 +117,7 @@ if __name__ == '__main__':
     I_total = solution['Total current density [A.m-2]'](solution.t, z=z).T
     R_local = np.zeros_like(I_local)
     variables = [
-        "Local ECM resistance [Ohm.m2]",
+        "Local ECM resistance [Ohm]",
         "Local ECM voltage [V]",
         "Measured open circuit voltage [V]",
         "Local voltage [V]",
@@ -159,7 +163,7 @@ if __name__ == '__main__':
     typical_height = spacing
     temperature = 303.0
     
-    spm_sim = ecm.make_spm(I_typical=I_typical)
+    spm_sim = ecm.make_spm(I_typical=I_typical, config=config)
     spm_models = [spm_sim.built_model for i in range(Nspm)]
     spm_solvers = [spm_sim.solver for i in range(Nspm)]
     #spm_params = [spm_sim.parameter_values for i in range(Nspm)]

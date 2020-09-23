@@ -20,7 +20,7 @@ from scipy import io
 warnings.filterwarnings("ignore")
 
 input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-root = 'D:\\pybamm_pnm_results\\Chen2020_Q_cc'
+root = 'D:\\pybamm_pnm_results\\Chen2020_v3'
 #save_im_path = 'D:\\pybamm_pnm_results\\figures'
 plt.close('all')
 
@@ -152,40 +152,43 @@ for key in cases.keys():
         amp_path = os.path.join(case_path, str(amp)+'A')
         print(amp_path)
         save_file = os.path.join(amp_path, 'current_density_case_'+str(key)+'_amp_'+str(amp))
-        data = d[key][amp][0]['data']
-        dist_names = []
-        chi_squares = []
-        args = []
-        means = []
-        stds = []
-        for i in range(data.shape[1]):
-            dist_name, chi_square, dist, arg, dist_mean, dist_std = find_best_fit(data[:, i])
-            dist_names.append(dist_name)
-            chi_squares.append(chi_square)
-            args.append(arg)
-            means.append(dist_mean)
-            stds.append(dist_std)
-#            print(i, dist_name, dist_mean, dist_std)
-        
-        means = np.asarray(means)
-        stds = np.asarray(stds)
-        chi_squares = np.asarray(chi_squares)
-        
-        jellyroll_one_plot(np.log(stds), 'Current Density Distribution Log(STD)')
-        io.savemat(file_name=save_file+'_std',
-                   mdict={'data': stds},
-                   long_field_names=True)
-        if savefigs:
-            plt.savefig(os.path.join(save_file+'_log_std.png'), dpi=600)
-        jellyroll_one_plot(means, 'Current Density Distribution Means')
-        io.savemat(file_name=save_file+'_mean',
-                   mdict={'data': means},
-                   long_field_names=True)
-        if savefigs:
-            plt.savefig(os.path.join(save_file+'_mean.png'), dpi=600)
-        jellyroll_one_plot(chi_squares, 'Current Density Distribution Chi-Square')
-        io.savemat(file_name=save_file+'_chi',
-                   mdict={'data': chi_squares},
-                   long_field_names=True)
-        if savefigs:
-            plt.savefig(os.path.join(save_file+'_chi_sq.png'), dpi=600)
+        try:
+            data = d[key][amp][0]['data']
+            dist_names = []
+            chi_squares = []
+            args = []
+            means = []
+            stds = []
+            for i in range(data.shape[1]):
+                dist_name, chi_square, dist, arg, dist_mean, dist_std = find_best_fit(data[:, i])
+                dist_names.append(dist_name)
+                chi_squares.append(chi_square)
+                args.append(arg)
+                means.append(dist_mean)
+                stds.append(dist_std)
+    #            print(i, dist_name, dist_mean, dist_std)
+            
+            means = np.asarray(means)
+            stds = np.asarray(stds)
+            chi_squares = np.asarray(chi_squares)
+            
+            jellyroll_one_plot(np.log(stds), 'Current Density Distribution Log(STD)')
+            io.savemat(file_name=save_file+'_std',
+                       mdict={'data': stds},
+                       long_field_names=True)
+            if savefigs:
+                plt.savefig(os.path.join(save_file+'_log_std.png'), dpi=600)
+            jellyroll_one_plot(means, 'Current Density Distribution Means')
+            io.savemat(file_name=save_file+'_mean',
+                       mdict={'data': means},
+                       long_field_names=True)
+            if savefigs:
+                plt.savefig(os.path.join(save_file+'_mean.png'), dpi=600)
+            jellyroll_one_plot(chi_squares, 'Current Density Distribution Chi-Square')
+            io.savemat(file_name=save_file+'_chi',
+                       mdict={'data': chi_squares},
+                       long_field_names=True)
+            if savefigs:
+                plt.savefig(os.path.join(save_file+'_chi_sq.png'), dpi=600)
+        except:
+            pass

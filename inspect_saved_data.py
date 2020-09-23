@@ -53,10 +53,10 @@ var2plot = 0
 
 
 same_axis = True
-amp_cases = ['4A', '6A', '8A', '10A']
-#amp_cases = ['1A']
+#amp_cases = ['1.75A', '3.5A', '5.25A']
+amp_cases = ['5.25A']
 if __name__ == "__main__":
-    save_parent = 'C:\\Code\\pybamm_pnm_case'
+    save_parent = 'D:\\pybamm_pnm_results\\Chen2020_v3\\pybamm_pnm_case'
 #    save_parent = sys.argv[-1]
     if same_axis:
         fig, axes = plt.subplots(1, 2, figsize=(10, 7.5), sharex=True, sharey=True)
@@ -167,6 +167,8 @@ if __name__ == "__main__":
             print(eta[0])
             axes2.fill_between(t_hrs, V0, V0-eta, label=format_label(ei))
             V0 -= eta
-        plt.legend()
+        axes2.set(xlabel='Capacity [Ah]')
+        axes2.set(ylabel='Overpotential [V]')
+        plt.legend(loc='upper left')
         
 

@@ -25,7 +25,7 @@ colors = prop_cycle.by_key()['color']
 
 
 input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-root = 'D:\\pybamm_pnm_results\\Chen2020_Q_cc'
+root = 'D:\\pybamm_pnm_results\\Chen2020_v3'
 base = 'pybamm_pnm_case'
 exp_root = 'D:\\pybamm_pnm_results\\experimental'
 exp_files = ['MJ1_0.5C.csv',
@@ -95,15 +95,7 @@ def get_cases():
             '5_Chen2020_third',
             '3_Chen2020_third',
             '4_Chen2020_third',
-            '1_Chen2020d',
-            '2_Chen2020d',
-            '5_Chen2020d',
-            '3_Chen2020d',
-            '4_Chen2020d',
-#            '4_Chen2020_econd',
-#            '4_Chen2020_lowk',
-#            '4_Chen2020_third',
-#            '4_Chen2020_lowecond_third',
+#     
             ]
     full = [base + case for case in cases]
     cases = {
@@ -127,11 +119,12 @@ def get_cases():
             17: {'file': full[17], 'htc': 28, 'tabs': 1},
             18: {'file': full[18], 'htc': 50, 'tabs': 1},
             19: {'file': full[19], 'htc': 100, 'tabs': 1},
-            20: {'file': full[20], 'htc': 5, 'tabs': 2},
-            21: {'file': full[21], 'htc': 10, 'tabs': 2},
-            22: {'file': full[22], 'htc': 28, 'tabs': 2},
-            23: {'file': full[23], 'htc': 30, 'tabs': 2},
-            24: {'file': full[24], 'htc': 100, 'tabs': 2},}
+#            20: {'file': full[20], 'htc': 5, 'tabs': 2},
+#            21: {'file': full[21], 'htc': 10, 'tabs': 2},
+#            22: {'file': full[22], 'htc': 28, 'tabs': 2},
+#            23: {'file': full[23], 'htc': 30, 'tabs': 2},
+#            24: {'file': full[24], 'htc': 100, 'tabs': 2},
+            }
     
     return cases
 
@@ -162,11 +155,14 @@ def get_amp_cases():
     return [1.75, 3.5, 5.25]
 
 def load_and_amalgamate(save_root, var_name):
-    file_lower = os.path.join(save_root, var_name+'_lower')
-    file_upper = os.path.join(save_root, var_name+'_upper')
-    data_lower = io.loadmat(file_lower)['data']
-    data_upper = io.loadmat(file_upper)['data']
-    data_amalg = np.hstack((data_lower, data_upper))
+    try:
+        file_lower = os.path.join(save_root, var_name+'_lower')
+        file_upper = os.path.join(save_root, var_name+'_upper')
+        data_lower = io.loadmat(file_lower)['data']
+        data_upper = io.loadmat(file_upper)['data']
+        data_amalg = np.hstack((data_lower, data_upper))
+    except:
+        data_amalg = None
     return data_amalg
 
 def format_label(i):
@@ -215,23 +211,25 @@ def load_all_data():
             for vi, v in enumerate(variables):                    
                 data[ci][amp][vi] = {} 
                 temp = load_and_amalgamate(amp_folder, v)
-                if vi == 0:
-                    check_nans = np.any(np.isnan(temp), axis=1)
+                if temp is not None:
+                    if vi == 0:
+                        check_nans = np.any(np.isnan(temp), axis=1)
+                        if np.any(check_nans):
+                            print('Nans removed from', amp_folder)
                     if np.any(check_nans):
-                        print('Nans removed from', amp_folder)
-                if np.any(check_nans):
-                    temp = temp[~check_nans, :]
-                data[ci][amp][vi]['data'] = temp
-                means = np.zeros(temp.shape[0])
-                for t in range(temp.shape[0]):
-                    (mean, std_dev) = weighted_avg_and_std(temp[t, :], weights)
-                    means[t] = mean
-                data[ci][amp][vi]['mean'] = means
-                data[ci][amp][vi]['min'] = np.min(temp, axis=1)
-                data[ci][amp][vi]['max'] = np.max(temp, axis=1)
-            t_hrs = data[ci][amp][10]['data'][:, 0]
-            cap = t_hrs * amp
-            data[ci][amp]['capacity'] = cap
+                        temp = temp[~check_nans, :]
+                    data[ci][amp][vi]['data'] = temp
+                    means = np.zeros(temp.shape[0])
+                    for t in range(temp.shape[0]):
+                        (mean, std_dev) = weighted_avg_and_std(temp[t, :], weights)
+                        means[t] = mean
+                    data[ci][amp][vi]['mean'] = means
+                    data[ci][amp][vi]['min'] = np.min(temp, axis=1)
+                    data[ci][amp][vi]['max'] = np.max(temp, axis=1)
+            if temp is not None:
+                t_hrs = data[ci][amp][10]['data'][:, 0]
+                cap = t_hrs * amp
+                data[ci][amp]['capacity'] = cap
     return data
 
 def get_net():
@@ -415,13 +413,19 @@ def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None):
     ax.set_ylabel(format_label(var))
     plt.legend()
 
-def multi_var_subplot(data, case_list, amp_list, var_list, normed=False):
-    nrows = 1
-    ncols = len(var_list)
+def multi_var_subplot(data, case_list, amp_list, var_list, normed=False, landscape=True):
+    nplot = len(var_list)
+    if landscape:
+        nrows = 1
+        ncols = nplot
+    else:
+        nrows = nplot
+        ncols = 1
     fig, axes = plt.subplots(nrows, ncols, figsize=(int(5*ncols), int(5*nrows)))
-    for vi in range(ncols):
+    for vi in range(nplot):
         ax = axes[vi]
         combined_subplot(data, case_list, amp_list, var=var_list[vi], normed=normed, ax=ax)
+        ax.grid()
     return fig, axes
 
 def animate_init():
