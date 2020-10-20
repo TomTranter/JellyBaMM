@@ -406,6 +406,44 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
         fig.suptitle(format_label(var))
     return fig
 
+def add_figure_label(ax, index):
+    t = ax.text(-0.1, 1.15, abc(index).lower(), transform=ax.transAxes,
+                fontsize=14, va='top')
+    t.set_bbox(dict(facecolor='white', alpha=1.0, edgecolor='black'))
+
+
+def stacked_variables(net, data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
+    spm_vol = net['throat.volume'][net['throat.spm_resistor']]
+#    Q_tot = data[case][amp][7]['data']
+    Q_ohm = data[case][amp][16]['data']
+    Q_irr = data[case][amp][17]['data']
+    Q_rev = data[case][amp][18]['data']
+    Q_ohm_cc = data[case][amp][19]['data']
+    nt, nspm = Q_ohm.shape
+    spm_vol_t = np.tile(spm_vol[:, np.newaxis], nt).T
+#    tot_heat = np.zeros(nt)
+#    sum_Q_tot = np.sum(Q_tot*spm_vol_t, axis=1)
+    sum_Q_ohm = np.sum(Q_ohm*spm_vol_t, axis=1)
+    sum_Q_irr = np.sum(Q_irr*spm_vol_t, axis=1)
+    sum_Q_rev = np.sum(Q_rev*spm_vol_t, axis=1)
+    sum_Q_ohm_cc = np.sum(Q_ohm_cc*spm_vol_t, axis=1)
+
+    base = np.zeros(len(sum_Q_ohm))
+#    tot_heat = sum_Q_ohm + sum_Q_irr + sum_Q_rev + sum_Q_ohm_cc
+    cols = cmap(np.linspace(0.1, 0.9, 4))
+    labels = [format_label(i).strip('X-averaged').strip('[W.m-3]').lstrip().rstrip().capitalize() for i in [18, 17, 16, 19]]
+    for si, source in enumerate([sum_Q_rev, sum_Q_irr, sum_Q_ohm, sum_Q_ohm_cc]):
+        ax.fill_between(data[case][amp][10]['mean'], base, base+source, color=cols[si], label=labels[si])
+        base += source
+#    axes[ax].set_title(ecm.format_case(case, a=17.5, expanded=True))
+    ax.set_xlabel('Time [h]')
+    ax.set_ylabel('Total Heat Produced [W]')
+    ax.grid()
+    add_figure_label(ax, subi)
+    plt.legend()
+    subi += 1
+    return ax
+
 def plot_resistors(net, throats, c, fig):
     conns = net['throat.conns'][throats]
     coords = net['pore.coords']
@@ -434,6 +472,64 @@ def plot_resistors(net, throats, c, fig):
     ax.plot(x_all, y_all, c=c)
     return fig
 
+
+def super_subplot(net, data, cases_left, cases_right, amp):
+    nrows = 3
+    ncols = 2
+    fig, axes = plt.subplots(nrows, ncols, figsize=(int(4*ncols), int(3*nrows)), sharex=True, sharey=False)
+    # Top row is current density
+    var = 0
+    row_num = 0
+    ax = axes[row_num][0]
+    ncolor = len(cases_left)
+    col_array = cmap(np.linspace(0.1, 0.9, ncolor))[::-1]
+    for cindex, case in enumerate(cases_left):
+        ax = min_mean_max_subplot(data, case, amp, var, normed=False, c=col_array[cindex], ax=ax, print_amps=False)
+        ax.grid()
+    ax.set_xlabel('Time [h]')
+    ax.set_ylabel(format_label(var))
+    ax.legend()
+    ax.grid()
+    add_figure_label(ax, 0)
+    ax = axes[row_num][1]
+    for cindex, case in enumerate(cases_right):
+        ax = min_mean_max_subplot(data, case, amp, var, normed=False, c=col_array[cindex], ax=ax, print_amps=False)
+        ax.grid()
+    ax.set_xlabel('Time [h]')
+    ax.set_ylabel(format_label(var))
+    ax.legend()
+    ax.grid()
+    add_figure_label(ax, 1)
+     # 2nd row is temperature
+    var = 1
+    row_num = 1
+    ax = axes[row_num][0]
+    ncolor = len(cases_left)
+    col_array = cmap(np.linspace(0.1, 0.9, ncolor))[::-1]
+    for cindex, case in enumerate(cases_left):
+        ax = min_mean_max_subplot(data, case, amp, var, normed=False, c=col_array[cindex], ax=ax, print_amps=False)
+        ax.grid()
+    ax.set_xlabel('Time [h]')
+    ax.set_ylabel(format_label(var))
+    ax.legend()
+    ax.grid()
+    add_figure_label(ax, 2)
+    ax = axes[row_num][1]
+    for cindex, case in enumerate(cases_right):
+        ax = min_mean_max_subplot(data, case, amp, var, normed=False, c=col_array[cindex], ax=ax, print_amps=False)
+        ax.grid()
+    ax.set_xlabel('Time [h]')
+    ax.set_ylabel(format_label(var))
+    ax.legend()  
+    ax.grid()
+    add_figure_label(ax, 3)
+    plt.ticklabel_format(axis='y', style='sci')
+    ax = axes[2][0]
+    stacked_variables(net, data, cases_left[0], 17.5, [18, 17, 16, 19], ax, 4)
+    ax = axes[2][1]
+    stacked_variables(net, data, cases_right[0], 17.5, [18, 17, 16, 19], ax, 5)
+    plt.tight_layout()
+
 def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None, legend=False):
     if ax is None:
         fig, ax = plt.subplots()
@@ -448,11 +544,12 @@ def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None, le
         for amp in amp_list:
             ax = min_mean_max_subplot(data, case, amp, var, normed, c=col_array[cindex], ax=ax, print_amps=print_amps)
             cindex +=1
+
     ax.set_xlabel('Time [h]')
     ax.set_ylabel(format_label(var))
     if legend:
         ax.legend()
-
+        
 def multi_var_subplot_old(data, case_list, amp_list, var_list, normed=False, landscape=True):
     nplot = len(var_list)
     if landscape:
@@ -469,8 +566,9 @@ def multi_var_subplot_old(data, case_list, amp_list, var_list, normed=False, lan
     plt.ticklabel_format(axis='y', style='sci')
     return fig, axes
 
-def multi_var_subplot(data, case_list, amp_list, var_list, normed=False, landscape=True):
-    nplot = len(var_list)
+def multi_var_subplot(data, case_list, amp_list, var_list, normed=False, landscape=True, nplot=None):
+    if nplot is None:
+        nplot = len(var_list)
     if landscape:
         nrows = 1
         ncols = nplot
@@ -481,13 +579,14 @@ def multi_var_subplot(data, case_list, amp_list, var_list, normed=False, landsca
     fig, axes = plt.subplots(nrows, ncols, figsize=(int(6*ncols), int(4*nrows)))
     abc = ascii_lowercase
     subi = 0
-    for vi in range(nplot):
+    for vi in range(len(var_list)):
         ax = axes[vi]
         var = var_list[vi]
-        if subi == 0:
-            legend = True
-        else:
-            legend = False
+#        if subi == 0:
+#            legend = True
+#        else:
+#            legend = False
+        legend = True
         combined_subplot(data, case_list, amp_list, var=var,
                          normed=normed, ax=ax, legend=legend)
         t = ax.text(-0.1, 1.15, abc[subi], transform=ax.transAxes,
@@ -680,11 +779,17 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
             else:
                 im = ax.imshow(arr,  cmap=cmap)
             ax.set_axis_off()
-            plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
+            if global_range is False:
+                plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
             ax.set_title('SOC: '+str(np.around(soc[t], 2)))
 #            fig.suptitle(format_case(case, amp) + '\n' + format_label(var))
             out.append(arr)
     fig.tight_layout()
+    if global_range:
+        fig.subplots_adjust(right=0.8)
+        cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+        fig.colorbar(im, cax=cbar_ax)
+
     return fig, arr
 
 def get_SOC_vs_cap(data, case, amp):
