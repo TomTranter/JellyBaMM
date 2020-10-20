@@ -18,15 +18,16 @@ from scipy.interpolate import NearestNDInterpolator
 from matplotlib import gridspec
 import matplotlib.ticker as mtick
 import pandas as pd
-
+from string import ascii_lowercase
+import seaborn as sns
 
 prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = prop_cycle.by_key()['color']
-
-
+cmap=sns.color_palette("rocket", as_cmap=True)
+cmap.set_bad(color='#EAEAF2')
 input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-root = 'D:\\pybamm_pnm_results\\Chen2020_v3'
-base = 'pybamm_pnm_case'
+root = 'D:\\pybamm_pnm_results\\46800'
+base = 'case_'
 exp_root = 'D:\\pybamm_pnm_results\\experimental'
 exp_files = ['MJ1_0.5C.csv',
              'MJ1_1.0C.csv',
@@ -50,6 +51,10 @@ def get_saved_var_names():
                   'eta_X-averaged_battery_concentration_overpotential',
                   'eta_X-averaged_battery_electrolyte_ohmic_losses',
                   'eta_X-averaged_battery_solid_phase_ohmic_losses',
+                  'var_X-averaged_Ohmic_heating',
+                  'var_X-averaged_irreversible_electrochemical_heating',
+                  'var_X-averaged_reversible_heating',
+                  'var_X-averaged_Ohmic_heating_CC',
                   ]
     return saved_vars
 
@@ -70,55 +75,46 @@ def get_saved_var_units():
              'V',
              'V',
              'V',
+             'W.m-3',
+             'W.m-3',
+             'W.m-3',
+             'W.m-3',
              ]
     return units
 
 def get_cases():
     cases = [
-            '1_Chen2020',
-            '2_Chen2020',
-            '5_Chen2020',
-            '3_Chen2020',
-            '4_Chen2020',
-            '1_Chen2020c',
-            '2_Chen2020c',
-            '5_Chen2020c',
-            '3_Chen2020c',
-            '4_Chen2020c',
-            '1_Chen2020b',
-            '2_Chen2020b',
-            '5_Chen2020b',
-            '3_Chen2020b',
-            '4_Chen2020b',
-            '1_Chen2020_third',
-            '2_Chen2020_third',
-            '5_Chen2020_third',
-            '3_Chen2020_third',
-            '4_Chen2020_third',
-#     
+            '0',
+            '1',
+            '2',
+            '3',
+            '4',
+            '5',
+            '6',
+            '7',     
             ]
     full = [base + case for case in cases]
     cases = {
-            0: {'file': full[0], 'htc': 5, 'tabs': 1},
-            1: {'file': full[1], 'htc': 10, 'tabs': 1},
-            2: {'file': full[2], 'htc': 28, 'tabs': 1},
-            3: {'file': full[3], 'htc': 50, 'tabs': 1},
-            4: {'file': full[4], 'htc': 100, 'tabs': 1},
-            5: {'file': full[5], 'htc': 5, 'tabs': 2},
-            6: {'file': full[6], 'htc': 10, 'tabs': 2},
-            7: {'file': full[7], 'htc': 28, 'tabs': 2},
-            8: {'file': full[8], 'htc': 50, 'tabs': 2},
-            9: {'file': full[9], 'htc': 100, 'tabs': 2},
-            10: {'file': full[10], 'htc': 5, 'tabs': 5},
-            11: {'file': full[11], 'htc': 10, 'tabs': 5},
-            12: {'file': full[12], 'htc': 28, 'tabs': 5},
-            13: {'file': full[13], 'htc': 50, 'tabs': 5},
-            14: {'file': full[14], 'htc': 100, 'tabs': 5},
-            15: {'file': full[15], 'htc': 5, 'tabs': 1},
-            16: {'file': full[16], 'htc': 10, 'tabs': 1},
-            17: {'file': full[17], 'htc': 28, 'tabs': 1},
-            18: {'file': full[18], 'htc': 50, 'tabs': 1},
-            19: {'file': full[19], 'htc': 100, 'tabs': 1},
+            0: {'file': full[0], 'htc': 10, 'tabs': 1},
+            1: {'file': full[1], 'htc': 28, 'tabs': 1},
+            2: {'file': full[2], 'htc': 50, 'tabs': 1},
+            3: {'file': full[3], 'htc': 100, 'tabs': 1},
+            4: {'file': full[4], 'htc': 10, 'tabs': 'tesla'},
+            5: {'file': full[5], 'htc': 28, 'tabs': 'tesla'},
+            6: {'file': full[6], 'htc': 50, 'tabs': 'tesla'},
+            7: {'file': full[7], 'htc': 100, 'tabs': 'tesla'},
+#            8: {'file': full[8], 'htc': 50, 'tabs': 2},
+#            9: {'file': full[9], 'htc': 100, 'tabs': 2},
+#            10: {'file': full[10], 'htc': 5, 'tabs': 5},
+#            11: {'file': full[11], 'htc': 10, 'tabs': 5},
+#            12: {'file': full[12], 'htc': 28, 'tabs': 5},
+#            13: {'file': full[13], 'htc': 50, 'tabs': 5},
+#            14: {'file': full[14], 'htc': 100, 'tabs': 5},
+#            15: {'file': full[15], 'htc': 5, 'tabs': 1},
+#            16: {'file': full[16], 'htc': 10, 'tabs': 1},
+#            17: {'file': full[17], 'htc': 28, 'tabs': 1},
+#            18: {'file': full[18], 'htc': 50, 'tabs': 1},
+#            19: {'file': full[19], 'htc': 100, 'tabs': 1},
 #            20: {'file': full[20], 'htc': 5, 'tabs': 2},
 #            21: {'file': full[21], 'htc': 10, 'tabs': 2},
 #            22: {'file': full[22], 'htc': 28, 'tabs': 2},
@@ -132,12 +128,15 @@ def get_case_details(key):
     cases = get_cases()    
     return cases[key]['htc'], cases[key]['tabs']
 
-def format_case(x, a, expanded=True):
+def format_case(x, a, expanded=True, print_amps=True):
     htc, tabs = get_case_details(x)
     if expanded:
-        text = 'Case ' +abc(x)+': h='+str(htc)+' [W.m-2.K-1] #tabs='+str(tabs) +': I='+str(a)+ ' [A]'
+        text = 'Case ' +abc(x)+': h='+str(htc)+' [W.m-2.K-1] #tabs='+str(tabs).capitalize() +': I='+str(a)+ ' [A]'
     else:
-        text = 'Case ' +abc(x)+': I='+str(a)+ ' [A]'
+        if print_amps:
+            text = 'Case ' +abc(x)+': I='+str(a)+ ' [A]'
+        else:
+            text = 'Case ' +abc(x)
     return text
 
 def abc(x):
@@ -152,7 +151,7 @@ def abc(x):
     
 
 def get_amp_cases():
-    return [1.75, 3.5, 5.25]
+    return [17.5]
 
 def load_and_amalgamate(save_root, var_name):
     try:
@@ -233,7 +232,7 @@ def load_all_data():
     return data
 
 def get_net():
-    wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top_m_cc_new.pnm'))
+    wrk.load_project(os.path.join(input_dir, '46800.pnm'))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
@@ -253,21 +252,29 @@ def weighted_avg_and_std(values, weights):
     variance = np.average((values-average)**2, weights=weights)
     return (average, math.sqrt(variance))
 
-def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k', ax=None):
+def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k', ax=None, print_amps=False, show='all', time_cap='Time'):
     if ax is None:
         fig, ax = plt.subplots()
-    cap = data[case][amp]['capacity']
+    cap = data[case][amp]['capacity'].copy()
+    if time_cap:
+        cap /= amp
     dmin = data[case][amp][var]['min']
     dmean = data[case][amp][var]['mean']
     dmax = data[case][amp][var]['max']
     if normed:
-        ax.plot(cap, dmin/dmean, c=c)
-        ax.plot(cap, dmean/dmean, c=c, label='Case '+abc(case)+': I = '+str(amp)+ '[A]')
-        ax.plot(cap, dmax/dmean, c=c)
+        if show == 'all' or show == 'min':
+            ax.plot(cap, dmin/dmean, c=c, linestyle='dashed')
+        if show == 'all' or show == 'mean': 
+            ax.plot(cap, dmean/dmean, c=c, label='Case '+abc(case)+': I = '+str(amp)+ '[A]')
+        if show == 'all' or show == 'max':
+            ax.plot(cap, dmax/dmean, c=c, linestyle='dashed')
     else:
-        ax.plot(cap, dmin, c=c)
-        ax.plot(cap, dmean, c=c, label=format_case(case, amp, expanded=False))
-        ax.plot(cap, dmax, c=c)
+        if show == 'all' or show == 'min':
+            ax.plot(cap, dmin, c=c, linestyle='dashed')
+        if show == 'all' or show == 'mean':
+            ax.plot(cap, dmean, c=c, label=format_case(case, amp, expanded=False, print_amps=print_amps))
+        if show == 'all' or show == 'max':
+            ax.plot(cap, dmax, c=c, linestyle='dashed')
     ax.set
     return ax
 
@@ -399,19 +406,68 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
         fig.suptitle(format_label(var))
     return fig
 
+def plot_resistors(net, throats, c, fig):
+    conns = net['throat.conns'][throats]
+    coords = net['pore.coords']
+    v = coords[conns[:, 1]] - coords[conns[:, 0]]
+    z = np.array([0, 0, 1])
+    perp = np.cross(v, z)
+    v_lens = np.linalg.norm(v, axis=1)
+    v_unit = v / np.vstack((v_lens, v_lens, v_lens)).T
+    v_unit_perp = perp / np.vstack((v_lens, v_lens, v_lens)).T
+    zigzag = np.array([0, 0, 0, 0, 0, 0, 1, -1, -1, 1, 1, -1, -1, 1, 1, -1, -1, 1, 0, 0, 0, 0, 0, 0])
+    segs = len(zigzag)
+    p_start = coords[conns[:, 0]]
+    x_all = [p_start[:, 0]]
+    y_all = [p_start[:, 1]]
+    for i in range(segs):
+        p_end = p_start + v*(1/segs) + perp*(2/segs)*zigzag[i]
+        x_all.append(p_end[:, 0])
+        y_all.append(p_end[:, 1])
+#        for t in range(len(p_start)):
+#            plt.plot([p_start[t, 0], p_end[t, 0]], [p_start[t, 1], p_end[t, 1]], c=c)
+        p_start = p_end
+    x_all = np.asarray(x_all)
+    y_all = np.asarray(y_all)
+    ax = plt.gca()
+#    print(x_all.shape)
+    ax.plot(x_all, y_all, c=c)
+    return fig
 
-def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None):
+def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None, legend=False):
     if ax is None:
         fig, ax = plt.subplots()
-    col_array = np.asarray(colors)
+    ncolor = len(case_list)*len(amp_list)
+    col_array = cmap(np.linspace(0.1, 0.9, ncolor))[::-1]
+    if len(amp_list) < 2:
+        print_amps=False
+    else:
+        print_amps=True
+    cindex = 0
     for case in case_list:
         for amp in amp_list:
-            c = col_array[0]
-            ax = min_mean_max_subplot(data, case, amp, var, normed, c=c, ax=ax)
-            col_array = np.roll(col_array, -1)
-    ax.set_xlabel('Capacity [Ah]')
+            ax = min_mean_max_subplot(data, case, amp, var, normed, c=col_array[cindex], ax=ax, print_amps=print_amps)
+            cindex +=1
+    ax.set_xlabel('Time [h]')
     ax.set_ylabel(format_label(var))
-    plt.legend()
+    if legend:
+        ax.legend()
+
+def multi_var_subplot_old(data, case_list, amp_list, var_list, normed=False, landscape=True):
+    nplot = len(var_list)
+    if landscape:
+        nrows = 1
+        ncols = nplot
+    else:
+        nrows = nplot
+        ncols = 1
+    fig, axes = plt.subplots(nrows, ncols, figsize=(int(6*ncols), int(4*nrows)), sharex=True)
+    for vi in range(nplot):
+        ax = axes[vi]
+        combined_subplot(data, case_list, amp_list, var=var_list[vi], normed=normed, ax=ax)
+        ax.grid()
+    plt.ticklabel_format(axis='y', style='sci')
+    return fig, axes
 
 def multi_var_subplot(data, case_list, amp_list, var_list, normed=False, landscape=True):
     nplot = len(var_list)
@@ -421,11 +477,25 @@ def multi_var_subplot(data, case_list, amp_list, var_list, normed=False, landsca
     else:
         nrows = nplot
         ncols = 1
-    fig, axes = plt.subplots(nrows, ncols, figsize=(int(5*ncols), int(5*nrows)))
+#    ncols = len(var_list)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(int(6*ncols), int(4*nrows)))
+    abc = ascii_lowercase
+    subi = 0
     for vi in range(nplot):
         ax = axes[vi]
-        combined_subplot(data, case_list, amp_list, var=var_list[vi], normed=normed, ax=ax)
+        var = var_list[vi]
+        if subi == 0:
+            legend = True
+        else:
+            legend = False
+        combined_subplot(data, case_list, amp_list, var=var,
+                         normed=normed, ax=ax, legend=legend)
+        t = ax.text(-0.1, 1.15, abc[subi], transform=ax.transAxes,
+                    fontsize=14, va='top')
+        t.set_bbox(dict(facecolor='white', alpha=1.0, edgecolor='black'))
         ax.grid()
+        subi += 1
+    plt.tight_layout()
     return fig, axes
 
 def animate_init():
@@ -435,7 +505,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     net = get_net()
     weights = get_weights(net)
     project = net.project
-    im_spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
+    im_spm_map = np.load(os.path.join(input_dir, 'im_spm_map_46800.npz'))['arr_0']
     title = filename.split("\\")
     if len(title) == 1:
         title = title[0]
@@ -445,6 +515,8 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     plot_right = format_label(variables[1])
     fig = setup_animation_subplots(plot_left, plot_right)
     mask = np.isnan(im_spm_map)
+    if ~np.any(mask):
+        mask = im_spm_map == -1
     spm_map_copy = im_spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
@@ -464,7 +536,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
                                               spm_map_copy, mask,
                                               time_var, time, weights))
     Writer = animation.writers['ffmpeg']
-    writer = Writer(fps=2, metadata=dict(artist='Tom Tranter'), bitrate=-1)
+    writer = Writer(fps=30, metadata=dict(artist='Tom Tranter'), bitrate=-1)
 
 #    im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
 #                                       blit=True)
@@ -488,9 +560,9 @@ def update_multi_animation_subplots(t, fig, project, variables, plot_vars, spm_m
     for i, side in enumerate(['left', 'right']):
         data = variables[plot_vars[i]]
         if i == 0:
-            global_range = False
+            global_range = True
         else:
-            global_range = False
+            global_range = True
         fig  = update_animation_subplot(t, fig, data, plot_vars[i], spm_map, mask, time_var, time, weights, side=side, global_range=global_range)
 
 
@@ -558,12 +630,14 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
     soc_arr = np.asarray(soc_list)
     (nrows, ncols) = soc_arr.shape
     fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12), sharex=True, sharey=True)
-    spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
+    spm_map = np.load(os.path.join(input_dir, 'im_spm_map_46800.npz'))['arr_0']
     spm_map_copy = spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
     var_data = data[case][amp][var]['data']
     mask = np.isnan(spm_map)
+    if ~np.any(mask):
+        mask = spm_map == -1
     arr = np.ones_like(spm_map).astype(float)
     soc = get_SOC_vs_cap(data, case, amp)[:, 1]
     gmax = -1e12
@@ -571,7 +645,10 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
     arrs = []
     for ir in range(nrows):
         for ic in range(ncols):
-            ax = axes[ir][ic]
+            try:
+                ax = axes[ir][ic]
+            except:
+                ax = axes
             soc_target = soc_arr[ir][ic]
             t = np.argmin((soc-soc_target)**2)
             t_data = var_data[t, :]
@@ -588,21 +665,27 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
             if vmax > gmax:
                 gmax = vmax
             arrs.append(arr.copy())
+    out = []
     for ir in range(nrows):
         for ic in range(ncols):
-            ax = axes[ir][ic]
+            try:
+                ax = axes[ir][ic]
+            except:
+                ax=axes
             soc_target = soc_arr[ir][ic]
             t = np.argmin((soc-soc_target)**2)
             arr = arrs.pop(0)
             if global_range:
-                im = ax.imshow(arr, vmax=gmax, vmin=gmin, cmap=cm.inferno)
+                im = ax.imshow(arr, vmax=gmax, vmin=gmin, cmap=cmap)
             else:
-                im = ax.imshow(arr,  cmap=cm.inferno)
+                im = ax.imshow(arr,  cmap=cmap)
             ax.set_axis_off()
             plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
             ax.set_title('SOC: '+str(np.around(soc[t], 2)))
-            fig.suptitle(format_case(case, amp) + '\n' + format_label(var))
-    return fig
+#            fig.suptitle(format_case(case, amp) + '\n' + format_label(var))
+            out.append(arr)
+    fig.tight_layout()
+    return fig, arr
 
 def get_SOC_vs_cap(data, case, amp):
     var_names = get_saved_var_names()

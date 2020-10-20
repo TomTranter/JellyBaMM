@@ -24,8 +24,10 @@ if __name__ == '__main__':
     # load (1+1D) SPMe model
     wrk = op.Workspace()
     Nspm = 8
-    Nsteps = 180
-    parallel = True
+    Nsteps = 50
+    dt = 10
+    end_time = dt*Nsteps 
+    parallel = False
     e_height = 2.0
     max_workers = 5
     #max_workers = int(os.cpu_count() / 2)
@@ -46,7 +48,7 @@ if __name__ == '__main__':
     #current_1C = 24 * A_cc
     I_app = 1.0
     I_typical = I_app/Nspm
-    e_cond_cc = 1e7
+    e_cond_cc = 6e7
     param.update(
         {
             "Typical current [A]": I_typical,
@@ -103,7 +105,7 @@ if __name__ == '__main__':
     tau_sym = pybamm.standard_parameters_lithium_ion.tau_discharge
     tau = param.process_symbol(tau_sym).evaluate(0)
     t_end = 1800 / tau
-    t_eval = np.linspace(0, 1800, Nsteps)
+    t_eval = np.arange(start=0, stop=end_time, step=dt)
     
     
     sim.solve(t_eval)
@@ -117,8 +119,6 @@ if __name__ == '__main__':
     I_total = solution['Total current density [A.m-2]'](solution.t, z=z).T
     R_local = np.zeros_like(I_local)
     variables = [
-        "Local ECM resistance [Ohm]",
-        "Local ECM voltage [V]",
         "Measured open circuit voltage [V]",
         "Local voltage [V]",
         "Change in measured open circuit voltage [V]",
@@ -127,9 +127,9 @@ if __name__ == '__main__':
     ]
     overpotentials = [
         "X-averaged reaction overpotential [V]",
-    #    "X-averaged concentration overpotential [V]",
-    #    "X-averaged electrolyte ohmic losses [V]",
-    #    "X-averaged solid phase ohmic losses [V]",
+#        "X-averaged concentration overpotential [V]",
+#        "X-averaged electrolyte ohmic losses [V]",
+#        "X-averaged solid phase ohmic losses [V]",
         "Change in measured open circuit voltage [V]",
     ]
     
@@ -196,10 +196,13 @@ if __name__ == '__main__':
     spm_temperature = np.zeros(Nspm) # Non-dim
     
     electrode_heights = cc_fracs*e_height
-    project = ecm.make_1D_net(Nunit=Nspm, R=R_local[0, :], spacing=spacing, pos_tabs=[0], neg_tabs=[-1])
+    R_init = R_local[0, :]
+    R_init[:] = R_init.mean()
+    project = ecm.make_1D_net(Nunit=Nspm, spacing=spacing, pos_tabs=[0], neg_tabs=[-1])
     net = project.network
     res_Ts = net.throats('spm_resistor')
-    alg = ecm.setup_ecm_alg(project, spacing, R_local[0, :], e_cond_cc)
+    net['throat.arc_length'] = e_height/Nspm
+    alg = ecm.setup_ecm_alg(project, config, R_init)
     phys = project.physics()['phys_01']
     phase = project.phases()['phase_01']
     (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net, alg, V_ecm)
@@ -217,8 +220,8 @@ if __name__ == '__main__':
     
     
     tau_mini = spm_sim.parameter_values.process_symbol(tau_sym).evaluate(u=temp_inputs)
-    dt = np.mean(solution.t[1:]-solution.t[:-1])
-    dt *= tau/tau_mini
+#    dt = np.mean(solution.t[1:]-solution.t[:-1])
+#    dt *= tau/tau_mini
     
     dead = np.zeros(Nspm, dtype=bool)
     outer_step = 0
@@ -233,13 +236,12 @@ if __name__ == '__main__':
         print("Outer", outer_step)
         # Find terminal voltage that satisfy ecm total currents for R
         current_match = False
-        max_inner_steps = 1000
+        max_inner_steps = 100
         inner_step = 0
         damping = 0.66
         # Iterate the ecm until the currents match
         t_ecm_start = time.time()
         while (inner_step < max_inner_steps) and (not current_match):
-    
             (V_local_pnm, I_local_pnm, R_local_pnm) = ecm.run_ecm(net,
                                                                   alg,
                                                                   V_test)
