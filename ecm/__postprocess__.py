@@ -19,15 +19,13 @@ from matplotlib import gridspec
 import matplotlib.ticker as mtick
 import pandas as pd
 from string import ascii_lowercase
-import seaborn as sns
-
 prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = prop_cycle.by_key()['color']
-cmap=sns.color_palette("rocket", as_cmap=True)
-cmap.set_bad(color='#EAEAF2')
-input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-root = 'D:\\pybamm_pnm_results\\46800'
-base = 'case_'
+
+
+input_dir = 'C:\\Users\\tom\\code\\pybamm_pnm\\input'
+root = 'C:\\Users\\tom\\Documents\\Chen2020_v3'
+base = 'pybamm_pnm_case'
 exp_root = 'D:\\pybamm_pnm_results\\experimental'
 exp_files = ['MJ1_0.5C.csv',
              'MJ1_1.0C.csv',
@@ -84,37 +82,58 @@ def get_saved_var_units():
 
 def get_cases():
     cases = [
-            '0',
-            '1',
-            '2',
-            '3',
-            '4',
-            '5',
-            '6',
-            '7',     
+            '1_Chen2020',
+            '2_Chen2020',
+            '5_Chen2020',
+            '3_Chen2020',
+            '4_Chen2020',
+            '1_Chen2020c',
+            '2_Chen2020c',
+            '5_Chen2020c',
+            '3_Chen2020c',
+            '4_Chen2020c',
+            '1_Chen2020b',
+            '2_Chen2020b',
+            '5_Chen2020b',
+            '3_Chen2020b',
+            '4_Chen2020b',
+            '1_Chen2020_third',
+            '2_Chen2020_third',
+            '5_Chen2020_third',
+            '3_Chen2020_third',
+            '4_Chen2020_third',
+#            '1_Chen2020d',
+#            '2_Chen2020d',
+#            '5_Chen2020d',
+#            '3_Chen2020d',
+#            '4_Chen2020d',
+#            '4_Chen2020_econd',
+#            '4_Chen2020_lowk',
+#            '4_Chen2020_third',
+#            '4_Chen2020_lowecond_third',
             ]
     full = [base + case for case in cases]
     cases = {
-            0: {'file': full[0], 'htc': 10, 'tabs': 1},
-            1: {'file': full[1], 'htc': 28, 'tabs': 1},
-            2: {'file': full[2], 'htc': 50, 'tabs': 1},
-            3: {'file': full[3], 'htc': 100, 'tabs': 1},
-            4: {'file': full[4], 'htc': 10, 'tabs': 'tesla'},
-            5: {'file': full[5], 'htc': 28, 'tabs': 'tesla'},
-            6: {'file': full[6], 'htc': 50, 'tabs': 'tesla'},
-            7: {'file': full[7], 'htc': 100, 'tabs': 'tesla'},
-#            8: {'file': full[8], 'htc': 50, 'tabs': 2},
-#            9: {'file': full[9], 'htc': 100, 'tabs': 2},
-#            10: {'file': full[10], 'htc': 5, 'tabs': 5},
-#            11: {'file': full[11], 'htc': 10, 'tabs': 5},
-#            12: {'file': full[12], 'htc': 28, 'tabs': 5},
-#            13: {'file': full[13], 'htc': 50, 'tabs': 5},
-#            14: {'file': full[14], 'htc': 100, 'tabs': 5},
-#            15: {'file': full[15], 'htc': 5, 'tabs': 1},
-#            16: {'file': full[16], 'htc': 10, 'tabs': 1},
-#            17: {'file': full[17], 'htc': 28, 'tabs': 1},
-#            18: {'file': full[18], 'htc': 50, 'tabs': 1},
-#            19: {'file': full[19], 'htc': 100, 'tabs': 1},
+            0: {'file': full[0], 'htc': 5, 'tabs': 1},
+            1: {'file': full[1], 'htc': 10, 'tabs': 1},
+            2: {'file': full[2], 'htc': 28, 'tabs': 1},
+            3: {'file': full[3], 'htc': 50, 'tabs': 1},
+            4: {'file': full[4], 'htc': 100, 'tabs': 1},
+            5: {'file': full[5], 'htc': 5, 'tabs': 2},
+            6: {'file': full[6], 'htc': 10, 'tabs': 2},
+            7: {'file': full[7], 'htc': 28, 'tabs': 2},
+            8: {'file': full[8], 'htc': 50, 'tabs': 2},
+            9: {'file': full[9], 'htc': 100, 'tabs': 2},
+            10: {'file': full[10], 'htc': 5, 'tabs': 5},
+            11: {'file': full[11], 'htc': 10, 'tabs': 5},
+            12: {'file': full[12], 'htc': 28, 'tabs': 5},
+            13: {'file': full[13], 'htc': 50, 'tabs': 5},
+            14: {'file': full[14], 'htc': 100, 'tabs': 5},
+            15: {'file': full[15], 'htc': 5, 'tabs': 1},
+            16: {'file': full[16], 'htc': 10, 'tabs': 1},
+            17: {'file': full[17], 'htc': 28, 'tabs': 1},
+            18: {'file': full[18], 'htc': 50, 'tabs': 1},
+            19: {'file': full[19], 'htc': 100, 'tabs': 1},
 #            20: {'file': full[20], 'htc': 5, 'tabs': 2},
 #            21: {'file': full[21], 'htc': 10, 'tabs': 2},
 #            22: {'file': full[22], 'htc': 28, 'tabs': 2},
@@ -128,7 +147,7 @@ def get_case_details(key):
     cases = get_cases()    
     return cases[key]['htc'], cases[key]['tabs']
 
-def format_case(x, a, expanded=True, print_amps=True):
+def format_case(x, a, expanded=False, print_amps=True):
     htc, tabs = get_case_details(x)
     if expanded:
         text = 'Case ' +abc(x)+': h='+str(htc)+' [W.m-2.K-1] #tabs='+str(tabs).capitalize() +': I='+str(a)+ ' [A]'
@@ -252,6 +271,7 @@ def weighted_avg_and_std(values, weights):
     variance = np.average((values-average)**2, weights=weights)
     return (average, math.sqrt(variance))
 
+
 def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k', ax=None, print_amps=False, show='all', time_cap='Time'):
     if ax is None:
         fig, ax = plt.subplots()
@@ -286,7 +306,7 @@ def chargeogram(data, case_list, amp_list, group='neg'):
     fig, axes = plt.subplots(nrows, ncols,
                              figsize=(int(5*ncols), int(5*nrows)),
                              sharex=True,
-                             sharey=True)
+                             sharey=False)
     var = 0  # Current density
     Ts = net.throats('spm_'+group+'_inner')
     roll_pos = np.cumsum(net['throat.arc_length'][Ts])
@@ -306,8 +326,8 @@ def chargeogram(data, case_list, amp_list, group='neg'):
             data_amalg *= 100
 #            spm_ids = np.argwhere(net['pore.arc_index'][net['throat.conns'][Ts]][:, 0] < 37 )
             filtered_data = data_amalg[:, spm_ids]
-            fmin = np.int(np.floor(filtered_data.min()))
-            fmax = np.int(np.ceil(filtered_data.max()))
+            fmin = np.int(np.floor(filtered_data.min()))-1
+            fmax = np.int(np.ceil(filtered_data.max()))+1
             nbins = fmax-fmin
             data_2d = np.zeros([len(spm_ids), nbins], dtype=float)
             for i in range(len(spm_ids)):
@@ -315,29 +335,32 @@ def chargeogram(data, case_list, amp_list, group='neg'):
                 data_2d[i, :] = hdata*100
         
             centers = (bins[1:] + bins[:-1])/2
+#            centers += 0.5
             x_data, y_data = np.meshgrid( norm_roll_pos,
-                                          centers
+                                          bins
                                            )
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
-            im = ax.pcolormesh(x_data, y_data-100, heatmap.T, cmap=cm.coolwarm, vmin=0.0, vmax=100)
+            im = ax.pcolormesh(x_data, y_data-100, heatmap.T, cmap=cm.inferno)
+#            im = ax.imshow(heatmap.T, cmap=cm.coolwarm, aspect='auto')
             ax.set_title(format_case(case, amp, expanded=False))
 #            if ai == 0 and ci == 1:
 #                ax.set_ylabel()
             if ci == len(case_list) - 1:
                 ax.set_xlabel('Normalized roll position')
             cbar = plt.colorbar(im, ax=ax)
-            cbar.ax.locator_params(nbins=6)
-    fig.suptitle('Current Density Distribution \n' +
-                 'Percentage deviation from mean: '+format_label(0))
+            ax.grid(True)
+#            cbar.ax.locator_params(nbins=6)
+#    fig.suptitle('Current Density Distribution \n' +
+#                 'Percentage deviation from mean: '+format_label(0))
 
     return fig
 
 def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
     wrk.clear()
     net = get_net()
-    nrows = len(case_list)
-    ncols = len(amp_list)
+    nrows = len(amp_list)
+    ncols = len(case_list)
     fig, axes = plt.subplots(nrows, ncols,
                              figsize=(int(5*ncols), int(5*nrows)),
                              sharex=True,
@@ -358,7 +381,10 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
     data_list = []
     for ci, case in enumerate(case_list):
         for ai, amp in enumerate(amp_list):
-            ax = axes[ci][ai]
+            if nrows > 1:
+                ax = axes[ci][ai]
+            else:
+                ax = axes[ci]
             data_amalg = data[case][amp][var]['data'].copy()
             ax_list.append(ax)
             cap = data[case][amp]['capacity']
@@ -396,14 +422,14 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
             ax.set_title(format_case(case, amp, expanded=False))
             if ai == 0:
                 ax.set_ylabel('Capacity [Ah]')
-            if ci == len(case_list) - 1:
+            if (ci == len(case_list) - 1) or nrows == 1:
                 ax.set_xlabel('Normalized Roll Position')
             cbar = plt.colorbar(im, ax=ax)
             cbar.ax.locator_params(nbins=6)
-    if normed:
-        fig.suptitle('Percentage deviation from mean: \n'+format_label(var))
-    else:
-        fig.suptitle(format_label(var))
+#    if normed:
+#        fig.suptitle('Percentage deviation from mean: \n'+format_label(var))
+#    else:
+#        fig.suptitle(format_label(var))
     return fig
 
 def add_figure_label(ax, index):
@@ -538,7 +564,6 @@ def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None, le
     if len(amp_list) < 2:
         print_amps=False
     else:
-        print_amps=True
     cindex = 0
     for case in case_list:
         for amp in amp_list:

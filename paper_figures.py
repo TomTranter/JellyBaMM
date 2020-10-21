@@ -19,8 +19,10 @@ import pybamm
 
 warnings.filterwarnings("ignore")
 
+
 root = 'D:\\pybamm_pnm_results\\Chen2020_v3'
 save_im_path = 'D:\\pybamm_pnm_results\\figures'
+
 plt.close('all')
 
 savefigs = True
@@ -31,11 +33,13 @@ tab_5 = [10, 11, 12, 13, 14]
 tab_2_third = [15, 16, 17, 18, 19]
 tab_1_2 = [20, 21, 22, 23, 24]
 
+
 amps = ecm.get_amp_cases()
 d = ecm.load_all_data()
 cases = ecm.get_cases()
-soc_list=[[0.9, 0.8, 0.7],[0.6, 0.5, 0.4],[0.3, 0.2, 0.1]]
+#soc_list=[[0.9, 0.8, 0.7],[0.6, 0.5, 0.4],[0.3, 0.2, 0.1]]
 #mini_soc_list=[[0.99, 0.98, 0.97],[0.96, 0.95, 0.94],[0.93, 0.92, 0.91]]
+soc_list = [[0.9, 0.5, 0.4],[0.3, 0.2, 0.1]]
 mini_soc_list=[[0.09, 0.08],[0.07, 0.06]]
 grp = 'neg'
 

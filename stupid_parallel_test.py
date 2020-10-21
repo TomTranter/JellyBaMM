@@ -8,6 +8,8 @@ import pybamm
 from concurrent.futures import ProcessPoolExecutor
 import os
 import numpy as np
+import warnings
+warnings.simplefilter("ignore")
 
 
 def current_function(t):
@@ -28,10 +30,10 @@ def make_spm(I_typical, thermal=True):
         {
             "Typical current [A]": I_typical,
             "Current function [A]": current_function,
-            "Current": "[input]",
             "Electrode height [m]": "[input]",
         }
     )
+    param.update({"Current": "[input]"}, check_already_exists=False)
     param.process_model(model)
     param.process_geometry(geometry)
     var = pybamm.standard_spatial_vars
@@ -74,8 +76,8 @@ def step_spm(zipped):
             solved_len = solver.y0.shape[0]
             solver.y0 = solution.y[:solved_len, -1]
             solver.t = solution.t[-1]
-        solution = solver.step(
-            built_model, dt, external_variables=external_variables, inputs=inputs
+        solution = solver.step(old_solution=solution,
+            model=built_model, dt=dt, external_variables=external_variables, inputs=inputs
         )
 
     return solution
@@ -100,6 +102,9 @@ def main():
         params = [None for i in range(Nspm)]
     time_steps = np.linspace(0.1, 1, Nspm)*1e-6
     solutions = list(pool.map(pool_func, zip(models, solvers, params, time_steps)))
+#    solutions = []
+#    for args in zip(models, solvers, params, time_steps):
+#        solutions.append(pool_func(args))
     print([sol.t[-1] for sol in solutions])
     pool.shutdown()
     del pool
