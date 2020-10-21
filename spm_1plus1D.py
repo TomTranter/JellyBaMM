@@ -50,7 +50,6 @@ if __name__ == '__main__':
             "Initial temperature [K]": 298.15,
             "Negative current collector conductivity [S.m-1]": e_cond_cc,
             "Positive current collector conductivity [S.m-1]": e_cond_cc,
-            "Heat transfer coefficient [W.m-2.K-1]": 1,
             "Electrode height [m]": e_height,
             "Negative tab centre z-coordinate [m]": 0.0,
             "Positive tab centre z-coordinate [m]": e_height,
@@ -59,7 +58,7 @@ if __name__ == '__main__':
     #e_height = param["Electrode height [m]"]
     e_width = param["Electrode width [m]"]
     z_edges = np.linspace(0, e_height, Nspm+1)
-    A_cc = param.evaluate(pybamm.geometric_parameters.A_cc)
+    A_cc = param.evaluate(pybamm.GeometricParameters().A_cc)
     
     param.process_model(model)
     param.process_geometry(geometry)
@@ -96,7 +95,7 @@ if __name__ == '__main__':
                             spatial_methods=model.default_spatial_methods,
                             solver=solver)
     
-    tau_sym = pybamm.standard_parameters_lithium_ion.tau_discharge
+    tau_sym = pybamm.LithiumIonParameters().tau_discharge
     tau = param.process_symbol(tau_sym).evaluate(0)
     t_end = 1800 / tau
     t_eval = np.linspace(0, t_end, Nsteps)
@@ -106,7 +105,7 @@ if __name__ == '__main__':
     solution = sim.solution
     
     V_local = solution['Local voltage [V]'](solution.t, z=z).T
-    cc_fracs = sim.mesh["current collector"][0].d_edges
+    cc_fracs = sim.mesh["current collector"].d_edges
     I_local = solution['Current collector current density [A.m-2]'](solution.t, z=z).T
     I_local *= cc_fracs*A_cc
     #I_exch = solution['X-averaged negative electrode interfacial current density [A.m-2]'](solution.t, z=z).T
@@ -123,10 +122,10 @@ if __name__ == '__main__':
     ]
     overpotentials = [
         "X-averaged reaction overpotential [V]",
-    #    "X-averaged concentration overpotential [V]",
-    #    "X-averaged electrolyte ohmic losses [V]",
-    #    "X-averaged solid phase ohmic losses [V]",
-        "Change in measured open circuit voltage [V]",
+        "X-averaged concentration overpotential [V]",
+        "X-averaged electrolyte ohmic losses [V]",
+        "X-averaged solid phase ohmic losses [V]",
+        # "Change in measured open circuit voltage [V]",
     ]
     
     
