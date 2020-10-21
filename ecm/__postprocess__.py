@@ -564,7 +564,7 @@ def combined_subplot(data, case_list, amp_list, var=0, normed=False, ax=None, le
     if len(amp_list) < 2:
         print_amps=False
     else:
-    cindex = 0
+        cindex = 0
     for case in case_list:
         for amp in amp_list:
             ax = min_mean_max_subplot(data, case, amp, var, normed, c=col_array[cindex], ax=ax, print_amps=print_amps)
