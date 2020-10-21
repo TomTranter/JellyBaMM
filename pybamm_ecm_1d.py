@@ -21,8 +21,7 @@ wrk.clear()
 
 
 if __name__ == "__main__":
-#    save_root = sys.argv[-1]
-#    save_root = os.getcwd()
+
     save_root = 'D:\\pybamm_pnm_results\\1d'
     print(save_root)
     config = configparser.ConfigParser()
