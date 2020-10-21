@@ -23,6 +23,8 @@ wrk.clear()
 
 if __name__ == "__main__":
     save_root = sys.argv[-1]
+#    save_root = os.getcwd()
+#    save_root = 'D:\\pybamm_pnm_results\\46800\\test'
     print(save_root)
     config = configparser.ConfigParser()
     config.read(os.path.join(save_root, 'config.txt'))
@@ -38,4 +40,5 @@ if __name__ == "__main__":
     I_apps = [config.get('RUN', key) for key in config['RUN'] if 'i_app' in key]
     for I_app in I_apps:
         save_path = save_root + '\\' + I_app + 'A'
+
         prj, vrs, sols = ecm.run_simulation(float(I_app), save_path, config)

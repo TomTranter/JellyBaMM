@@ -33,14 +33,14 @@ if __name__ == "__main__":
             child_root = os.path.join(save_root, file)
             config = configparser.ConfigParser()
             config.read(os.path.join(child_root, 'config.txt'))
-    #        print(ecm.lump_thermal_props(config))
-    #        for sec in config.sections():
-    #            print('='*67)
-    #            print(sec)
-    #            print('='*67)
-    #            for key in config[sec]:
-    #                print('!', key.ljust(30, ' '), '!', config.get(sec, key).ljust(30, ' '), '!')
-    #                print('-'*67)
+            print(ecm.lump_thermal_props(config))
+            for sec in config.sections():
+                print('='*67)
+                print(sec)
+                print('='*67)
+                for key in config[sec]:
+                    print('!', key.ljust(30, ' '), '!', config.get(sec, key).ljust(30, ' '), '!')
+                    print('-'*67)
                 
             I_apps = [config.get('RUN', key) for key in config['RUN'] if 'i_app' in key]
             for I_app in I_apps:
