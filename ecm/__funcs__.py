@@ -1558,10 +1558,6 @@ def run_simulation(I_app, save_path, config):
         "Terminal voltage [V]": result_template.copy(),
         "Time [h]": result_template.copy(),
         "Current collector current density [A.m-2]": result_template.copy(),
-        "X-averaged Ohmic heating [W.m-3]": result_template.copy(),
-        "X-averaged irreversible electrochemical heating [W.m-3]": result_template.copy(),
-        "X-averaged reversible heating [W.m-3]": result_template.copy(),
-        "X-averaged total heating [W.m-3]": result_template.copy(),
     }
     overpotentials = {
         "X-averaged battery reaction overpotential [V]": result_template.copy(),
@@ -1570,7 +1566,11 @@ def run_simulation(I_app, save_path, config):
         "X-averaged battery solid phase ohmic losses [V]": result_template.copy(),
         "Change in measured open circuit voltage [V]": result_template.copy(),
     }
-    variables_cc = {
+    variables_heating = {
+        "X-averaged Ohmic heating [W.m-3]": result_template.copy(),
+        "X-averaged irreversible electrochemical heating [W.m-3]": result_template.copy(),
+        "X-averaged reversible heating [W.m-3]": result_template.copy(),
+        "X-averaged total heating [W.m-3]": result_template.copy(),
         "X-averaged Ohmic heating CC [W.m-3]": result_template.copy(),
     }
     param = spm_sim.parameter_values
@@ -1763,7 +1763,7 @@ def run_simulation(I_app, save_path, config):
                 Q_ohm = variables["X-averaged Ohmic heating [W.m-3]"][outer_step, :]
                 Q_ohm_cc = net.interpolate_data('pore.cc_power_loss')[res_Ts]
                 Q_ohm_cc /= net['throat.volume'][res_Ts]
-                variables_cc["X-averaged Ohmic heating CC [W.m-3]"][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
+                variables_heating["X-averaged Ohmic heating CC [W.m-3]"][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
                 Q = Q_tot
                 Q[np.isnan(Q)] = 0.0
                 apply_heat_source(project, Q)
@@ -1817,7 +1817,8 @@ def run_simulation(I_app, save_path, config):
     variables['Temperature [K]'] = all_time_temperature[:outer_step, sorted_res_Ts]
 
     variables.update(lithiations)
-    variables.update(variables_cc)
+    if config.getboolean('PHYSICS', 'do_thermal'):
+        variables.update(variables_heating)
     if outer_step < Nsteps:
         for key in variables.keys():
             variables[key] = variables[key][:outer_step-1, :]
