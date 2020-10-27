@@ -31,34 +31,44 @@ import ecm
 
 
 def plot_topology(net, fig=None):
-    inner = net["pore.inner"]
-    outer = net["pore.outer"]
+    # inner = net["pore.inner"]
+    # outer = net["pore.outer"]
     if fig is None:
         fig = plt.figure(figsize=(10, 10))
     fig = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"), c="blue", fig=fig)
     fig = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"), c="red", fig=fig)
-    fig = pcoord(net, pores=net["pore.neg_cc"], facecolors='none', edgecolors='b', s=75, fig=fig)
-    fig = pcoord(net, pores=net["pore.pos_cc"], facecolors='none', edgecolors='r', s=75, fig=fig)
+    fig = pcoord(net, pores=net.pores("neg_cc"), c="blue", s=25, fig=fig)
+    fig = pcoord(net, pores=net.pores("pos_cc"), c="red", s=25, fig=fig)
     fig = pcoord(net, pores=net["pore.neg_tab"], c="blue", s=75, fig=fig)
     fig = pcoord(net, pores=net["pore.pos_tab"], c="red", s=75, fig=fig)
+    try:
+        fig = pcoord(net, pores=net.pores('free_stream'), c="green", fig=fig)
+        fig = pconn(net, throats=net.throats("throat.free_stream"), c="green",
+                    fig=fig)
+    except:
+        pass
 #    fig = pcoord(net, pores=inner, c="pink", fig=fig)
 #    fig = pcoord(net, pores=outer, c="yellow", fig=fig)
-    fig = pcoord(net, pores=net.pores('free_stream'), c="green", fig=fig)
-    fig = pconn(net, throats=net.throats("throat.free_stream"), c="green",
-                fig=fig)
+
 #    fig = pcoord(net, pores=net.pores('inner_boundary'), c="orange", fig=fig)
 #    fig = pconn(net, throats=net.throats("throat.inner_boundary"), c="orange",
 #                fig=fig)
     t_sep = net.throats("spm_resistor")
     if len(t_sep) > 0:
-        fig = pconn(
-            net, throats=net.throats("spm_neg_inner"),
-            c="k", fig=fig
-        )
-        fig = pconn(
-            net, throats=net.throats("spm_pos_inner"),
-            c="purple", fig=fig
-        )
+        try:
+            fig = pconn(
+                net, throats=net.throats("spm_neg_inner"),
+                c="k", fig=fig
+            )
+            fig = pconn(
+                net, throats=net.throats("spm_pos_inner"),
+                c="purple", fig=fig
+            )
+        except:
+            fig = pconn(
+                net, throats=net.throats("spm_resistor"),
+                c="k", fig=fig
+            )
     return fig
 
 def plot_phase_data(project, data='pore.temperature'):
@@ -460,7 +470,7 @@ def evaluate_python(python_eval, solution, inputs):
     out = np.zeros(len(keys))
     for i, key in enumerate(keys):
         temp = python_eval[key].evaluate(
-                solution.t[-1], solution.y[:, -1], u=inputs
+                solution.t[-1], solution.y[:, -1], inputs=inputs
                 )
         out[i] = temp
     return out
@@ -520,7 +530,7 @@ def spm_1p1D(Nunit, Nsteps, I_app, total_length):
     disc = pybamm.Discretisation(mesh, model.default_spatial_methods)
     disc.process_model(model)
     # solve model -- simulate one hour discharge
-    stp_liion = pybamm.standard_parameters_lithium_ion
+    stp_liion = pybamm.LithiumIonParameters()
     tau = param.process_symbol(stp_liion.tau_discharge)
     t_end = 3600 / tau.evaluate(0)
     t_eval = np.linspace(0, t_end, Nsteps)
@@ -541,8 +551,8 @@ def spm_1p1D(Nunit, Nsteps, I_app, total_length):
 
 
 def convert_time(param, non_dim_time, to="seconds", inputs=None):
-    s_parms = pybamm.standard_parameters_lithium_ion
-    t_sec = param.process_symbol(s_parms.tau_discharge).evaluate(u=inputs)
+    s_parms = pybamm.LithiumIonParameters()
+    t_sec = param.process_symbol(s_parms.tau_discharge).evaluate(inputs=inputs)
     t = non_dim_time * t_sec
     if to == "hours":
         t *= 1 / 3600
@@ -698,7 +708,7 @@ def evaluate(sim, var="Current collector current density [A.m-2]",
     #        inputs={"Current": current}
     #    )
     value = model.variables[var].evaluate(
-        solution.t[-1], solution.y[:, -1], u={"Current": current}
+        solution.t[-1], solution.y[:, -1], inputs={"Current": current}
     )
     # should move this definition to the main script...
 #    python_eval = pybamm.EvaluatorPython(model.variables[var])
@@ -713,8 +723,8 @@ def evaluate(sim, var="Current collector current density [A.m-2]",
 def convert_temperature(built_model, param, T_dim, inputs):
     temp_parms = built_model.submodels["thermal"].param
 #    param = sim.parameter_values
-    Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate(u=inputs)
-    T_ref = param.process_symbol(temp_parms.T_ref).evaluate(u=inputs)
+    Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate(inputs=inputs)
+    T_ref = param.process_symbol(temp_parms.T_ref).evaluate(inputs=inputs)
     return (T_dim - T_ref) / Delta_T
 
 
@@ -725,11 +735,11 @@ def step_spm(zipped):
 #    T_av_non_dim = convert_temperature(built_model, param, T_av, inputs)
 #    T_av_non_dim = 0.0
     if len(built_model.external_variables) > 0:
-        external_variables = {"X-averaged cell temperature": T_av}
+        external_variables = {"Volume-averaged cell temperature": T_av}
     else:
         external_variables = None
     if ~dead:
-        built_model.timescale_eval = built_model.timescale.evaluate(u=inputs)
+        built_model.timescale_eval = built_model.timescale.evaluate(inputs=inputs)
         if solution is not None:
 #            solved_len = solver.y0.shape[0]
 #            solver.y0 = solution.y[:solved_len, -1]
@@ -776,12 +786,12 @@ def make_1D_net(config):
     neg_tabs = config.getint(sub, 'neg_tabs')
 #    net = op.network.Cubic([Nunit + 2, 2, 1], spacing)
     net = op.network.Cubic([Nunit+2, 2, 1], spacing)
-    net["pore.pos_cc"] = net["pore.right"]
-    net["pore.neg_cc"] = net["pore.left"]
+    net["pore.pos_cc"] = net["pore.front"]
+    net["pore.neg_cc"] = net["pore.back"]
 
-    T = net.find_neighbor_throats(net.pores("front"), mode="xnor")
+    T = net.find_neighbor_throats(net.pores("left"), mode="xnor")
     tt.trim(net, throats=T)
-    T = net.find_neighbor_throats(net.pores("back"), mode="xnor")
+    T = net.find_neighbor_throats(net.pores("right"), mode="xnor")
     tt.trim(net, throats=T)
     pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
     neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
@@ -821,13 +831,6 @@ def make_1D_net(config):
     del net["throat.internal"]
     del net["throat.surface"]
 
-    fig = tt.plot_coordinates(net, net.pores("pos_cc"), c="b")
-    fig = tt.plot_coordinates(net, net.pores("pos_tab"), c="y", fig=fig)
-    fig = tt.plot_coordinates(net, net.pores("neg_cc"), c="r", fig=fig)
-    fig = tt.plot_coordinates(net, net.pores("neg_tab"), c="g", fig=fig)
-    fig = tt.plot_connections(net, net.throats("pos_cc"), c="b", fig=fig)
-    fig = tt.plot_connections(net, net.throats("neg_cc"), c="r", fig=fig)
-    fig = tt.plot_connections(net, net.throats("spm_resistor"), c="k", fig=fig)
 
     phase = op.phases.GenericPhase(network=net)
 #    cc_cond = 3e7
@@ -858,6 +861,7 @@ def make_1D_net(config):
     net['pore.volume'] = 1.0
     net['throat.area'] = 1.0
     net['throat.length'] = 1.0
+    plot_topology(net)
     return net.project, np.cumsum(net['throat.arc_length'])
 
 
@@ -1477,8 +1481,8 @@ def reorder_pnm_numbering(network):
 #    fig=tt.plot_coordinates(net_free, pores=net_free.Ps, c='pink', fig=fig)
 
 def check_vlim(solution, low, high):
-    l = solution['Terminal voltage [V]'](solution.t[-1]) > low
-    h = solution['Terminal voltage [V]'](solution.t[-1]) < high
+    l = solution['Terminal voltage [V]'].entries[-1] > low
+    h = solution['Terminal voltage [V]'].entries[-1] < high
     return l * h
 
 
@@ -1549,8 +1553,8 @@ def run_simulation(I_app, save_path, config):
     result_template = np.ones([Nsteps, Nspm])
     result_template.fill(np.nan)
     lithiations = {
-        "Negative electrode average extent of lithiation": result_template.copy(),
-        "Positive electrode average extent of lithiation": result_template.copy(),
+        "X-averaged negative electrode extent of lithiation": result_template.copy(),
+        "X-averaged positive electrode extent of lithiation": result_template.copy(),
     }
     variables = {
         "X-averaged negative particle surface concentration [mol.m-3]": result_template.copy(), 
@@ -1575,7 +1579,7 @@ def run_simulation(I_app, save_path, config):
     }
     param = spm_sim.parameter_values
     temp_parms = spm_sim.built_model.submodels["thermal"].param
-    Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate(u=temp_inputs)
+    Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate(inputs=temp_inputs)
     Delta_T_spm = Delta_T * (typical_height/electrode_heights)
     T_ref = param.process_symbol(temp_parms.T_ref).evaluate()
     T0 = config.getfloat('PHYSICS', 'T0')
@@ -1601,11 +1605,12 @@ def run_simulation(I_app, save_path, config):
 #    temp = ecm.evaluate_python(variables_eval, spm_sol, inputs=temp_inputs)
     temp = 0.0
     for j, key in enumerate(overpotential_keys):
-#        temp -= overpotentials_eval[key].evaluate(
-#                    spm_sol.t[-1], spm_sol.y[:, -1],
-#                    u=temp_inputs
-#                )
-        temp -= spm_sol[key](spm_sol.t[-1])
+        # temp -= spm_sol[key].evaluate(
+        #             spm_sol.t[-1], spm_sol.y[:, -1],
+        #             inputs=temp_inputs
+        #         )
+        # temp -= spm_sol[key](spm_sol.t[-1])
+        temp -= spm_sol[key].entries[-1]
     R = temp / I_typical
     guess_R = R*typical_height/electrode_heights
     V_ecm = temp.flatten()
@@ -1641,9 +1646,9 @@ def run_simulation(I_app, save_path, config):
     all_time_I_local = np.zeros([Nsteps, Nspm])
     all_time_temperature = np.zeros([Nsteps, Nspm])
 
-    sym_tau = pybamm.standard_parameters_lithium_ion.tau_discharge
-    tau = param.process_symbol(sym_tau)
-    tau_typical = tau.evaluate(u=temp_inputs)
+    sym_tau = pybamm.LithiumIonParameters().tau_discharge
+    # tau = param.process_symbol(sym_tau)
+    # tau_typical = tau.evaluate(inputs=temp_inputs)
 #    t_end = hours*3600 / tau_typical
     t_end = hours*3600
     dt = t_end / (Nsteps - 1)
@@ -1651,7 +1656,7 @@ def run_simulation(I_app, save_path, config):
     for i in range(Nspm):
         temp_tau = spm_params[i].process_symbol(sym_tau)
         tau_input = {'Electrode height [m]': electrode_heights[i]}
-        tau_spm.append(temp_tau.evaluate(u=tau_input))
+        tau_spm.append(temp_tau.evaluate(inputs=tau_input))
     tau_spm = np.asarray(tau_spm)
 #    dim_time_step = convert_time(spm_sim.parameter_values,
 #                                 dt, to='seconds', inputs=temp_inputs)
@@ -1730,14 +1735,16 @@ def run_simulation(I_app, save_path, config):
                     temp_inputs = {"Current": I_local_pnm[i],
                                    'Electrode height [m]': electrode_heights[i]}
                     for key in lithiations.keys():
-                        if 'Negative' in key:
-                            x=0
-                        else:
-                            x=1
-                        temp = solutions[i][key](solutions[i].t[-1], x=x)
+                        # if 'Negative' in key:
+                        #     x=0
+                        # else:
+                        #     x=1
+                        # temp = solutions[i][key](solutions[i].t[-1], x=x)
+                        temp = solutions[i][key].entries[-1]
                         lithiations[key][outer_step, si] = temp
                     for key in variable_keys:
-                        temp = solutions[i][key](solutions[i].t[-1])
+                        # temp = solutions[i][key](solutions[i].t[-1])
+                        temp = solutions[i][key].entries[-1]
 #                        temp2 = spm_models[i].variables[key].evaluate(t=solutions[i].t[-1],
 #                                                                      y=solutions[i].y[:, -1],
 #                                                                      u={"X-averaged cell temperature": T_non_dim_spm[i],
@@ -1745,7 +1752,8 @@ def run_simulation(I_app, save_path, config):
 #                                                                         'Electrode height [m]': electrode_heights[i]})
                         variables[key][outer_step, si] = temp
                     for j, key in enumerate(overpotential_keys):
-                        temp = solutions[i][key](solutions[i].t[-1])
+                        # temp = solutions[i][key](solutions[i].t[-1])
+                        temp = solutions[i][key].entries[-1]
 #                        temp = overpotentials_eval[key].evaluate(
 #                                solutions[i].t[-1], solutions[i].y[:, -1],
 #                                u=temp_inputs
@@ -1848,7 +1856,7 @@ def run_simulation(I_app, save_path, config):
                lower_mask=lower_mask, save_animation=False)
         export(project, save_path, overpotentials, 'eta_',
                lower_mask=lower_mask, save_animation=False)
-        project.export_data(phases=[phase], filename='ecm')
+        project.export_data(phases=[phase], filename='ecm.vtp')
 
     if config.getboolean('OUTPUT', 'animate'):
 #        ani_path = os.path.join(save_path, 'Current collector current density')

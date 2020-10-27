@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 plt.close('all')
 
-Nspm = 200
+Nspm = 20
 
 options = {
     "current collector": "potential pair",
@@ -184,7 +184,7 @@ sim = pybamm.Simulation(model=model,
 t_eval = np.linspace(0, 3600, 101)
 sim.solve(t_eval)
 
-show_x = True
+show_x = False
 if show_x:
     output_variables = ['Terminal voltage [V]',
                         'Cell temperature [K]',
