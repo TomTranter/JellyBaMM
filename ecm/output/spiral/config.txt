@@ -1,21 +1,19 @@
 [RUN]
-I_app_a = 2.0
-parallel = False
-hours = 0.05
+I_app_a = 17.5
+parallel = True
+hours = 0.01
 model = SPMe
 vlim_lower = 2.7
 vlim_upper = 4.7
 third = False
 [GEOMETRY]
-domain = 1d
+domain = model
 dtheta = 10
 layer_spacing = 195e-6
 length_3d = 0.080
-Nlayers = 4
+Nlayers = 40
 pos_tabs = -1
 neg_tabs = 0
-nunit_OneD = 1000
-spacing_OneD = 0.001
 [THICKNESS]
 pixel_size = 10.4e-6
 neg_electrode = 8.0
@@ -40,14 +38,14 @@ sep_rho = 1008.98
 sep_cp = 1978.16
 sep_k = 0.334
 [PHYSICS]
-do_thermal = False
+do_thermal = True
 cp = 1399.0
 rho = 2055.0
 K0 = 1.0
 T0 = 298.15
-heat_transfer_coefficient = 100
+heat_transfer_coefficient = 10
 neg_cc_econd = 6.0e7
-pos_cc_econd = 6.0e7
+pos_cc_econd = 3.0e7
 neg_elec_econd = 100
 pos_elec_econd = 100
 [INIT]

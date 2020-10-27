@@ -55,20 +55,20 @@ def plot_topology(net, fig=None):
 #                fig=fig)
     t_sep = net.throats("spm_resistor")
     if len(t_sep) > 0:
-        try:
-            fig = pconn(
-                net, throats=net.throats("spm_neg_inner"),
-                c="k", fig=fig
-            )
-            fig = pconn(
-                net, throats=net.throats("spm_pos_inner"),
-                c="purple", fig=fig
-            )
-        except:
-            fig = pconn(
-                net, throats=net.throats("spm_resistor"),
-                c="k", fig=fig
-            )
+        # try:
+        #     fig = pconn(
+        #         net, throats=net.throats("spm_neg_inner"),
+        #         c="k", fig=fig
+        #     )
+        #     fig = pconn(
+        #         net, throats=net.throats("spm_pos_inner"),
+        #         c="purple", fig=fig
+        #     )
+        # except:
+        fig = pconn(
+            net, throats=net.throats("spm_resistor"),
+            c="k", fig=fig
+        )
     return fig
 
 def plot_phase_data(project, data='pore.temperature'):
@@ -123,8 +123,8 @@ def make_spiral_net(config):
     prj = op.Project()
     net = op.network.Cubic(shape=[Nunit, N1d, 1],
                            spacing=spacing, project=prj)
-    net["pore.pos_cc"] = net["pore.right"]
-    net["pore.neg_cc"] = net["pore.left"]
+    net["pore.pos_cc"] = net["pore.front"]
+    net["pore.neg_cc"] = net["pore.back"]
 
     net["pore.region_id"] = assembly.flatten()
     net["pore.cell_id"] = unit_id.flatten()
@@ -291,7 +291,7 @@ def make_spiral_net(config):
     del net["pore.surface"]
     del net["throat.internal"]
     del net["throat.surface"]
-    del net["throat.separator"]
+    # del net["throat.separator"]
 
 
     op.topotools.trim(network=net,
@@ -1570,12 +1570,19 @@ def run_simulation(I_app, save_path, config):
         "X-averaged battery solid phase ohmic losses [V]": result_template.copy(),
         "Change in measured open circuit voltage [V]": result_template.copy(),
     }
+    # variables_heating = {
+    #     "X-averaged Ohmic heating [W.m-3]": result_template.copy(),
+    #     "X-averaged irreversible electrochemical heating [W.m-3]": result_template.copy(),
+    #     "X-averaged reversible heating [W.m-3]": result_template.copy(),
+    #     "X-averaged total heating [W.m-3]": result_template.copy(),
+    #     "X-averaged Ohmic heating CC [W.m-3]": result_template.copy(),
+    # }
     variables_heating = {
-        "X-averaged Ohmic heating [W.m-3]": result_template.copy(),
-        "X-averaged irreversible electrochemical heating [W.m-3]": result_template.copy(),
-        "X-averaged reversible heating [W.m-3]": result_template.copy(),
-        "X-averaged total heating [W.m-3]": result_template.copy(),
-        "X-averaged Ohmic heating CC [W.m-3]": result_template.copy(),
+        "Volume-averaged Ohmic heating [W.m-3]": result_template.copy(),
+        "Volume-averaged irreversible electrochemical heating [W.m-3]": result_template.copy(),
+        "Volume-averaged reversible heating [W.m-3]": result_template.copy(),
+        "Volume-averaged total heating [W.m-3]": result_template.copy(),
+        "Volume-averaged Ohmic heating CC [W.m-3]": result_template.copy(),
     }
     param = spm_sim.parameter_values
     temp_parms = spm_sim.built_model.submodels["thermal"].param
@@ -1601,7 +1608,8 @@ def run_simulation(I_app, save_path, config):
 #        overpotentials_eval[var] = ep(spm_sim.built_model.variables[var])
     variable_keys = list(variables.keys())
     overpotential_keys = list(overpotentials.keys())
-    
+    heating_keys = list(variables_heating.keys())
+    heating_keys.pop(-1)
 #    temp = ecm.evaluate_python(variables_eval, spm_sol, inputs=temp_inputs)
     temp = 0.0
     for j, key in enumerate(overpotential_keys):
@@ -1760,18 +1768,28 @@ def run_simulation(I_app, save_path, config):
 #                                )
                         overpotentials[key][outer_step, si] = temp
                         results_o[i, j] = temp
+                    for j, key in enumerate(heating_keys):
+                        temp = solutions[i][key].entries[-1]
+                        variables_heating[key][outer_step, si] = temp
             print('Finished evaluating SPMs in ',
                   np.around((time.time()-t_eval_start), 2), 's')
             if config.getboolean('PHYSICS', 'do_thermal'):
                 # Apply Heat Sources
                 # To Do: make this better
-                Q_tot = variables["X-averaged total heating [W.m-3]"][outer_step, :]
-                Q_irr = variables["X-averaged irreversible electrochemical heating [W.m-3]"][outer_step, :]
-                Q_rev = variables["X-averaged reversible heating [W.m-3]"][outer_step, :]
-                Q_ohm = variables["X-averaged Ohmic heating [W.m-3]"][outer_step, :]
+                Q_tot = variables_heating["Volume-averaged total heating [W.m-3]"][outer_step, :]
+                Q_irr = variables_heating["Volume-averaged irreversible electrochemical heating [W.m-3]"][outer_step, :]
+                Q_rev = variables_heating["Volume-averaged reversible heating [W.m-3]"][outer_step, :]
+                Q_ohm = variables_heating["Volume-averaged Ohmic heating [W.m-3]"][outer_step, :]
                 Q_ohm_cc = net.interpolate_data('pore.cc_power_loss')[res_Ts]
                 Q_ohm_cc /= net['throat.volume'][res_Ts]
-                variables_heating["X-averaged Ohmic heating CC [W.m-3]"][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
+                variables_heating["Volume-averaged Ohmic heating CC [W.m-3]"][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
+                # Q_tot = variables_heating["X-averaged total heating [W.m-3]"][outer_step, :]
+                # Q_irr = variables_heating["X-averaged irreversible electrochemical heating [W.m-3]"][outer_step, :]
+                # Q_rev = variables_heating["X-averaged reversible heating [W.m-3]"][outer_step, :]
+                # Q_ohm = variables_heating["X-averaged Ohmic heating [W.m-3]"][outer_step, :]
+                # Q_ohm_cc = net.interpolate_data('pore.cc_power_loss')[res_Ts]
+                # Q_ohm_cc /= net['throat.volume'][res_Ts]
+                # variables_heating["X-averaged Ohmic heating CC [W.m-3]"][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
                 Q = Q_tot
                 Q[np.isnan(Q)] = 0.0
                 apply_heat_source(project, Q)
