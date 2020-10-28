@@ -8,4 +8,5 @@ jellysim: a package for simulating Li-ion electrochemistry
 from .__funcs__ import *
 from .__postprocess__ import *
 from .__definitions__ import *
+from .__segment_jellyroll__ import *
 __version__ = "0.0.1"
