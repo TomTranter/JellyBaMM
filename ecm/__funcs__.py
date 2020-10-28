@@ -381,9 +381,10 @@ def make_tomo_net(config):
     spacing = config.getfloat(sub, 'layer_spacing')
     length_3d = config.getfloat(sub, 'length_3d')
     wrk = op.Workspace()
-    cwd = os.getcwd()
-    input_dir = os.path.join(cwd, 'input')
-    wrk.load_project(os.path.join(input_dir, 'MJ141-mid-top_m_cc_new.pnm'))
+    # cwd = os.getcwd()
+    input_dir = ecm.INPUT_DIR
+    tomo_pnm = config.get('TOMOGRAPHY', 'filename')
+    wrk.load_project(os.path.join(input_dir, tomo_pnm))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
@@ -929,10 +930,10 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     geo = op.geometry.GenericGeometry(
             network=net, pores=net.Ps, throats=net.Ts
             )
-#    if "throat.radial_position" not in net.props():
-    geo["throat.radial_position"] = net.interpolate_data(
-            "pore.radial_position"
-            )
+    if "throat.radial_position" not in net.props():
+        geo["throat.radial_position"] = net.interpolate_data(
+                "pore.radial_position"
+                )
     geo["pore.volume"] = (
             net["pore.radial_position"] * drad * spacing * length_3d
             )

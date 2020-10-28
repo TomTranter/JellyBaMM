@@ -28,7 +28,7 @@ import ecm
 
 pixel_size=10.4e-6
 wrk = op.Workspace()
-path = os.path.join(os.getcwd(), 'input')
+path = ecm.INPUT_DIR
 
 # Get File list
 #path = os.path.join(input_dir, 'recon-manual-Mid-top')
@@ -397,7 +397,8 @@ free_conns = np.vstack((np.arange(0, num_free, 1),
 free_conns += start
 tt.extend(net, pore_coords=free_coords, throat_conns=free_conns, labels=['free_stream'])
 net['pore.arc_index'][net['pore.free_stream']] = net['pore.arc_index'][net['pore.outer']]
-
+net['pore.cell_id'][net.pores('free_stream')] = -1
+net['pore.cell_id'] = net['pore.cell_id'].astype(int)
 def plot_resistors(net, Ts, c, fig):
     conns = net['throat.conns'][Ts]
     coords = net['pore.coords']
@@ -757,10 +758,10 @@ if make_new_layers:
             new_layer = np.asarray(new_layer)
             new_conns = np.vstack((new_layer, new_layer-len(new_layer))).T
             tt.extend(net, throat_conns=new_conns, labels='interconnection')
-save_files = False
+save_files = True
 if save_files:
     #plot_domain(net)
-    prj = wrk['sim_01']
+    prj = wrk['proj_01']
     net['pore.coords'] *= pixel_size
     mean = mhs * pixel_size
     net['pore.coords'][:, 0] -= mean
@@ -778,5 +779,5 @@ if save_files:
     
     #show_Ps = np.in1d(net['pore.cell_id'], np.arange(0, 650, 10))
     #tt.plot_coordinates(net, net.Ps[show_Ps], c=net['pore.cell_id'][show_Ps])
-    prj.export_data(filename='tomography_m_new')
-    wrk.save_project(project=prj, filename=os.path.join(path, 'MJ141-mid-top_m_cc_new'))
+    prj.export_data(filename='tomography_m_new', filetype='vtk')
+    wrk.save_project(project=prj, filename=os.path.join(path, 'MJ141-mid-top_m_cc_new_ps11'))
