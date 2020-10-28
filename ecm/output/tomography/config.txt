@@ -15,7 +15,7 @@ Nlayers = 40
 pos_tabs = -1
 neg_tabs = 0
 [TOMOGRAPHY]
-filename = MJ141-mid-top_m_cc_new_ps11.pnm
+filename = spider_net.pnm
 [THICKNESS]
 pixel_size = 10.4e-6
 neg_electrode = 8.0
