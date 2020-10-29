@@ -95,12 +95,7 @@ def plot(concatenate=True):
         "X-averaged Ohmic heating [W.m-3]": None,
         "X-averaged total heating [W.m-3]": None,
         "Current collector current density [A.m-2]": None,
-#        "X-averaged positive particle " +
-#        "surface concentration [mol.m-3]": None,
-#        "X-averaged negative particle " +
-#        "surface concentration [mol.m-3]": None,
-#        "Negative current collector potential [V]": None,
-#        "Positive current collector potential [V]": None,
+
     }
     for key in pvs.keys():
         proc = pybamm.ProcessedVariable(

@@ -7,7 +7,6 @@ Created on Wed Jan  8 16:05:55 2020
 """
 
 import pybamm
-from pybamm import EvaluatorPython as ep
 import numpy as np
 import ecm
 import matplotlib.pyplot as plt
@@ -40,7 +39,7 @@ param.update(
     {
         "Current function": current_function,
         "Current": "[input]",
-    }
+    }, check_already_exists=False
 )
 
 Nsteps = 50
@@ -53,13 +52,12 @@ def convert_temperature(T_dim):
     return (T_dim - T_ref) / Delta_T
 
 I_app = 1.0
-external_variables = {"X-averaged cell temperature": convert_temperature(T_av)}
+external_variables = {"Volume-averaged cell temperature": convert_temperature(T_av)}
 inputs={"Current": I_app}
 variables_eval = {}
 overpotentials_eval = {}
 variables = [
-    "Local ECM resistance [Ohm.m2]",
-    "Local ECM voltage [V]",
+    "Local ECM resistance [Ohm]",
     "Measured open circuit voltage [V]",
     "Local voltage [V]",
     "Change in measured open circuit voltage [V]",
@@ -80,7 +78,7 @@ dt = 1e-6
 sim.step(dt, external_variables=external_variables, inputs=inputs)
 dt = 1e-3
 for var in variables:
-    variables_eval[var] = ep(sim.built_model.variables[var])
+    variables_eval[var] = sim.solution[var].entries
 for var in overpotentials:
     overpotentials_eval[var] = ep(sim.built_model.variables[var])
 

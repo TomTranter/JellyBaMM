@@ -18,7 +18,7 @@ Nx = np.int(L/spacing)+1
 net = op.network.Cubic(shape=[Nx, 1, 1], spacing=spacing)
 # translate to origin
 net['pore.coords'] -= np.array([spacing, spacing, spacing])/2
-net.add_boundary_pores(labels=['back', 'front'], spacing=0.0)
+net.add_boundary_pores(labels=['left', 'right'], spacing=0.0)
 
 geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
 geo['pore.diameter'] = spacing
@@ -65,10 +65,7 @@ def run_transport(network, method='steady', t_initial=0,
             relaxation_source=0.9,
             relaxation_quantity=0.9,
         )
-#        bulk_Ps = self.net.pores("free_stream", mode="not")
-#        alg.set_source("pore.source", bulk_Ps)
-#        alg.set_value_BC(self.net.pores("free_stream"), values=BC_value)
-#        alg.run()
+
     else:
         alg = op.algorithms.TransientReactiveTransport(network=network)
         alg.setup(phase=phase,
@@ -83,9 +80,8 @@ def run_transport(network, method='steady', t_initial=0,
                   rxn_tolerance=1e-9,
                   t_scheme='implicit')
         alg.set_IC(values=T0)
-    BP1 = net.pores('pore.front_boundary')
-    BP2 = net.pores('pore.back_boundary')
-#    alg.set_value_BC(pores=BP1, values=T0)
+    BP1 = net.pores('pore.left_boundary')
+    BP2 = net.pores('pore.right_boundary')
     alg.set_value_BC(pores=BP2, values=T0)
     Ps = net.pores('internal')
     alg.set_source(propname='pore.source', pores=Ps)
@@ -96,7 +92,6 @@ def run_transport(network, method='steady', t_initial=0,
 alg = run_transport(network=net, method='transient')
 res = alg.results()
 times = list(res.keys())
-#times.sort()
 plt.figure()
 center = []
 mid = []

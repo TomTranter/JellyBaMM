@@ -5,7 +5,6 @@
 import pybamm
 import numpy as np
 import matplotlib.pyplot as plt
-#plt.close('all')
 
 
 pybamm.set_logging_level("INFO")
@@ -26,41 +25,36 @@ param.update(
         "Current function [A]": I_typical,
         "Current": "[input]",
         "Lower voltage cut-off [V]": 3.5,
-    }
+    }, check_already_exists=False
 )
 
-
+solver = pybamm.CasadiSolver()
 sim = pybamm.Simulation(
     model=model,
     parameter_values=param,
+    solver=solver
 
 )
-# solve model
-t_eval = np.linspace(0, 1.0, 1000)
-#solver = pybamm.CasadiSolver()
-solver = model.default_solver
+dt = 100
+t_eval = np.arange(0, 3610, dt)
 
 overpotentials = {
     "X-averaged reaction overpotential [V]": [],
     "X-averaged concentration overpotential [V]": [],
     "X-averaged electrolyte ohmic losses [V]": [],
     "X-averaged solid phase ohmic losses [V]": [],
-    "X-averaged battery open circuit voltage [V]": [],
+    "Change in measured open circuit voltage [V]": [],
 }
-#plot = pybamm.QuickPlot(sim.built_model, sim.mesh, sim.solution,
-#                        output_variables=overpotentials)
-#plot.dynamic_plot()
 tot_R = []
 time = []
 
 def calc_R(sim, current):
-    initial_ocv = 3.8518206633137266
-    totdV = initial_ocv
+    # initial_ocv = 3.8518206633137266
+    totdV = 0.0
     t = evaluate(sim, 'Time [h]', current)
     for key in overpotentials.keys():
         eta = evaluate(sim, key, current)[0][0]
         overpotentials[key].append(eta)
-#        print(key, eta)
         totdV -= eta
     R = totdV / current
     tot_R.append(R)
@@ -70,25 +64,18 @@ def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
     model = sim.built_model
     solution = sim.solution
     value = model.variables[var].evaluate(
-        solution.t[-1], solution.y[:, -1], u={"Current": current}
+        solution.t[-1], solution.y[:, -1], inputs={"Current": current}
     )
     return value
 
-dt = 1e-2
-i = 0
 terminated = False
-while i < 16:
-    try:
-        sim.step(dt=dt, inputs={"Current": I_typical}, save=True)
-        calc_R(sim, I_typical)
-    except:
-        pass
-    if sim.solution.termination is not 'final time':
+for i in range(len(t_eval)):
+    sim.step(dt=dt, inputs={"Current": I_typical}, save=True)
+    calc_R(sim, I_typical)
+    if sim.solution.termination != 'final time':
         terminated = True
-    i += 1
 # plot
 plt.figure()
 plt.plot(time, tot_R)
 
-sim.solver.get_termination_reason(sim.solution, sim.solver.events)
 

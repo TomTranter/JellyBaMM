@@ -13,7 +13,7 @@ import os
 plt.close('all')
 
 cwd = os.getcwd()
-input_dir = os.path.join(cwd, 'input')
+input_dir = os.path.join(cwd, 'data')
 files = os.listdir(input_dir)
 data = {}
 interp_ocv = {}
