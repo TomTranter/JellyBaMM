@@ -17,8 +17,8 @@ model = pybamm.lithium_ion.DFN(
                 )
 geometry = model.default_geometry
 #param = model.default_parameter_values
-param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.NCA_Kim2011)
-param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.Chen_2020)
+# param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.NCA_Kim2011)
+param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.Chen2020)
 pixel_size = 10.4e-6
 t_neg_electrode = 8.0
 t_pos_electrode = 7.0
@@ -72,7 +72,7 @@ sim = pybamm.Simulation(
     spatial_methods=spatial_methods,
     solver=solver,
 )
-hours=1.0
+hours=0.9
 sim.solve(t_eval=np.arange(0, hours*3600, np.int(np.ceil(100/C_rate))), inputs=inputs)
 sim_time = sim.solution['Time [h]'](sim.solution.t[-1])
 #plt.figure()
