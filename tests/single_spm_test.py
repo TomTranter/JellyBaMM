@@ -7,11 +7,9 @@ Created on Wed Jan 15 12:16:25 2020
 """
 
 import pybamm
-from pybamm import EvaluatorPython as ep
 import numpy as np
 import matplotlib.pyplot as plt
 import ecm
-import configparser
 import os
 
 save_root = os.getcwd()
@@ -20,7 +18,6 @@ pybamm.set_logging_level('ERROR')
 I_typical = 1.0
 typical_height = 1.2
 T_ref = 298.15
-do_thermal = True
 spm_sim = ecm.make_spm(I_typical, config)
 dt = 50
 voltage = []

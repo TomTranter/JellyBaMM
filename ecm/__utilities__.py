@@ -18,5 +18,18 @@ def load_config(path=None):
 def load_test_config():
     path = ecm.INPUT_DIR
     config = configparser.ConfigParser()
-    config.read(os.path.join(path, 'test_config.txt'))
+    config_fp = os.path.join(path, 'test_config.txt')
+    config.read(config_fp)
+    print('Config file', config_fp, 'loaded')
+    print_config(config)
     return config
+
+def print_config(config):
+    for sec in config.sections():
+        print('='*67)
+        print(sec)
+        print('='*67)
+        for key in config[sec]:
+            print('!', key.ljust(30, ' '), '!',
+                  config.get(sec, key).ljust(30, ' '), '!')
+            print('-'*67)
