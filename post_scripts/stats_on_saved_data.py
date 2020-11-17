@@ -127,12 +127,9 @@ x_len, y_len = np.meshgrid(bin_widths,
 # (x_data[i], y_data[i], 0) to (x_data[i], y_data[i], z_data[i]).
 #
 fig = plt.figure()
-#ax = fig.gca(projection='3d')
 ax = fig.gca()
-#ax.plot_surface(x_data, y_data, data_array,
-#                cmap=cm.coolwarm,
-#                       linewidth=0, antialiased=False)
 heatmap = data_array.astype(float)
 heatmap[heatmap == 0.0] = np.nan
 im = ax.pcolormesh(x_data - 100, y_data, heatmap, cmap=cm.coolwarm)
 plt.colorbar(im)
+
