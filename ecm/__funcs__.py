@@ -368,7 +368,7 @@ def _get_cc_order(project):
         inv_seq[net.pores(dom+'_tab')] = 0
         order = inv_seq[net.pores(dom+'_cc')]
 #        order = net.pores(dom+'_cc')[order.argsort()]
-        if dom is 'pos':
+        if dom == 'pos':
             order = order.max() - order
         net['pore.'+dom+'_cc_order'] = -1
         net['pore.'+dom+'_cc_order'][net.pores(dom+'_cc')] = order
@@ -1138,7 +1138,7 @@ def export(project, save_dir=None, export_dict=None, prefix='', lower_mask=None,
             os.mkdir(save_dir)
     for key in export_dict.keys():
         for suffix in ['lower', 'upper']:
-            if suffix is 'lower':
+            if suffix == 'lower':
                 mask = lower_mask
             else:
                 mask = ~lower_mask

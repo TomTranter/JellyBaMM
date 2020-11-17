@@ -20,10 +20,10 @@ install:
   - pip install -r requirements/test_requirements.txt
   - pip install -e .
 
-script: pytest -s
+script: pytest --cov=./
 
 notifications:
   email: false
 
 after_success:
-  - codecov
+  - bash <(curl -s https://codecov.io/bash)
