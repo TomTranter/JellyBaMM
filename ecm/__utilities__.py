@@ -8,12 +8,14 @@ import ecm
 import configparser
 import os
 
+
 def load_config(path=None):
     if path is None:
         path = os.getcwd()
     config = configparser.ConfigParser()
     config.read(os.path.join(path, 'config.txt'))
     return config
+
 
 def load_test_config():
     path = ecm.INPUT_DIR
@@ -23,6 +25,7 @@ def load_test_config():
     print('Config file', config_fp, 'loaded')
     print_config(config)
     return config
+
 
 def print_config(config):
     for sec in config.sections():
