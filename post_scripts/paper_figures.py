@@ -25,7 +25,7 @@ save_im_path = 'D:\\pybamm_pnm_results\\figures'
 
 plt.close('all')
 
-savefigs = True
+savefigs = False
 
 tab_1 = [0, 1, 2, 3, 4]
 tab_2 = [5, 6, 7, 8, 9]
