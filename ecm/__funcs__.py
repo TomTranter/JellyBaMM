@@ -679,7 +679,7 @@ def step_spm(zipped):
                                inputs=inputs,
                                npts=2,
                                save=False
-        )
+                               )
 
     return solution
 
@@ -747,7 +747,7 @@ def make_1D_net(config):
     del net["pore.surface"]
     del net["throat.internal"]
     del net["throat.surface"]
-    
+
     phase = op.phases.GenericPhase(network=net)
 
     geo = op.geometry.GenericGeometry(
@@ -795,6 +795,7 @@ def get_cc_heat(net, alg, V_terminal):
                   model=op.models.misc.from_neighbor_throats,
                   throat_prop='throat.cc_power_loss',
                   mode='max')
+
 
 def run_ecm(net, alg, V_terminal, plot=False):
     potential_pairs = net["throat.conns"][net.throats("spm_resistor")]
@@ -1141,7 +1142,8 @@ def interpolate_spm_number(project):
     ax1.imshow(im_soft)
     ax2.imshow(arr)
     np.savez('im_spm_map', arr)
-    
+
+
 def interpolate_spm_number_model(project, dim=1000):
     x_len = y_len = dim
     net = project.network

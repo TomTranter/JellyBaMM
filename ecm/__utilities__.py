@@ -29,10 +29,10 @@ def load_test_config():
 
 def print_config(config):
     for sec in config.sections():
-        print('='*67)
+        print('=' * 67)
         print(sec)
-        print('='*67)
+        print('=' * 67)
         for key in config[sec]:
             print('!', key.ljust(30, ' '), '!',
                   config.get(sec, key).ljust(30, ' '), '!')
-            print('-'*67)
+            print('-' * 67)

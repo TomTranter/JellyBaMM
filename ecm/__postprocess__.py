@@ -84,50 +84,50 @@ def get_saved_var_units():
 
 def get_cases():
     cases = [
-            '1_Chen2020',
-            '2_Chen2020',
-            '5_Chen2020',
-            '3_Chen2020',
-            '4_Chen2020',
-            '1_Chen2020c',
-            '2_Chen2020c',
-            '5_Chen2020c',
-            '3_Chen2020c',
-            '4_Chen2020c',
-            '1_Chen2020b',
-            '2_Chen2020b',
-            '5_Chen2020b',
-            '3_Chen2020b',
-            '4_Chen2020b',
-            '1_Chen2020_third',
-            '2_Chen2020_third',
-            '5_Chen2020_third',
-            '3_Chen2020_third',
-            '4_Chen2020_third',
-            ]
+        '1_Chen2020',
+        '2_Chen2020',
+        '5_Chen2020',
+        '3_Chen2020',
+        '4_Chen2020',
+        '1_Chen2020c',
+        '2_Chen2020c',
+        '5_Chen2020c',
+        '3_Chen2020c',
+        '4_Chen2020c',
+        '1_Chen2020b',
+        '2_Chen2020b',
+        '5_Chen2020b',
+        '3_Chen2020b',
+        '4_Chen2020b',
+        '1_Chen2020_third',
+        '2_Chen2020_third',
+        '5_Chen2020_third',
+        '3_Chen2020_third',
+        '4_Chen2020_third',
+    ]
     full = [base + case for case in cases]
     cases = {
-            0: {'file': full[0], 'htc': 5, 'tabs': 1},
-            1: {'file': full[1], 'htc': 10, 'tabs': 1},
-            2: {'file': full[2], 'htc': 28, 'tabs': 1},
-            3: {'file': full[3], 'htc': 50, 'tabs': 1},
-            4: {'file': full[4], 'htc': 100, 'tabs': 1},
-            5: {'file': full[5], 'htc': 5, 'tabs': 2},
-            6: {'file': full[6], 'htc': 10, 'tabs': 2},
-            7: {'file': full[7], 'htc': 28, 'tabs': 2},
-            8: {'file': full[8], 'htc': 50, 'tabs': 2},
-            9: {'file': full[9], 'htc': 100, 'tabs': 2},
-            10: {'file': full[10], 'htc': 5, 'tabs': 5},
-            11: {'file': full[11], 'htc': 10, 'tabs': 5},
-            12: {'file': full[12], 'htc': 28, 'tabs': 5},
-            13: {'file': full[13], 'htc': 50, 'tabs': 5},
-            14: {'file': full[14], 'htc': 100, 'tabs': 5},
-            15: {'file': full[15], 'htc': 5, 'tabs': 1},
-            16: {'file': full[16], 'htc': 10, 'tabs': 1},
-            17: {'file': full[17], 'htc': 28, 'tabs': 1},
-            18: {'file': full[18], 'htc': 50, 'tabs': 1},
-            19: {'file': full[19], 'htc': 100, 'tabs': 1},
-            }
+        0: {'file': full[0], 'htc': 5, 'tabs': 1},
+        1: {'file': full[1], 'htc': 10, 'tabs': 1},
+        2: {'file': full[2], 'htc': 28, 'tabs': 1},
+        3: {'file': full[3], 'htc': 50, 'tabs': 1},
+        4: {'file': full[4], 'htc': 100, 'tabs': 1},
+        5: {'file': full[5], 'htc': 5, 'tabs': 2},
+        6: {'file': full[6], 'htc': 10, 'tabs': 2},
+        7: {'file': full[7], 'htc': 28, 'tabs': 2},
+        8: {'file': full[8], 'htc': 50, 'tabs': 2},
+        9: {'file': full[9], 'htc': 100, 'tabs': 2},
+        10: {'file': full[10], 'htc': 5, 'tabs': 5},
+        11: {'file': full[11], 'htc': 10, 'tabs': 5},
+        12: {'file': full[12], 'htc': 28, 'tabs': 5},
+        13: {'file': full[13], 'htc': 50, 'tabs': 5},
+        14: {'file': full[14], 'htc': 100, 'tabs': 5},
+        15: {'file': full[15], 'htc': 5, 'tabs': 1},
+        16: {'file': full[16], 'htc': 10, 'tabs': 1},
+        17: {'file': full[17], 'htc': 28, 'tabs': 1},
+        18: {'file': full[18], 'htc': 50, 'tabs': 1},
+        19: {'file': full[19], 'htc': 100, 'tabs': 1},
+    }
 
     return cases
 
@@ -141,7 +141,7 @@ def format_case(x, a, expanded=False, print_amps=True):
     htc, tabs = get_case_details(x)
     if expanded:
         text = ('Case ' + abc(x) + ': h=' + str(htc) + ' [W.m-2.K-1] #tabs='
-                + str(tabs).capitalize() + ': I='+str(a) + ' [A]')
+                + str(tabs).capitalize() + ': I=' + str(a) + ' [A]')
     else:
         if print_amps:
             text = 'Case ' + abc(x) + ': I=' + str(a) + ' [A]'
@@ -167,12 +167,12 @@ def get_amp_cases():
 
 def load_and_amalgamate(save_root, var_name):
     try:
-        file_lower = os.path.join(save_root, var_name+'_lower')
-        file_upper = os.path.join(save_root, var_name+'_upper')
+        file_lower = os.path.join(save_root, var_name + '_lower')
+        file_upper = os.path.join(save_root, var_name + '_upper')
         data_lower = io.loadmat(file_lower)['data']
         data_upper = io.loadmat(file_upper)['data']
         data_amalg = np.hstack((data_lower, data_upper))
-    except:
+    except KeyError:
         data_amalg = None
     return data_amalg
 
@@ -184,7 +184,7 @@ def format_label(i):
     var_axis_name = label.replace('var_', '')
     var_axis_name = var_axis_name.replace('eta_', '')
     var_axis_name = var_axis_name.replace('_', ' ')
-    var_axis_name = var_axis_name + ' [' + units[i]+']'
+    var_axis_name = var_axis_name + ' [' + units[i] + ']'
     return var_axis_name
 
 
@@ -221,7 +221,7 @@ def load_all_data():
         config.read(os.path.join(case_folder, 'config.txt'))
         data[ci]['config'] = config2dict(config)
         for amp in amps:
-            amp_folder = os.path.join(case_folder, str(amp)+'A')
+            amp_folder = os.path.join(case_folder, str(amp) + 'A')
             data[ci][amp] = {}
             for vi, v in enumerate(variables):
                 data[ci][amp][vi] = {}
@@ -268,7 +268,7 @@ def weighted_avg_and_std(values, weights):
     """
     average = np.average(values, weights=weights)
     # Fast and numerically precise:
-    variance = np.average((values-average)**2, weights=weights)
+    variance = np.average((values - average)**2, weights=weights)
     return (average, math.sqrt(variance))
 
 
@@ -284,12 +284,12 @@ def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k',
     dmax = data[case][amp][var]['max']
     if normed:
         if show == 'all' or show == 'min':
-            ax.plot(cap, dmin/dmean, c=c, linestyle='dashed')
+            ax.plot(cap, dmin / dmean, c=c, linestyle='dashed')
         if show == 'all' or show == 'mean':
             lab = 'Case ' + abc(case) + ': I = ' + str(amp) + '[A]'
-            ax.plot(cap, dmean/dmean, c=c, label=lab)
+            ax.plot(cap, dmean / dmean, c=c, label=lab)
         if show == 'all' or show == 'max':
-            ax.plot(cap, dmax/dmean, c=c, linestyle='dashed')
+            ax.plot(cap, dmax / dmean, c=c, linestyle='dashed')
     else:
         if show == 'all' or show == 'min':
             ax.plot(cap, dmin, c=c, linestyle='dashed')
@@ -309,13 +309,13 @@ def chargeogram(data, case_list, amp_list, group='neg'):
     nrows = len(case_list)
     ncols = len(amp_list)
     fig, axes = plt.subplots(nrows, ncols,
-                             figsize=(int(5*ncols), int(5*nrows)),
+                             figsize=(int(5 * ncols), int(5 * nrows)),
                              sharex=True,
                              sharey=False)
     var = 0  # Current density
-    Ts = net.throats('spm_'+group+'_inner')
+    Ts = net.throats('spm_' + group + '_inner')
     roll_pos = np.cumsum(net['throat.arc_length'][Ts])
-    norm_roll_pos = roll_pos/roll_pos[-1]
+    norm_roll_pos = roll_pos / roll_pos[-1]
     Nspm = net.num_throats('spm_resistor')
     if group == 'neg':
         spm_ids = np.arange(Nspm)[:len(Ts)]
@@ -329,23 +329,23 @@ def chargeogram(data, case_list, amp_list, group='neg'):
             data_amalg /= mean
             data_amalg *= 100
             filtered_data = data_amalg[:, spm_ids]
-            fmin = np.int(np.floor(filtered_data.min()))-1
-            fmax = np.int(np.ceil(filtered_data.max()))+1
-            nbins = fmax-fmin
+            fmin = np.int(np.floor(filtered_data.min())) - 1
+            fmax = np.int(np.ceil(filtered_data.max())) + 1
+            nbins = fmax - fmin
             data_2d = np.zeros([len(spm_ids), nbins], dtype=float)
             for i in range(len(spm_ids)):
                 hdata, bins = np.histogram(filtered_data[:, i], bins=nbins,
                                            range=(fmin, fmax), density=True)
-                data_2d[i, :] = hdata*100
+                data_2d[i, :] = hdata * 100
 
             x_data, y_data = np.meshgrid(norm_roll_pos, bins)
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
-            im = ax.pcolormesh(x_data, y_data-100, heatmap.T, cmap=cm.inferno)
+            im = ax.pcolormesh(x_data, y_data - 100, heatmap.T, cmap=cm.inferno)
             ax.set_title(format_case(case, amp, expanded=False))
             if ci == len(case_list) - 1:
                 ax.set_xlabel('Normalized roll position')
-            cbar = plt.colorbar(im, ax=ax)
+            plt.colorbar(im, ax=ax)
             ax.grid(True)
 
     return fig
@@ -357,12 +357,12 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
     nrows = len(amp_list)
     ncols = len(case_list)
     fig, axes = plt.subplots(nrows, ncols,
-                             figsize=(int(5*ncols), int(5*nrows)),
+                             figsize=(int(5 * ncols), int(5 * nrows)),
                              sharex=True,
                              sharey=True)
-    Ts = net.throats('spm_'+group+'_inner')
+    Ts = net.throats('spm_' + group + '_inner')
     roll_pos = np.cumsum(net['throat.arc_length'][Ts])
-    norm_roll_pos = roll_pos/roll_pos[-1]
+    norm_roll_pos = roll_pos / roll_pos[-1]
     Nspm = net.num_throats('spm_resistor')
     if group == 'neg':
         spm_ids = np.arange(Nspm)[:len(Ts)]
@@ -420,11 +420,10 @@ def stacked_variables(net, data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi
     Q_ohm_cc = data[case][amp][19]['data']
     nt, nspm = Q_ohm.shape
     spm_vol_t = np.tile(spm_vol[:, np.newaxis], nt).T
-
-    sum_Q_ohm = np.sum(Q_ohm*spm_vol_t, axis=1)
-    sum_Q_irr = np.sum(Q_irr*spm_vol_t, axis=1)
-    sum_Q_rev = np.sum(Q_rev*spm_vol_t, axis=1)
-    sum_Q_ohm_cc = np.sum(Q_ohm_cc*spm_vol_t, axis=1)
+    sum_Q_ohm = np.sum(Q_ohm * spm_vol_t, axis=1)
+    sum_Q_irr = np.sum(Q_irr * spm_vol_t, axis=1)
+    sum_Q_rev = np.sum(Q_rev * spm_vol_t, axis=1)
+    sum_Q_ohm_cc = np.sum(Q_ohm_cc * spm_vol_t, axis=1)
     cmap = cm.inferno
     base = np.zeros(len(sum_Q_ohm))
     cols = cmap(np.linspace(0.1, 0.9, 4))
@@ -433,7 +432,7 @@ def stacked_variables(net, data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi
         text = format_label(i).strip('X-averaged').strip('[W.m-3]')
         labels.append(text.lstrip().rstrip().capitalize())
     for si, source in enumerate([sum_Q_rev, sum_Q_irr, sum_Q_ohm, sum_Q_ohm_cc]):
-        ax.fill_between(data[case][amp][10]['mean'], base, base+source,
+        ax.fill_between(data[case][amp][10]['mean'], base, base + source,
                         color=cols[si], label=labels[si])
         base += source
     ax.set_xlabel('Time [h]')
@@ -458,7 +457,7 @@ def plot_resistors(net, throats, c, fig):
     x_all = [p_start[:, 0]]
     y_all = [p_start[:, 1]]
     for i in range(segs):
-        p_end = p_start + v*(1/segs) + perp*(2/segs)*zigzag[i]
+        p_end = p_start + v * (1 / segs) + perp * (2 / segs) * zigzag[i]
         x_all.append(p_end[:, 0])
         y_all.append(p_end[:, 1])
         p_start = p_end
@@ -472,7 +471,7 @@ def plot_resistors(net, throats, c, fig):
 def super_subplot(net, data, cases_left, cases_right, amp):
     nrows = 3
     ncols = 2
-    fig, axes = plt.subplots(nrows, ncols, figsize=(int(4*ncols), int(3*nrows)),
+    fig, axes = plt.subplots(nrows, ncols, figsize=(int(4 * ncols), int(3 * nrows)),
                              sharex=True, sharey=False)
     # Top row is current density
     var = 0
@@ -536,7 +535,7 @@ def combined_subplot(data, case_list, amp_list, var=0,
                      normed=False, ax=None, legend=False):
     if ax is None:
         fig, ax = plt.subplots()
-    ncolor = len(case_list)*len(amp_list)
+    ncolor = len(case_list) * len(amp_list)
     col_array = cmap(np.linspace(0.1, 0.9, ncolor))[::-1]
     if len(amp_list) < 2:
         print_amps = False
@@ -563,7 +562,7 @@ def multi_var_subplot_old(data, case_list, amp_list, var_list, normed=False,
     else:
         nrows = nplot
         ncols = 1
-    fig, axes = plt.subplots(nrows, ncols, figsize=(int(6*ncols), int(4*nrows)),
+    fig, axes = plt.subplots(nrows, ncols, figsize=(int(6 * ncols), int(4 * nrows)),
                              sharex=True)
     for vi in range(nplot):
         ax = axes[vi]
@@ -584,7 +583,7 @@ def multi_var_subplot(data, case_list, amp_list, var_list, normed=False,
     else:
         nrows = nplot
         ncols = 1
-    fig, axes = plt.subplots(nrows, ncols, figsize=(int(6*ncols), int(4*nrows)))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(int(6 * ncols), int(4 * nrows)))
     abc = ascii_lowercase
     subi = 0
     for vi in range(len(var_list)):
@@ -717,11 +716,11 @@ def update_animation_subplot(t, fig, data, data_name,
         std_devs[_t] = std_dev
     ax2.plot(time, means, 'b--')
     ax2.fill_between(time,
-                     means-std_devs,
-                     means+std_devs)
+                     means - std_devs,
+                     means + std_devs)
     ax2.plot([time[t], time[t]], [vmin, vmax], 'r')
-    grange = gmax-gmin
-    ax2.set_ylim(gmin-grange*0.05, gmax+grange*0.05)
+    grange = gmax - gmin
+    ax2.set_ylim(gmin - grange * 0.05, gmax + grange * 0.05)
     ax2.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
     ax2.yaxis.tick_right()
     if t == 0:
@@ -754,7 +753,7 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
             except TypeError:
                 ax = axes
             soc_target = soc_arr[ir][ic]
-            t = np.argmin((soc-soc_target)**2)
+            t = np.argmin((soc - soc_target)**2)
             t_data = var_data[t, :]
             arr[~mask] = t_data[spm_map_copy][~mask]
             arr[mask] = np.nan
@@ -773,16 +772,16 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
             except TypeError:
                 ax = axes
             soc_target = soc_arr[ir][ic]
-            t = np.argmin((soc-soc_target)**2)
+            t = np.argmin((soc - soc_target)**2)
             arr = arrs.pop(0)
             if global_range:
                 im = ax.imshow(arr, vmax=gmax, vmin=gmin, cmap=cmap)
             else:
-                im = ax.imshow(arr,  cmap=cmap)
+                im = ax.imshow(arr, cmap=cmap)
             ax.set_axis_off()
             if global_range is False:
-                plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
-            ax.set_title('SOC: '+str(np.around(soc[t], 2)))
+                plt.colorbar(im, ax=ax, format='%.' + str(dp) + 'f')
+            ax.set_title('SOC: ' + str(np.around(soc[t], 2)))
             out.append(arr)
     fig.tight_layout()
     if global_range:
@@ -802,7 +801,7 @@ def get_SOC_vs_cap(data, case, amp):
     lith = data[case][amp][i_found]['mean']
     cap = data[case][amp]['capacity']
     soc = lith - lith[-1]
-    soc = soc/soc.max()
+    soc = soc / soc.max()
     return np.vstack((cap, soc)).T
 
 

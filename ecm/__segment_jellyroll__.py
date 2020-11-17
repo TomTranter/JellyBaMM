@@ -53,11 +53,11 @@ def average_images(path=None):
     boxes = np.asarray(boxes)
     x_span = boxes[:, 2] - boxes[:, 0]
     y_span = boxes[:, 3] - boxes[:, 1]
-    mhs = np.int(np.ceil(np.min([x_span.min(), y_span.min()])/2))  # min half span
+    mhs = np.int(np.ceil(np.min([x_span.min(), y_span.min()]) / 2))  # min half span
     # Factorize image size - used for adaptive histogran
     factors = []
-    for i in np.arange(2, mhs*2):
-        if mhs*2 % i == 0.0:
+    for i in np.arange(2, mhs * 2):
+        if mhs * 2 % i == 0.0:
             factors.append(i)
     # Crop images
     crops = []
@@ -66,50 +66,50 @@ def average_images(path=None):
         xh = mids[i, 0] + mhs
         yl = mids[i, 1] - mhs
         yh = mids[i, 1] + mhs
-        crops.append(ims[i][xl:xh, yl:yh]*masks[i][xl:xh, yl:yh])
+        crops.append(ims[i][xl:xh, yl:yh] * masks[i][xl:xh, yl:yh])
         print(i, crops[-1].shape)
     # Pick image - replace with average
     im = crops[0].copy()
     dt = np.ones(im.shape)
-    dt[mhs:mhs+1, mhs:mhs+1] = 0
+    dt[mhs:mhs + 1, mhs:mhs + 1] = 0
     dt = spim.distance_transform_edt(dt)
     return im, mhs, dt
 
 
 def get_radial_average(im, step, dt):
-    mid = np.floor(np.array(im.shape)/2).astype(int)
-    bands = np.arange(300, mid[0]-25, step)
+    mid = np.floor(np.array(im.shape) / 2).astype(int)
+    bands = np.arange(300, mid[0] - 25, step)
     band_avs = []
     r = []
-    for i in range(len(bands)-1):
+    for i in range(len(bands) - 1):
         lower = bands[i]
-        upper = bands[i+1]
+        upper = bands[i + 1]
         mask = (dt >= lower) * (dt < upper)
         band_avs.append(np.mean(im[mask]))
-        r.append((lower+upper)/2)
+        r.append((lower + upper) / 2)
     return np.vstack((r, band_avs)).T
 
 
 def adjust_radial_average(im, step, deg, dt):
-    mid = np.floor(np.array(im.shape)/2).astype(int)
-    bands = np.arange(300, mid[0]-25, step)
+    mid = np.floor(np.array(im.shape) / 2).astype(int)
+    bands = np.arange(300, mid[0] - 25, step)
     band_avs = []
     r = []
-    for i in range(len(bands)-1):
+    for i in range(len(bands) - 1):
         lower = bands[i]
-        upper = bands[i+1]
+        upper = bands[i + 1]
         mask = (dt >= lower) * (dt < upper)
         band_avs.append(np.mean(im[mask]))
-        r.append((lower+upper)/2)
+        r.append((lower + upper) / 2)
     dat = np.vstack((r, band_avs)).T
     p = np.polyfit(dat[:, 0], dat[:, 1], deg=deg)
     pfunc = np.poly1d(p)
     adj = pfunc(dat[:, 0])
     adj = adj - adj[0]
     adj_im = im.copy().astype(float)
-    for i in range(len(bands)-1):
+    for i in range(len(bands) - 1):
         lower = bands[i]
-        upper = bands[i+1]
+        upper = bands[i + 1]
         mask = (dt >= lower) * (dt < upper)
         adj_im[mask] -= adj[i]
     return adj_im
@@ -182,7 +182,7 @@ def label_layers(im, dt, mhs, can_width=30, im_thresh=19000, small_feature_size=
     cc_all = binary_dilation(cc_all, disk(8))
     plt.figure()
     plt.imshow(cc_all)
-    lab = label(1-cc_all)
+    lab = label(1 - cc_all)
     plt.figure()
     plt.imshow(lab)
     inner_lab = lab[mhs, mhs]
@@ -200,9 +200,9 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     (inds_x, inds_y) = np.indices(im_soft.shape)
     inds_x -= mhs
     inds_y -= mhs
-    theta = np.around(np.arctan2(inds_y, inds_x)*360/(2*np.pi), 2)
+    theta = np.around(np.arctan2(inds_y, inds_x) * 360 / (2 * np.pi), 2)
     remainder = theta % dtheta
-    lines = np.logical_or((remainder < 1.0), (remainder > (dtheta-1.0)))
+    lines = np.logical_or((remainder < 1.0), (remainder > (dtheta - 1.0)))
     med_ax = medial_axis(lines)
     plt.figure()
     plt.imshow(med_ax)
@@ -215,7 +215,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
         lab, N = label(cc_im == i, return_num=True)
         coords = np.zeros([N, 2], dtype=int)
         for l_int in np.arange(N):
-            x, y = np.where(lab == l_int+1)
+            x, y = np.where(lab == l_int + 1)
             if len(x) > 0:
                 coords[l_int] = [np.int(np.around(np.mean(x), 0)),
                                  np.int(np.around(np.mean(y), 0))]
@@ -231,11 +231,11 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     first_cc[:len(cc_coords[0])] = True
     # Find which theta bin coords are in
     point_thetas = theta[coords[:, 0], coords[:, 1]]
-    bins = np.arange(-180, 180+2*dtheta, dtheta)-dtheta/2
+    bins = np.arange(-180, 180 + 2 * dtheta, dtheta) - dtheta / 2
     point_group_theta = np.zeros(len(coords[:, 0]), dtype=int)
-    for i in range(len(bins)-1):
+    for i in range(len(bins) - 1):
         lower = bins[i]
-        upper = bins[i+1]
+        upper = bins[i + 1]
         sel = (point_thetas > lower) * (point_thetas < upper)
         point_group_theta[sel] = i
     # Get radial position of coords
@@ -287,32 +287,32 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
 
         plt.figure()
         plt.imshow(numbered_cc)
-    print(len(np.unique(cc_roll[0]+cc_roll[1])))
+    print(len(np.unique(cc_roll[0] + cc_roll[1])))
     ordered_neg_Ps = np.asarray(cc_roll[0])
     ordered_pos_Ps = np.asarray(cc_roll[1])
     neg_coords = coords[ordered_neg_Ps]
-    neg_conns = np.vstack((np.arange(0, len(ordered_neg_Ps)-1, 1),
-                           np.arange(0, len(ordered_neg_Ps)-1, 1)+1)).T
+    neg_conns = np.vstack((np.arange(0, len(ordered_neg_Ps) - 1, 1),
+                           np.arange(0, len(ordered_neg_Ps) - 1, 1) + 1)).T
     pos_coords = coords[ordered_pos_Ps]
-    pos_conns = np.vstack((np.arange(0, len(ordered_pos_Ps)-1, 1),
-                           np.arange(0, len(ordered_pos_Ps)-1, 1)+1)).T
+    pos_conns = np.vstack((np.arange(0, len(ordered_pos_Ps) - 1, 1),
+                           np.arange(0, len(ordered_pos_Ps) - 1, 1) + 1)).T
     pos_conns += len(ordered_neg_Ps)
     neg_inner_conns = []
     for i, p_neg in enumerate(ordered_neg_Ps):
         g, layer = np.argwhere(sorted_groups == p_neg).flatten()
         if layer < counts.max() - 1:
-            neighbor = sorted_groups[g, layer+1]
+            neighbor = sorted_groups[g, layer + 1]
             if neighbor > -1:
                 sorted_neighbor = np.argwhere(ordered_pos_Ps == neighbor).flatten()[0]
-                neg_inner_conns.append([i, sorted_neighbor+len(ordered_neg_Ps)])
+                neg_inner_conns.append([i, sorted_neighbor + len(ordered_neg_Ps)])
     pos_inner_conns = []
     for i, p_pos in enumerate(ordered_pos_Ps):
         g, layer = np.argwhere(sorted_groups == p_pos).flatten()
         if layer < counts.max() - 1:
-            neighbor = sorted_groups[g, layer+1]
+            neighbor = sorted_groups[g, layer + 1]
             if neighbor > -1:
                 sorted_neighbor = np.argwhere(ordered_neg_Ps == neighbor).flatten()[0]
-                pos_inner_conns.append([i+len(ordered_neg_Ps), sorted_neighbor])
+                pos_inner_conns.append([i + len(ordered_neg_Ps), sorted_neighbor])
     neg_inner_conns = np.asarray(neg_inner_conns)
     pos_inner_conns = np.asarray(pos_inner_conns)
 
@@ -338,8 +338,8 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.arc_index'] = np.asarray(arc_indices)
     net['pore.radial_position'] = np.linalg.norm(new_coords - mhs, axis=1)
     rad_pos = net['pore.radial_position']
-    inner_mask = np.logical_and(net['pore.surface'], rad_pos < mhs/2)
-    outer_mask = np.logical_and(net['pore.surface'], rad_pos > mhs/2)
+    inner_mask = np.logical_and(net['pore.surface'], rad_pos < mhs / 2)
+    outer_mask = np.logical_and(net['pore.surface'], rad_pos > mhs / 2)
     net['pore.inner'][inner_mask] = True
     net['pore.outer'][outer_mask] = True
     net['throat.neg_cc'] = False
@@ -370,14 +370,14 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     x = outer_pos[:, 0] - mhs
     y = outer_pos[:, 1] - mhs
     r, t = ecm.polar_transform(x, y)
-    r_new = np.ones(num_free)*(r + 50)
+    r_new = np.ones(num_free) * (r + 50)
     new_x, new_y = ecm.cartesian_transform(r_new, t)
     free_coords = outer_pos.copy()
     free_coords[:, 0] = new_x + mhs
     free_coords[:, 1] = new_y + mhs
     start = len(ordered_neg_Ps) + len(ordered_pos_Ps) - num_free
     free_conns = np.vstack((np.arange(0, num_free, 1),
-                            np.arange(0, num_free, 1)+num_free)).T
+                            np.arange(0, num_free, 1) + num_free)).T
     free_conns += start
     tt.extend(net, pore_coords=free_coords,
               throat_conns=free_conns, labels=['free_stream'])
@@ -413,7 +413,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.coords'][:, 1] -= mean
     net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
     net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
-    net['throat.arc_length'] = net['throat.radial_position']*np.deg2rad(dtheta)
+    net['throat.arc_length'] = net['throat.radial_position'] * np.deg2rad(dtheta)
 
     if path is None:
         path = ecm.INPUT_DIR
