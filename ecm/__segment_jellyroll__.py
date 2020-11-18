@@ -354,7 +354,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['throat.spm_resistor'][pos_cc_Ts] = False
     net['throat.spm_resistor_order'] = -1
     spm_res = net['throat.spm_resistor']
-    n_spm = net.sum(spm_res)
+    n_spm = np.sum(spm_res)
     net['throat.spm_resistor_order'][spm_res] = np.arange(0, n_spm, 1, dtype=int)
     net['throat.spm_neg_inner'] = False
     net['throat.spm_pos_inner'] = False
