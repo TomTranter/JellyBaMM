@@ -19,6 +19,7 @@ install:
   - pip install -r requirements/pip_requirements.txt
   - pip install -r requirements/test_requirements.txt
   - pip install -e .
+  - conda install -c conda-forge pardiso4py
 
 script: pytest --flake8 --cov=./
 
