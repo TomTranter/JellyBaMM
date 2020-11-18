@@ -9,8 +9,10 @@ import matplotlib.pyplot as plt
 
 pybamm.set_logging_level("INFO")
 
+
 def current_function(t):
     return pybamm.InputParameter("Current")
+
 
 # load model
 model = pybamm.lithium_ion.SPMe()
@@ -48,6 +50,7 @@ overpotentials = {
 tot_R = []
 time = []
 
+
 def calc_R(sim, current):
     # initial_ocv = 3.8518206633137266
     totdV = 0.0
@@ -60,6 +63,7 @@ def calc_R(sim, current):
     tot_R.append(R)
     time.append(t)
 
+
 def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
     model = sim.built_model
     solution = sim.solution
@@ -67,6 +71,7 @@ def evaluate(sim, var="Current collector current density [A.m-2]", current=0.0):
         solution.t[-1], solution.y[:, -1], inputs={"Current": current}
     )
     return value
+
 
 terminated = False
 for i in range(len(t_eval)):
@@ -77,5 +82,3 @@ for i in range(len(t_eval)):
 # plot
 plt.figure()
 plt.plot(time, tot_R)
-
-

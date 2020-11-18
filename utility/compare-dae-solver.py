@@ -40,21 +40,21 @@ solutions = [None] * 7
 # IDAKLUSolver
 #names[6] = "IDAKLU. convert to casadi (default)"
 #solutions[6] = pybamm.IDAKLUSolver(atol=1e-8, rtol=1e-8).solve(model, t_eval)
-## IDAKLUSolver, convert to python
+# IDAKLUSolver, convert to python
 #names[2] = "IDAKLU. convert to python"
 #model.convert_to_format = "python"
 #solutions[2] = pybamm.IDAKLUSolver(atol=1e-8, rtol=1e-8).solve(model, t_eval)
-## IDAKLUSolver, convert to python no simplify
+# IDAKLUSolver, convert to python no simplify
 #names[3] = "IDAKLU. convert to python, no simplify"
 #model.convert_to_format = "python"
 #model.use_simplify = False
 #solutions[3] = pybamm.IDAKLUSolver(atol=1e-8, rtol=1e-8).solve(model, t_eval)
-## IDAKLUSolver, no convert
+# IDAKLUSolver, no convert
 #names[4] = "IDAKLU. convert to None"
 #model.convert_to_format = None
 #model.use_simplify = True
 #solutions[4] = pybamm.IDAKLUSolver(atol=1e-8, rtol=1e-8).solve(model, t_eval)
-## IDAKLUSolver, no convert no simplify
+# IDAKLUSolver, no convert no simplify
 #names[5] = "IDAKLU. convert to None, no simplify"
 #model.use_simplify = False
 #solutions[5] = pybamm.IDAKLUSolver(atol=1e-8, rtol=1e-8).solve(model, t_eval)

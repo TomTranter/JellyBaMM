@@ -1,3 +1,4 @@
 .ipynb_checkpoints/
 ecm/__pycache__/
 ecm.egg-info/
+*.pyc

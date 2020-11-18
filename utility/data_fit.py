@@ -36,6 +36,7 @@ def u_lico(sto, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s):
     )
     return u_eq
 
+
 xdata = np.linspace(0, 1, 101)
 ydata = u_lico_moura(xdata)
 

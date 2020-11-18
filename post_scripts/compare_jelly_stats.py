@@ -10,6 +10,7 @@ import os
 from scipy import io
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 root = 'D:\\pybamm_pnm_results\\Chen2020_v3'
 cases = ecm.get_cases()
@@ -18,17 +19,18 @@ data_suff = ['mean', 'std', 'chi']
 d = {}
 for case in cases.keys():
     d[case] = {}
-    case_path =  os.path.join(root, cases[case]['file'])
+    case_path = os.path.join(root, cases[case]['file'])
     for amp in amps:
         d[case][amp] = {}
-        amp_path = os.path.join(case_path, str(amp)+'A')
-        file_prefix = 'current_density_case_' + str(case)+'_amp_'+str(amp)+'_'
+        amp_path = os.path.join(case_path, str(amp) + 'A')
+        file_prefix = 'current_density_case_' + str(case) + '_amp_' + str(amp) + '_'
         for suff in data_suff:
-            fp = os.path.join(amp_path, file_prefix+suff)
+            fp = os.path.join(amp_path, file_prefix + suff)
             d[case][amp][suff] = io.loadmat(fp)['data'].flatten()
-            
+
 input_dir = 'C:\\Code\\pybamm_pnm_couple\\input'
-from matplotlib import cm
+
+
 def jellyroll_multiplot(data, cases=[0, 1, 2], amps=[1.75, 3.5, 5.25], var='std',
                         title='Current Density Distribution Log(STD)', dp=3,
                         do_log=True,
@@ -59,16 +61,16 @@ def jellyroll_multiplot(data, cases=[0, 1, 2], amps=[1.75, 3.5, 5.25], var='std'
             arr[~mask] = case_data[spm_map_copy][~mask]
             arr[mask] = np.nan
             if global_scale:
-                im = ax.imshow(arr,  cmap=cm.inferno, vmin=vmin, vmax=vmax)
+                im = ax.imshow(arr, cmap=cm.inferno, vmin=vmin, vmax=vmax)
             else:
                 im = ax.imshow(arr, cmap=cm.inferno)
             ax.set_axis_off()
-            plt.colorbar(im, ax=ax, format='%.'+str(dp)+'f')
+            plt.colorbar(im, ax=ax, format='%.' + str(dp) + 'f')
             ax.set_title(ecm.format_case(case, amp, expanded=False))
-#    fig.suptitle(title)
+
     return fig
 
-#jellyroll_multiplot(d, var='std')
+
 jellyroll_multiplot(d, cases=[0, 5, 10], var='std',
                     title='Current density distribution log(STD)',
                     do_log=True, global_scale=True)
