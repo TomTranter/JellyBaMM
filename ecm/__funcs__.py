@@ -798,7 +798,7 @@ def get_cc_heat(net, alg, V_terminal):
     net['throat.cc_power_loss'][net.throats("pos_cc")] = Pow_pos
     net.add_model(propname='pore.cc_power_loss',
                   model=op.models.misc.from_neighbor_throats,
-                  throat_prop='throat.cc_power_loss',
+                  prop='throat.cc_power_loss',
                   mode='max')
 
 
@@ -899,7 +899,7 @@ def apply_heat_source(project, Q):
     phys['throat.heat_source'][spm_Ts] = Q
     phys.add_model(propname='pore.heat_source',
                    model=op.models.misc.from_neighbor_throats,
-                   throat_prop='throat.heat_source',
+                   prop='throat.heat_source',
                    mode='max')
 
 
