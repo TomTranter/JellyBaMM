@@ -95,7 +95,7 @@ norm_roll_pos *= 100
 data_amalg /= mean
 data_amalg *= 100
 sel = net['pore.arc_index'][net['throat.conns'][net.throats('spm_neg_inner')]][:, 0]
-spm_ids = np.argwhere(sel < 37 )
+spm_ids = np.argwhere(sel < 37)
 
 #for _t in range(data_amalg)
 
@@ -114,8 +114,8 @@ for i in range(len(spm_ids)):
 data_array = np.array(data_2d)
 centers = (bins[1:] + bins[:-1]) / 2
 bin_widths = bins[:-1] - bins[1:]
-x_data, y_data = np.meshgrid( centers,
-                              norm_roll_pos[spm_ids] )
+x_data, y_data = np.meshgrid(centers,
+                             norm_roll_pos[spm_ids])
 neg_inner = net.throats('spm_neg_inner')
 x_len, y_len = np.meshgrid(bin_widths,
                            net['throat.arc_length'][neg_inner][spm_ids])

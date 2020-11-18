@@ -14,10 +14,10 @@ plt.close('all')
 wrk = op.Workspace()
 spacing = 1e-5
 L = 9e-3
-Nx = np.int(L/spacing)+1
+Nx = np.int(L / spacing) + 1
 net = op.network.Cubic(shape=[Nx, 1, 1], spacing=spacing)
 # translate to origin
-net['pore.coords'] -= np.array([spacing, spacing, spacing])/2
+net['pore.coords'] -= np.array([spacing, spacing, spacing]) / 2
 net.add_boundary_pores(labels=['left', 'right'], spacing=0.0)
 
 geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
@@ -26,35 +26,35 @@ geo['throat.diameter'] = spacing
 geo['throat.length'] = spacing
 geo['throat.area'] = (spacing)**2
 geo['pore.area'] = (spacing)**2
-geo['pore.volume'] = geo['pore.area']*spacing
+geo['pore.volume'] = geo['pore.area'] * spacing
 geo['throat.volume'] = 0.0
 
 T0 = 303
 K = 1
 cp = 1399
 rho = 2055
-alpha = K/(cp*rho)
+alpha = K / (cp * rho)
 phase = op.phases.GenericPhase(network=net)
 phase['pore.conductivity'] = alpha
 phys = op.physics.GenericPhysics(network=net, geometry=geo, phase=phase)
 conc = 1.0  # mol/m^3
-phys['throat.conductance'] = conc*alpha*geo['throat.area']/geo['throat.length']
+phys['throat.conductance'] = conc * alpha * geo['throat.area'] / geo['throat.length']
 
-Q = 25000/(cp*rho)
+Q = 25000 / (cp * rho)
 heat_transfer_coefficient = 10
 hc = heat_transfer_coefficient / (cp * rho)
 bTs = net.throats('*boundary')
-phys['throat.conductance'][bTs] = hc*geo['throat.area'][bTs]
+phys['throat.conductance'][bTs] = hc * geo['throat.area'][bTs]
 
 Ps_x = net['pore.coords'][:, 0]
-source = Q*net['pore.volume']
+source = Q * net['pore.volume']
 phys['pore.source.S1'] = 0.0
 phys['pore.source.S2'] = source
 phys['pore.source.rate'] = source
 
 
 def run_transport(network, method='steady', t_initial=0,
-                  t_final=60*60*10, t_step=60, t_output=60):
+                  t_final=60 * 60 * 10, t_step=60, t_output=60):
     if method == 'steady':
         alg = op.algorithms.ReactiveTransport(network=network)
         alg.setup(
@@ -80,9 +80,9 @@ def run_transport(network, method='steady', t_initial=0,
                   rxn_tolerance=1e-9,
                   t_scheme='implicit')
         alg.set_IC(values=T0)
-    BP1 = net.pores('pore.left_boundary')
-    BP2 = net.pores('pore.right_boundary')
-    alg.set_value_BC(pores=BP2, values=T0)
+
+    BP = net.pores('pore.right_boundary')
+    alg.set_value_BC(pores=BP, values=T0)
     Ps = net.pores('internal')
     alg.set_source(propname='pore.source', pores=Ps)
     alg.run()
@@ -95,7 +95,7 @@ times = list(res.keys())
 plt.figure()
 center = []
 mid = []
-mid_coord = int(Nx/2)
+mid_coord = int(Nx / 2)
 end = []
 for time in times[1:]:
     data = alg[time]
@@ -103,7 +103,7 @@ for time in times[1:]:
     center.append(data[0])
     mid.append(data[mid_coord])
     end.append(data[-3])
-last_time = float(time.split('@')[-1])/(60*60)
+last_time = float(time.split('@')[-1]) / (60 * 60)
 
 alg = run_transport(network=net, method='steady')
 plt.plot(alg['pore.temperature'], 'k--')

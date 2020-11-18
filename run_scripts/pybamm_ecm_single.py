@@ -6,7 +6,6 @@ Created on Thu Dec  5 13:14:46 2019
 @author: tom
 .............."""
 
-import pybamm
 import openpnm as op
 import matplotlib.pyplot as plt
 import ecm
@@ -29,16 +28,8 @@ if __name__ == "__main__":
     config = configparser.ConfigParser()
     config.read(os.path.join(save_root, 'config.txt'))
     print(ecm.lump_thermal_props(config))
-    for sec in config.sections():
-        print('='*67)
-        print(sec)
-        print('='*67)
-        for key in config[sec]:
-            print('!', key.ljust(30, ' '), '!', config.get(sec, key).ljust(30, ' '), '!')
-            print('-'*67)
-        
+    ecm.print_config(config)
     I_apps = [config.get('RUN', key) for key in config['RUN'] if 'i_app' in key]
     for I_app in I_apps:
         save_path = save_root + '\\' + I_app + 'A'
-
         prj, vrs, sols = ecm.run_simulation(float(I_app), save_path, config)

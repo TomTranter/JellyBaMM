@@ -25,7 +25,7 @@ for filename in files:
     filepath = os.path.join(input_dir, filename)
     data[filename] = pd.read_csv(filepath).to_numpy()
     cap = data[filename][:, 0]
-    x = cap/cap[-1]
+    x = cap / cap[-1]
     ocv = data[filename][:, 1]
     ent = data[filename][:, 3]
     ax1.plot(x, ocv, label=filename.split('.')[0])
@@ -33,7 +33,7 @@ for filename in files:
     interp_ocv[filename] = CubicSpline(x, ocv)
     interp_docv[filename] = interp_ocv[filename].derivative()
     interp_ent[filename] = CubicSpline(x, ent)
-    
+
 plt.figure()
 plt.plot(x, ocv, 'b')
 xlin = np.linspace(0, 1, 101)
