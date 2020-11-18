@@ -16,7 +16,7 @@ before_install:
 
 install:
   - pip install "git+https://github.com/pybamm-team/PyBaMM.git@develop"
-  - pip install "git+https://github.com/PMEAL/OpenPNM.git@develop"
+  - pip install "git+https://github.com/PMEAL/OpenPNM.git@dev"
   - pip install -r requirements/test_requirements.txt
   - pip install -e .
   - conda install -c conda-forge pardiso4py -y
