@@ -1466,9 +1466,10 @@ def run_simulation(I_app, save_path, config):
                         temp = solutions[i][key].entries[-1]
                         overpotentials[key][outer_step, si] = temp
                         results_o[i, j] = temp
-                    for j, key in enumerate(heating_keys):
-                        temp = solutions[i][key].entries[-1]
-                        variables_heating[key][outer_step, si] = temp
+                    if config.getboolean('PHYSICS', 'do_thermal'):
+                        for j, key in enumerate(heating_keys):
+                            temp = solutions[i][key].entries[-1]
+                            variables_heating[key][outer_step, si] = temp
             print('Finished evaluating SPMs in ',
                   np.around((time.time() - t_eval_start), 2), 's')
             if config.getboolean('PHYSICS', 'do_thermal'):
@@ -1555,7 +1556,7 @@ def run_simulation(I_app, save_path, config):
                lower_mask=lower_mask, save_animation=False)
         export(project, save_path, overpotentials, 'eta_',
                lower_mask=lower_mask, save_animation=False)
-        project.export_data(phases=[phase], filename='ecm.vtp')
+        # project.export_data(phases=[phase], filename='ecm.vtp')
 
     print("*" * 30)
     print("ECM Sim time", time.time() - st)
