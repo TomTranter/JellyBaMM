@@ -1110,9 +1110,7 @@ def plot_subplots(grid_x, grid_y, interp_func, data, t):
 
 
 def interpolate_spm_number(project):
-    cwd = os.getcwd()
-    input_dir = os.path.join(cwd, 'input')
-    im_soft = np.load(os.path.join(input_dir, 'im_soft.npz'))['arr_0']
+    im_soft = np.load(os.path.join(ecm.INPUT_DIR, 'im_soft.npz'))['arr_0']
     x_len, y_len = im_soft.shape
     net = project.network
     res_Ts = net.throats('spm_resistor')
@@ -1146,7 +1144,7 @@ def interpolate_spm_number(project):
     fig, (ax1, ax2) = plt.subplots(1, 2)
     ax1.imshow(im_soft)
     ax2.imshow(arr)
-    np.savez('im_spm_map', arr)
+    return arr
 
 
 def interpolate_spm_number_model(project, dim=1000):

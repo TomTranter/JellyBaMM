@@ -13,7 +13,8 @@ import os
 import shutil
 
 
-root = os.path.join(ecm.OUTPUT_DIR, 'tomography')
+root = os.path.join(ecm.OUTPUT_DIR, 'cases')
+children = []
 
 
 def _ecm_general(config_location):
@@ -34,23 +35,47 @@ def _ecm_general(config_location):
 
 def setup():
     # Generate Data files
-    _ecm_general(root)
+    for file in os.listdir(root):
+        child = os.path.join(root, file)
+        print('processing case', child)
+        _ecm_general(child)
+        children.append(child)
 
 
 def teardown():
     # Delete Data files
-    fp = [os.path.join(root, file) for file in os.listdir(root) if 'A' in file]
-    for folder in fp:
-        shutil.rmtree(folder)
+    for child in children:
+        fp = [os.path.join(child, file) for file in os.listdir(child) if 'A' in file]
+        for folder in fp:
+            shutil.rmtree(folder)
 
 
 def test_load_data():
-    d = ecm.load_data(root)
+    d = ecm.load_data(children[0])
+    assert len(d.keys()) > 0
+
+
+def test_load_cases():
+    d = ecm.load_cases(root)
     assert len(d.keys()) > 0
     return d
 
 
+def test_jellyroll_subplot(data):
+    case_index = 0
+    amp_index = 0
+    var_index = 0
+    case_folder = children[case_index]
+    amps = ecm.get_amp_cases(case_folder)
+    case = list(data.keys())[case_index]
+    ecm.jellyroll_subplot(data, case, amps[amp_index], var=var_index,
+                          soc_list=[[1.0, 0.99], [0.98, 0.97]],
+                          global_range=False, dp=1)
+
+
 if __name__ == '__main__':
     setup()
-    d = test_load_data()
-    teardown()
+    # test_load_data()
+    d = test_load_cases()
+    test_jellyroll_subplot(d)
+    # teardown()

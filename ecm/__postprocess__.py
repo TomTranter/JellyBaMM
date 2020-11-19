@@ -163,8 +163,9 @@ def abc(x):
     return alphabet[x].upper()
 
 
-def get_amp_cases():
-    return [17.5]
+def get_amp_cases(filepath):
+    amps = [float(file.strip('A')) for file in os.listdir(filepath) if 'A' in file]
+    return amps
 
 
 def load_and_amalgamate(save_root, var_name):
@@ -250,13 +251,19 @@ def load_all_data():
     return data
 
 
+def load_cases(filepath):
+    d = {}
+    for file in os.listdir(filepath):
+        d[file] = load_data(os.path.join(filepath, file))
+    return d
+
+
 def load_data(filepath):
     config = configparser.ConfigParser()
     net = get_net()
     weights = get_weights(net)
     # cases = get_cases()
-    # amps = get_amp_cases()
-    amps = [float(file.strip('A')) for file in os.listdir(filepath) if 'A' in file]
+    amps = get_amp_cases(filepath)
     variables = get_saved_var_names()
     data = {}
     config.read(os.path.join(filepath, 'config.txt'))
@@ -774,7 +781,7 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
     soc_arr = np.asarray(soc_list)
     (nrows, ncols) = soc_arr.shape
     fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12), sharex=True, sharey=True)
-    spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map_46800.npz'))['arr_0']
+    spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map.npz'))['arr_0']
     spm_map_copy = spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
@@ -837,7 +844,7 @@ def get_SOC_vs_cap(data, case, amp):
     var_names = get_saved_var_names()
     i_found = None
     for i, vn in enumerate(var_names):
-        if 'Negative' in vn and 'lithiation' in vn:
+        if 'negative' in vn and 'lithiation' in vn:
             i_found = i
     lith = data[case][amp][i_found]['mean']
     cap = data[case][amp]['capacity']
