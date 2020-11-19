@@ -325,16 +325,18 @@ def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k',
     if ax is None:
         fig, ax = plt.subplots()
     cap = data[case][amp]['capacity'].copy()
-    if time_cap:
+    if time_cap == 'Time':
         cap /= amp
     dmin = data[case][amp][var]['min']
     dmean = data[case][amp][var]['mean']
     dmax = data[case][amp][var]['max']
+    lab = 'Case ' + case
+    if print_amps:
+        lab += ': I = ' + str(amp) + '[A]'
     if normed:
         if show == 'all' or show == 'min':
             ax.plot(cap, dmin / dmean, c=c, linestyle='dashed')
         if show == 'all' or show == 'mean':
-            lab = 'Case ' + abc(case) + ': I = ' + str(amp) + '[A]'
             ax.plot(cap, dmean / dmean, c=c, label=lab)
         if show == 'all' or show == 'max':
             ax.plot(cap, dmax / dmean, c=c, linestyle='dashed')
@@ -342,9 +344,7 @@ def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k',
         if show == 'all' or show == 'min':
             ax.plot(cap, dmin, c=c, linestyle='dashed')
         if show == 'all' or show == 'mean':
-            ax.plot(cap, dmean, c=c, label=format_case(case, amp,
-                                                       expanded=False,
-                                                       print_amps=print_amps))
+            ax.plot(cap, dmean, c=c, label=lab)
         if show == 'all' or show == 'max':
             ax.plot(cap, dmax, c=c, linestyle='dashed')
     ax.set
@@ -585,10 +585,8 @@ def combined_subplot(data, case_list, amp_list, var=0,
         fig, ax = plt.subplots()
     ncolor = len(case_list) * len(amp_list)
     col_array = cmap(np.linspace(0.1, 0.9, ncolor))[::-1]
-    if len(amp_list) < 2:
-        print_amps = False
-    else:
-        cindex = 0
+    print_amps = len(amp_list) > 1
+    cindex = 0
     for case in case_list:
         for amp in amp_list:
             ax = min_mean_max_subplot(data, case, amp, var, normed, c=col_array[cindex],

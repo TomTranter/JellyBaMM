@@ -73,9 +73,18 @@ def test_jellyroll_subplot(data):
                           global_range=False, dp=1)
 
 
+def test_multivar_subplot(data):
+    case_index = 0
+    case_folder = children[case_index]
+    amps = ecm.get_amp_cases(case_folder)
+    case = list(data.keys())[case_index]
+    ecm.multi_var_subplot(data, [case], amps, [2, 0], landscape=False)
+
+
 if __name__ == '__main__':
     setup()
-    # test_load_data()
+    test_load_data()
     d = test_load_cases()
     test_jellyroll_subplot(d)
-    # teardown()
+    test_multivar_subplot(d)
+    teardown()
