@@ -17,11 +17,13 @@ from matplotlib import gridspec
 import matplotlib.ticker as mtick
 import pandas as pd
 from string import ascii_lowercase
+import ecm
+
+
 prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = prop_cycle.by_key()['color']
 
 
-input_dir = 'C:\\Users\\tom\\code\\pybamm_pnm\\input'
 root = 'C:\\Users\\tom\\Documents\\Chen2020_v3'
 base = 'pybamm_pnm_case'
 exp_root = 'D:\\pybamm_pnm_results\\experimental'
@@ -36,11 +38,11 @@ def get_saved_var_names():
     saved_vars = ['var_Current_collector_current_density',
                   'var_Temperature',
                   'var_Terminal_voltage',
-                  'var_Negative_electrode_average_extent_of_lithiation',
-                  'var_Positive_electrode_average_extent_of_lithiation',
+                  'var_X-averaged_negative_electrode_extent_of_lithiation',
+                  'var_X-averaged_positive_electrode_extent_of_lithiation',
                   'var_X-averaged_negative_particle_surface_concentration',
                   'var_X-averaged_positive_particle_surface_concentration',
-                  'var_X-averaged_total_heating',
+                  'var_Volume-averaged_total_heating',
                   'var_ECM_I_Local',
                   'var_ECM_R_local',
                   'var_Time',
@@ -49,10 +51,10 @@ def get_saved_var_names():
                   'eta_X-averaged_battery_concentration_overpotential',
                   'eta_X-averaged_battery_electrolyte_ohmic_losses',
                   'eta_X-averaged_battery_solid_phase_ohmic_losses',
-                  'var_X-averaged_Ohmic_heating',
-                  'var_X-averaged_irreversible_electrochemical_heating',
-                  'var_X-averaged_reversible_heating',
-                  'var_X-averaged_Ohmic_heating_CC',
+                  'var_Volume-averaged_Ohmic_heating',
+                  'var_Volume-averaged_irreversible_electrochemical_heating',
+                  'var_Volume-averaged_reversible_heating',
+                  'var_Volume-averaged_Ohmic_heating_CC',
                   ]
     return saved_vars
 
@@ -248,8 +250,47 @@ def load_all_data():
     return data
 
 
-def get_net():
-    wrk.load_project(os.path.join(input_dir, '46800.pnm'))
+def load_data(filepath):
+    config = configparser.ConfigParser()
+    net = get_net()
+    weights = get_weights(net)
+    # cases = get_cases()
+    # amps = get_amp_cases()
+    amps = [float(file.strip('A')) for file in os.listdir(filepath) if 'A' in file]
+    variables = get_saved_var_names()
+    data = {}
+    config.read(os.path.join(filepath, 'config.txt'))
+    data['config'] = config2dict(config)
+    for amp in amps:
+        amp_folder = os.path.join(filepath, str(amp) + 'A')
+        data[amp] = {}
+        for vi, v in enumerate(variables):
+            data[amp][vi] = {}
+            temp = load_and_amalgamate(amp_folder, v)
+            if temp is not None:
+                if vi == 0:
+                    check_nans = np.any(np.isnan(temp), axis=1)
+                    if np.any(check_nans):
+                        print('Nans removed from', amp_folder)
+                if np.any(check_nans):
+                    temp = temp[~check_nans, :]
+                data[amp][vi]['data'] = temp
+                means = np.zeros(temp.shape[0])
+                for t in range(temp.shape[0]):
+                    (mean, std_dev) = weighted_avg_and_std(temp[t, :], weights)
+                    means[t] = mean
+                data[amp][vi]['mean'] = means
+                data[amp][vi]['min'] = np.min(temp, axis=1)
+                data[amp][vi]['max'] = np.max(temp, axis=1)
+        if temp is not None:
+            t_hrs = data[amp][10]['data'][:, 0]
+            cap = t_hrs * amp
+            data[amp]['capacity'] = cap
+    return data
+
+
+def get_net(filename='spider_net.pnm'):
+    wrk.load_project(os.path.join(ecm.INPUT_DIR, filename))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
@@ -609,7 +650,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     net = get_net()
     weights = get_weights(net)
     project = net.project
-    im_spm_map = np.load(os.path.join(input_dir, 'im_spm_map_46800.npz'))['arr_0']
+    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map_46800.npz'))['arr_0']
     title = filename.split("\\")
     if len(title) == 1:
         title = title[0]
@@ -733,7 +774,7 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
     soc_arr = np.asarray(soc_list)
     (nrows, ncols) = soc_arr.shape
     fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12), sharex=True, sharey=True)
-    spm_map = np.load(os.path.join(input_dir, 'im_spm_map_46800.npz'))['arr_0']
+    spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map_46800.npz'))['arr_0']
     spm_map_copy = spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
