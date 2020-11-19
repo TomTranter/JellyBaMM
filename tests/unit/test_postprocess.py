@@ -61,7 +61,8 @@ def test_load_cases():
     return d
 
 
-def test_jellyroll_subplot(data):
+def test_jellyroll_subplot():
+    data = ecm.load_cases(root)
     case_index = 0
     amp_index = 0
     var_index = 0
@@ -75,7 +76,8 @@ def test_jellyroll_subplot(data):
     assert 1 == 1
 
 
-def test_multivar_subplot(data):
+def test_multivar_subplot():
+    data = ecm.load_cases(root)
     case_index = 0
     case_folder = children[case_index]
     amps = ecm.get_amp_cases(case_folder)
@@ -85,7 +87,8 @@ def test_multivar_subplot(data):
     assert 1 == 1
 
 
-def test_spacetime(data):
+def test_spacetime():
+    data = ecm.load_cases(root)
     amps = ecm.get_amp_cases(children[0])
     cases = list(data.keys())
     ecm.spacetime(data, cases, amps, var=0, group='neg', normed=True)
@@ -93,7 +96,8 @@ def test_spacetime(data):
     assert 1 == 1
 
 
-def test_chargeogram(data):
+def test_chargeogram():
+    data = ecm.load_cases(root)
     amps = ecm.get_amp_cases(children[0])
     cases = list(data.keys())
     ecm.chargeogram(d, cases, amps, group='neg')
@@ -105,8 +109,8 @@ if __name__ == '__main__':
     setup()
     test_load_data()
     d = test_load_cases()
-    test_jellyroll_subplot(d)
-    test_multivar_subplot(d)
-    test_spacetime(d)
-    test_chargeogram(d)
+    test_jellyroll_subplot()
+    test_multivar_subplot()
+    test_spacetime()
+    test_chargeogram()
     teardown()
