@@ -390,7 +390,7 @@ def chargeogram(data, case_list, amp_list, group='neg'):
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
             im = ax.pcolormesh(x_data, y_data - 100, heatmap.T, cmap=cm.inferno)
-            ax.set_title(format_case(case, amp, expanded=False))
+            ax.set_title(case + ': ' + str(amp) + '[A]')
             if ci == len(case_list) - 1:
                 ax.set_xlabel('Normalized roll position')
             plt.colorbar(im, ax=ax)

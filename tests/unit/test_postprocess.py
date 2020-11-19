@@ -71,6 +71,8 @@ def test_jellyroll_subplot(data):
     ecm.jellyroll_subplot(data, case, amps[amp_index], var=var_index,
                           soc_list=[[1.0, 0.99], [0.98, 0.97]],
                           global_range=False, dp=1)
+    plt.close('all')
+    assert 1 == 1
 
 
 def test_multivar_subplot(data):
@@ -79,12 +81,24 @@ def test_multivar_subplot(data):
     amps = ecm.get_amp_cases(case_folder)
     case = list(data.keys())[case_index]
     ecm.multi_var_subplot(data, [case], amps, [2, 0], landscape=False)
+    plt.close('all')
+    assert 1 == 1
 
 
 def test_spacetime(data):
     amps = ecm.get_amp_cases(children[0])
     cases = list(data.keys())
     ecm.spacetime(data, cases, amps, var=0, group='neg', normed=True)
+    plt.close('all')
+    assert 1 == 1
+
+
+def test_chargeogram(data):
+    amps = ecm.get_amp_cases(children[0])
+    cases = list(data.keys())
+    ecm.chargeogram(d, cases, amps, group='neg')
+    plt.close('all')
+    assert 1 == 1
 
 
 if __name__ == '__main__':
@@ -94,4 +108,5 @@ if __name__ == '__main__':
     test_jellyroll_subplot(d)
     test_multivar_subplot(d)
     test_spacetime(d)
-    # teardown()
+    test_chargeogram(d)
+    teardown()
