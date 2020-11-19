@@ -27,7 +27,7 @@ def _ecm_general(config_location):
     config.set('OUTPUT', 'animate', "False")
     I_apps = [config.get('RUN', key) for key in config['RUN'] if 'i_app' in key]
     for I_app in I_apps:
-        save_path = config_location + '\\' + I_app + 'A'
+        save_path = os.path.join(config_location, str(I_app) + 'A')
         prj, vrs, sols = ecm.run_simulation(float(I_app), save_path, config)
     plt.close('all')
     assert 1 == 1
