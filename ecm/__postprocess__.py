@@ -443,7 +443,7 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
             y_list.append(y_data)
             data_list.append(heatmap)
             im = ax.pcolormesh(x_data, y_data, heatmap, cmap=cm.inferno)
-            ax.set_title(format_case(case, amp, expanded=False))
+            ax.set_title(case)
             if ai == 0:
                 ax.set_ylabel('Capacity [Ah]')
             if (ci == len(case_list) - 1) or nrows == 1:

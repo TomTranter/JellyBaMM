@@ -81,10 +81,17 @@ def test_multivar_subplot(data):
     ecm.multi_var_subplot(data, [case], amps, [2, 0], landscape=False)
 
 
+def test_spacetime(data):
+    amps = ecm.get_amp_cases(children[0])
+    cases = list(data.keys())
+    ecm.spacetime(data, cases, amps, var=0, group='neg', normed=True)
+
+
 if __name__ == '__main__':
     setup()
     test_load_data()
     d = test_load_cases()
     test_jellyroll_subplot(d)
     test_multivar_subplot(d)
-    teardown()
+    test_spacetime(d)
+    # teardown()
