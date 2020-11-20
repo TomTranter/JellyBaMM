@@ -100,17 +100,25 @@ def test_chargeogram():
     data = ecm.load_cases(root)
     amps = ecm.get_amp_cases(children[0])
     cases = list(data.keys())
-    ecm.chargeogram(d, cases, amps, group='neg')
+    ecm.chargeogram(data, cases, amps, group='neg')
     plt.close('all')
     assert 1 == 1
 
 
+def test_animate():
+    data = ecm.load_cases(root)
+    amps = ecm.get_amp_cases(children[0])
+    cases = list(data.keys())
+    fname = os.path.join(children[0], 'test.mp4')
+    ecm.animate_data4(data, cases[0], amps[0], variables=[0, 1], filename=fname)
+    os.remove(fname)
+
+
 if __name__ == '__main__':
     setup()
-    test_load_data()
-    d = test_load_cases()
     test_jellyroll_subplot()
     test_multivar_subplot()
     test_spacetime()
     test_chargeogram()
+    test_animate()
     teardown()

@@ -655,7 +655,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     net = get_net()
     weights = get_weights(net)
     project = net.project
-    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map_46800.npz'))['arr_0']
+    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map.npz'))['arr_0']
     title = filename.split("\\")
     if len(title) == 1:
         title = title[0]
@@ -685,7 +685,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
                                               spm_map_copy, mask,
                                               time_var, time, weights))
     Writer = animation.writers['ffmpeg']
-    writer = Writer(fps=30, metadata=dict(artist='Tom Tranter'), bitrate=-1)
+    writer = Writer(fps=1, metadata=dict(artist='Tom Tranter'), bitrate=-1)
     if '.mp4' not in filename:
         filename = filename + '.mp4'
     func_ani.save(filename, writer=writer, dpi=300)
