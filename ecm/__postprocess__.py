@@ -17,11 +17,13 @@ from matplotlib import gridspec
 import matplotlib.ticker as mtick
 import pandas as pd
 from string import ascii_lowercase
+import ecm
+
+
 prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = prop_cycle.by_key()['color']
 
 
-input_dir = 'C:\\Users\\tom\\code\\pybamm_pnm\\input'
 root = 'C:\\Users\\tom\\Documents\\Chen2020_v3'
 base = 'pybamm_pnm_case'
 exp_root = 'D:\\pybamm_pnm_results\\experimental'
@@ -36,11 +38,11 @@ def get_saved_var_names():
     saved_vars = ['var_Current_collector_current_density',
                   'var_Temperature',
                   'var_Terminal_voltage',
-                  'var_Negative_electrode_average_extent_of_lithiation',
-                  'var_Positive_electrode_average_extent_of_lithiation',
+                  'var_X-averaged_negative_electrode_extent_of_lithiation',
+                  'var_X-averaged_positive_electrode_extent_of_lithiation',
                   'var_X-averaged_negative_particle_surface_concentration',
                   'var_X-averaged_positive_particle_surface_concentration',
-                  'var_X-averaged_total_heating',
+                  'var_Volume-averaged_total_heating',
                   'var_ECM_I_Local',
                   'var_ECM_R_local',
                   'var_Time',
@@ -49,10 +51,10 @@ def get_saved_var_names():
                   'eta_X-averaged_battery_concentration_overpotential',
                   'eta_X-averaged_battery_electrolyte_ohmic_losses',
                   'eta_X-averaged_battery_solid_phase_ohmic_losses',
-                  'var_X-averaged_Ohmic_heating',
-                  'var_X-averaged_irreversible_electrochemical_heating',
-                  'var_X-averaged_reversible_heating',
-                  'var_X-averaged_Ohmic_heating_CC',
+                  'var_Volume-averaged_Ohmic_heating',
+                  'var_Volume-averaged_irreversible_electrochemical_heating',
+                  'var_Volume-averaged_reversible_heating',
+                  'var_Volume-averaged_Ohmic_heating_CC',
                   ]
     return saved_vars
 
@@ -161,8 +163,9 @@ def abc(x):
     return alphabet[x].upper()
 
 
-def get_amp_cases():
-    return [17.5]
+def get_amp_cases(filepath):
+    amps = [float(file.strip('A')) for file in os.listdir(filepath) if 'A' in file]
+    return amps
 
 
 def load_and_amalgamate(save_root, var_name):
@@ -248,8 +251,53 @@ def load_all_data():
     return data
 
 
-def get_net():
-    wrk.load_project(os.path.join(input_dir, '46800.pnm'))
+def load_cases(filepath):
+    d = {}
+    for file in os.listdir(filepath):
+        d[file] = load_data(os.path.join(filepath, file))
+    return d
+
+
+def load_data(filepath):
+    config = configparser.ConfigParser()
+    net = get_net()
+    weights = get_weights(net)
+    # cases = get_cases()
+    amps = get_amp_cases(filepath)
+    variables = get_saved_var_names()
+    data = {}
+    config.read(os.path.join(filepath, 'config.txt'))
+    data['config'] = config2dict(config)
+    for amp in amps:
+        amp_folder = os.path.join(filepath, str(amp) + 'A')
+        data[amp] = {}
+        for vi, v in enumerate(variables):
+            data[amp][vi] = {}
+            temp = load_and_amalgamate(amp_folder, v)
+            if temp is not None:
+                if vi == 0:
+                    check_nans = np.any(np.isnan(temp), axis=1)
+                    if np.any(check_nans):
+                        print('Nans removed from', amp_folder)
+                if np.any(check_nans):
+                    temp = temp[~check_nans, :]
+                data[amp][vi]['data'] = temp
+                means = np.zeros(temp.shape[0])
+                for t in range(temp.shape[0]):
+                    (mean, std_dev) = weighted_avg_and_std(temp[t, :], weights)
+                    means[t] = mean
+                data[amp][vi]['mean'] = means
+                data[amp][vi]['min'] = np.min(temp, axis=1)
+                data[amp][vi]['max'] = np.max(temp, axis=1)
+        if temp is not None:
+            t_hrs = data[amp][10]['data'][:, 0]
+            cap = t_hrs * amp
+            data[amp]['capacity'] = cap
+    return data
+
+
+def get_net(filename='spider_net.pnm'):
+    wrk.load_project(os.path.join(ecm.INPUT_DIR, filename))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
@@ -277,16 +325,18 @@ def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k',
     if ax is None:
         fig, ax = plt.subplots()
     cap = data[case][amp]['capacity'].copy()
-    if time_cap:
+    if time_cap == 'Time':
         cap /= amp
     dmin = data[case][amp][var]['min']
     dmean = data[case][amp][var]['mean']
     dmax = data[case][amp][var]['max']
+    lab = 'Case ' + case
+    if print_amps:
+        lab += ': I = ' + str(amp) + '[A]'
     if normed:
         if show == 'all' or show == 'min':
             ax.plot(cap, dmin / dmean, c=c, linestyle='dashed')
         if show == 'all' or show == 'mean':
-            lab = 'Case ' + abc(case) + ': I = ' + str(amp) + '[A]'
             ax.plot(cap, dmean / dmean, c=c, label=lab)
         if show == 'all' or show == 'max':
             ax.plot(cap, dmax / dmean, c=c, linestyle='dashed')
@@ -294,9 +344,7 @@ def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k',
         if show == 'all' or show == 'min':
             ax.plot(cap, dmin, c=c, linestyle='dashed')
         if show == 'all' or show == 'mean':
-            ax.plot(cap, dmean, c=c, label=format_case(case, amp,
-                                                       expanded=False,
-                                                       print_amps=print_amps))
+            ax.plot(cap, dmean, c=c, label=lab)
         if show == 'all' or show == 'max':
             ax.plot(cap, dmax, c=c, linestyle='dashed')
     ax.set
@@ -342,7 +390,7 @@ def chargeogram(data, case_list, amp_list, group='neg'):
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
             im = ax.pcolormesh(x_data, y_data - 100, heatmap.T, cmap=cm.inferno)
-            ax.set_title(format_case(case, amp, expanded=False))
+            ax.set_title(case + ': ' + str(amp) + '[A]')
             if ci == len(case_list) - 1:
                 ax.set_xlabel('Normalized roll position')
             plt.colorbar(im, ax=ax)
@@ -395,7 +443,7 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
             y_list.append(y_data)
             data_list.append(heatmap)
             im = ax.pcolormesh(x_data, y_data, heatmap, cmap=cm.inferno)
-            ax.set_title(format_case(case, amp, expanded=False))
+            ax.set_title(case)
             if ai == 0:
                 ax.set_ylabel('Capacity [Ah]')
             if (ci == len(case_list) - 1) or nrows == 1:
@@ -537,10 +585,8 @@ def combined_subplot(data, case_list, amp_list, var=0,
         fig, ax = plt.subplots()
     ncolor = len(case_list) * len(amp_list)
     col_array = cmap(np.linspace(0.1, 0.9, ncolor))[::-1]
-    if len(amp_list) < 2:
-        print_amps = False
-    else:
-        cindex = 0
+    print_amps = len(amp_list) > 1
+    cindex = 0
     for case in case_list:
         for amp in amp_list:
             ax = min_mean_max_subplot(data, case, amp, var, normed, c=col_array[cindex],
@@ -609,7 +655,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     net = get_net()
     weights = get_weights(net)
     project = net.project
-    im_spm_map = np.load(os.path.join(input_dir, 'im_spm_map_46800.npz'))['arr_0']
+    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map.npz'))['arr_0']
     title = filename.split("\\")
     if len(title) == 1:
         title = title[0]
@@ -639,7 +685,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
                                               spm_map_copy, mask,
                                               time_var, time, weights))
     Writer = animation.writers['ffmpeg']
-    writer = Writer(fps=30, metadata=dict(artist='Tom Tranter'), bitrate=-1)
+    writer = Writer(fps=1, metadata=dict(artist='Tom Tranter'), bitrate=-1)
     if '.mp4' not in filename:
         filename = filename + '.mp4'
     func_ani.save(filename, writer=writer, dpi=300)
@@ -733,7 +779,7 @@ def jellyroll_subplot(data, case, amp, var=0, soc_list=[[0.9, 0.7], [0.5, 0.3]],
     soc_arr = np.asarray(soc_list)
     (nrows, ncols) = soc_arr.shape
     fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12), sharex=True, sharey=True)
-    spm_map = np.load(os.path.join(input_dir, 'im_spm_map_46800.npz'))['arr_0']
+    spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map.npz'))['arr_0']
     spm_map_copy = spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)
@@ -796,7 +842,7 @@ def get_SOC_vs_cap(data, case, amp):
     var_names = get_saved_var_names()
     i_found = None
     for i, vn in enumerate(var_names):
-        if 'Negative' in vn and 'lithiation' in vn:
+        if 'negative' in vn and 'lithiation' in vn:
             i_found = i
     lith = data[case][amp][i_found]['mean']
     cap = data[case][amp]['capacity']

@@ -30,3 +30,6 @@ np.savez(os.path.join(ecm.INPUT_DIR, 'im_soft'), im_soft)
 np.savez(os.path.join(ecm.INPUT_DIR, 'cc_im'), cc_im)
 # Make the spider web network
 net = ecm.spider_web_network(im_soft, mhs, cc_im, dtheta=10)
+prj = net.project
+im_spm_map = ecm.interpolate_spm_number(prj)
+np.savez(os.path.join(ecm.INPUT_DIR, 'im_spm_map'), im_spm_map)

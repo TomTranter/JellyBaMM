@@ -34,6 +34,11 @@ def test_ecm_spiral():
     _ecm_general(config_location)
 
 
+def test_ecm_spiral_tesla():
+    config_location = os.path.join(ecm.OUTPUT_DIR, 'spiral_tesla')
+    _ecm_general(config_location)
+
+
 def test_ecm_tomo():
     config_location = os.path.join(ecm.OUTPUT_DIR, 'tomography')
     _ecm_general(config_location)

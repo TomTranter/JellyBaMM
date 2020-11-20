@@ -20,7 +20,7 @@ import seaborn as sns
 
 
 plt.style.use('seaborn-dark')
-cmap = sns.color_palette("rocket", as_cmap=True)
+cmap = sns.color_palette("rocket")
 warnings.filterwarnings("ignore")
 
 root = 'D:\\pybamm_pnm_results\\46800'
