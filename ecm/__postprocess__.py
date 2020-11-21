@@ -134,6 +134,23 @@ def get_cases():
     return cases
 
 
+def plot_phase_data(project, data='pore.temperature'):
+    net = project.network
+    phase = project.phases()['phase_01']
+    Ps = net.pores('free_stream', mode='not')
+    coords = net['pore.coords']
+    x = coords[:, 0][Ps]
+    y = coords[:, 1][Ps]
+    fig, ax = plt.subplots()
+    ax.scatter(x, y)
+    ax.scatter(x, y, c=phase[data][Ps])
+    ax = fig.gca()
+    ax.set_xlim(x.min() * 1.05,
+                x.max() * 1.05)
+    ax.set_ylim(y.min() * 1.05,
+                y.max() * 1.05)
+
+
 def get_case_details(key):
     cases = get_cases()
     return cases[key]['htc'], cases[key]['tabs']
