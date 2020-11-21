@@ -39,7 +39,7 @@ def test_multivar_subplot():
     amps = ecm.get_amp_cases(case_folder)
     case = list(data.keys())[case_index]
     ecm.multi_var_subplot(data, [case], amps, [2, 0], landscape=False)
-    # plt.close('all')
+    plt.close('all')
     assert 1 == 1
 
 
@@ -48,7 +48,7 @@ def test_spacetime():
     amps = ecm.get_amp_cases(children[0])
     cases = list(data.keys())
     ecm.spacetime(data, cases, amps, var=0, group='neg', normed=True)
-    # plt.close('all')
+    plt.close('all')
     assert 1 == 1
 
 
@@ -57,7 +57,7 @@ def test_chargeogram():
     amps = ecm.get_amp_cases(children[0])
     cases = list(data.keys())
     ecm.chargeogram(data, cases, amps, group='neg')
-    # plt.close('all')
+    plt.close('all')
     assert 1 == 1
 
 
