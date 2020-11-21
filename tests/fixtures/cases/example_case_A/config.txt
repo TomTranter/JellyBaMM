@@ -2,7 +2,7 @@
 I_app_a = 2.0
 I_app_b = 4.0
 parallel = True
-hours = 0.01
+hours = 0.1
 model = SPMe
 vlim_lower = 2.7
 vlim_upper = 4.7

@@ -13,15 +13,11 @@ from openpnm.topotools import plot_coordinates as pcoord
 from openpnm.models.physics.generic_source_term import linear
 import pybamm
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-import sys
 import time
 import os
 from scipy import io
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from scipy.interpolate import griddata
 from scipy.interpolate import NearestNDInterpolator
-from matplotlib import gridspec
 import json
 import ecm
 
@@ -823,7 +819,6 @@ def cartesian_transform(r, t):
     x = r * np.cos(t)
     y = r * np.sin(t)
     return x, y
-
 
 
 def interpolate_spm_number(project):
