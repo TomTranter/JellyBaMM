@@ -32,7 +32,7 @@ def _ecm_general(config_location):
         save_path = config_location + '\\' + I_app + 'A'
         prj, vrs, sols = ecm.run_simulation(float(I_app), save_path, config)
     plt.close('all')
-    _teardown(config_location)
+    # _teardown(config_location)
     assert 1 == 1
 
 

@@ -277,7 +277,7 @@ def load_cases(filepath):
 
 def load_data(filepath):
     config = configparser.ConfigParser()
-    net = get_net()
+    net = get_net(filepath=filepath, filename='net.pnm')
     weights = get_weights(net)
     # cases = get_cases()
     amps = get_amp_cases(filepath)
@@ -285,6 +285,7 @@ def load_data(filepath):
     data = {}
     config.read(os.path.join(filepath, 'config.txt'))
     data['config'] = config2dict(config)
+    data['network'] = net
     for amp in amps:
         amp_folder = os.path.join(filepath, str(amp) + 'A')
         data[amp] = {}
@@ -313,8 +314,10 @@ def load_data(filepath):
     return data
 
 
-def get_net(filename='spider_net.pnm'):
-    wrk.load_project(os.path.join(ecm.INPUT_DIR, filename))
+def get_net(filepath=None, filename='spider_net.pnm'):
+    if filepath is None:
+        filepath = ecm.INPUT_DIR
+    wrk.load_project(os.path.join(filepath, filename))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
@@ -370,7 +373,7 @@ def min_mean_max_subplot(data, case=0, amp=4, var=0, normed=False, c='k',
 
 def chargeogram(data, case_list, amp_list, group='neg'):
     wrk.clear()
-    net = get_net()
+    net = data[case_list[0]]['network']
     nrows = len(case_list)
     ncols = len(amp_list)
     fig, axes = plt.subplots(nrows, ncols,
@@ -418,7 +421,7 @@ def chargeogram(data, case_list, amp_list, group='neg'):
 
 def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
     wrk.clear()
-    net = get_net()
+    net = data[case_list[0]]['network']
     nrows = len(amp_list)
     ncols = len(case_list)
     fig, axes = plt.subplots(nrows, ncols,
@@ -476,7 +479,8 @@ def add_figure_label(ax, index):
     t.set_bbox(dict(facecolor='white', alpha=1.0, edgecolor='black'))
 
 
-def stacked_variables(net, data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
+def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
+    net = data[case]['network']
     spm_vol = net['throat.volume'][net['throat.spm_resistor']]
     # To do - make this much more robust = replace integers with key
     Q_ohm = data[case][amp][16]['data']
@@ -533,7 +537,7 @@ def plot_resistors(net, throats, c, fig):
     return fig
 
 
-def super_subplot(net, data, cases_left, cases_right, amp):
+def super_subplot(data, cases_left, cases_right, amp):
     nrows = 3
     ncols = 2
     fig, axes = plt.subplots(nrows, ncols, figsize=(int(4 * ncols), int(3 * nrows)),
@@ -590,9 +594,9 @@ def super_subplot(net, data, cases_left, cases_right, amp):
     add_figure_label(ax, 3)
     plt.ticklabel_format(axis='y', style='sci')
     ax = axes[2][0]
-    stacked_variables(net, data, cases_left[0], 17.5, [18, 17, 16, 19], ax, 4)
+    stacked_variables(data, cases_left[0], amp, [18, 17, 16, 19], ax, 4)
     ax = axes[2][1]
-    stacked_variables(net, data, cases_right[0], 17.5, [18, 17, 16, 19], ax, 5)
+    stacked_variables(data, cases_right[0], amp, [18, 17, 16, 19], ax, 5)
     plt.tight_layout()
 
 
@@ -669,7 +673,7 @@ def animate_init():
 
 
 def animate_data4(data, case, amp, variables=None, filename=None):
-    net = get_net()
+    net = data[case]['network']
     weights = get_weights(net)
     project = net.project
     im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, 'im_spm_map.npz'))['arr_0']

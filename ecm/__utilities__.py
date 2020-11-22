@@ -20,9 +20,10 @@ def load_config(path=None):
 
 
 def load_test_config():
-    path = ecm.INPUT_DIR
+    path = os.path.join(ecm.FIXTURES_DIR, 'model')
+    path = os.path.join(path, 'example_case_A')
     config = configparser.ConfigParser()
-    config_fp = os.path.join(path, 'test_config.txt')
+    config_fp = os.path.join(path, 'config.txt')
     config.read(config_fp)
     print('Config file', config_fp, 'loaded')
     print_config(config)

@@ -21,6 +21,8 @@ from scipy.interpolate import NearestNDInterpolator
 import json
 import ecm
 
+wrk = op.Workspace()
+
 
 def plot_topology(net, fig=None):
     # inner = net["pore.inner"]
@@ -1235,6 +1237,8 @@ def run_simulation(I_app, save_path, config):
                lower_mask=lower_mask, save_animation=False)
         export(project, save_path, overpotentials, 'eta_',
                lower_mask=lower_mask, save_animation=False)
+        parent_dir = os.path.dirname(save_path)
+        wrk.save_project(project=project, filename=os.path.join(parent_dir, 'net'))
         # project.export_data(phases=[phase], filename='ecm.vtp')
 
     print("*" * 30)
