@@ -15,8 +15,7 @@ import configparser
 import matplotlib.animation as animation
 from matplotlib import gridspec
 import matplotlib.ticker as mtick
-import pandas as pd
-from string import ascii_lowercase
+from string import ascii_lowercase as abc
 import ecm
 
 
@@ -24,12 +23,6 @@ prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = prop_cycle.by_key()['color']
 
 
-root = 'C:\\Users\\tom\\Documents\\Chen2020_v3'
-base = 'pybamm_pnm_case'
-exp_root = 'D:\\pybamm_pnm_results\\experimental'
-exp_files = ['MJ1_0.5C.csv',
-             'MJ1_1.0C.csv',
-             'MJ1_1.5C.csv']
 wrk = op.Workspace()
 cmap = cm.inferno
 
@@ -84,56 +77,6 @@ def get_saved_var_units():
     return units
 
 
-def get_cases():
-    cases = [
-        '1_Chen2020',
-        '2_Chen2020',
-        '5_Chen2020',
-        '3_Chen2020',
-        '4_Chen2020',
-        '1_Chen2020c',
-        '2_Chen2020c',
-        '5_Chen2020c',
-        '3_Chen2020c',
-        '4_Chen2020c',
-        '1_Chen2020b',
-        '2_Chen2020b',
-        '5_Chen2020b',
-        '3_Chen2020b',
-        '4_Chen2020b',
-        '1_Chen2020_third',
-        '2_Chen2020_third',
-        '5_Chen2020_third',
-        '3_Chen2020_third',
-        '4_Chen2020_third',
-    ]
-    full = [base + case for case in cases]
-    cases = {
-        0: {'file': full[0], 'htc': 5, 'tabs': 1},
-        1: {'file': full[1], 'htc': 10, 'tabs': 1},
-        2: {'file': full[2], 'htc': 28, 'tabs': 1},
-        3: {'file': full[3], 'htc': 50, 'tabs': 1},
-        4: {'file': full[4], 'htc': 100, 'tabs': 1},
-        5: {'file': full[5], 'htc': 5, 'tabs': 2},
-        6: {'file': full[6], 'htc': 10, 'tabs': 2},
-        7: {'file': full[7], 'htc': 28, 'tabs': 2},
-        8: {'file': full[8], 'htc': 50, 'tabs': 2},
-        9: {'file': full[9], 'htc': 100, 'tabs': 2},
-        10: {'file': full[10], 'htc': 5, 'tabs': 5},
-        11: {'file': full[11], 'htc': 10, 'tabs': 5},
-        12: {'file': full[12], 'htc': 28, 'tabs': 5},
-        13: {'file': full[13], 'htc': 50, 'tabs': 5},
-        14: {'file': full[14], 'htc': 100, 'tabs': 5},
-        15: {'file': full[15], 'htc': 5, 'tabs': 1},
-        16: {'file': full[16], 'htc': 10, 'tabs': 1},
-        17: {'file': full[17], 'htc': 28, 'tabs': 1},
-        18: {'file': full[18], 'htc': 50, 'tabs': 1},
-        19: {'file': full[19], 'htc': 100, 'tabs': 1},
-    }
-
-    return cases
-
-
 def plot_phase_data(project, data='pore.temperature'):
     net = project.network
     phase = project.phases()['phase_01']
@@ -149,35 +92,6 @@ def plot_phase_data(project, data='pore.temperature'):
                 x.max() * 1.05)
     ax.set_ylim(y.min() * 1.05,
                 y.max() * 1.05)
-
-
-def get_case_details(key):
-    cases = get_cases()
-    return cases[key]['htc'], cases[key]['tabs']
-
-
-def format_case(x, a, expanded=False, print_amps=True):
-    htc, tabs = get_case_details(x)
-    if expanded:
-        text = ('Case ' + abc(x) + ': h=' + str(htc) + ' [W.m-2.K-1] #tabs='
-                + str(tabs).capitalize() + ': I=' + str(a) + ' [A]')
-    else:
-        if print_amps:
-            text = 'Case ' + abc(x) + ': I=' + str(a) + ' [A]'
-        else:
-            text = 'Case ' + abc(x)
-    return text
-
-
-def abc(x):
-    alphabet = np.array(['a', 'b', 'c', 'd',
-                         'e', 'f', 'g', 'h',
-                         'i', 'j', 'k', 'l',
-                         'm', 'n', 'o', 'p',
-                         'q', 'r', 's', 't',
-                         'u', 'v', 'w', 'x',
-                         'y', 'z'])
-    return alphabet[x].upper()
 
 
 def get_amp_cases(filepath):
@@ -227,47 +141,6 @@ def compare_config(config_a, config_b):
                     print(sec, option, opt_a, opt_b)
 
 
-def load_all_data():
-    config = configparser.ConfigParser()
-    net = get_net()
-    weights = get_weights(net)
-    cases = get_cases()
-    amps = get_amp_cases()
-    variables = get_saved_var_names()
-    data = {}
-    for ci in range(len(cases.keys())):
-        case_folder = os.path.join(root, cases[ci]['file'])
-        data[ci] = {}
-        config.read(os.path.join(case_folder, 'config.txt'))
-        data[ci]['config'] = config2dict(config)
-        for amp in amps:
-            amp_folder = os.path.join(case_folder, str(amp) + 'A')
-            data[ci][amp] = {}
-            for vi, v in enumerate(variables):
-                data[ci][amp][vi] = {}
-                temp = load_and_amalgamate(amp_folder, v)
-                if temp is not None:
-                    if vi == 0:
-                        check_nans = np.any(np.isnan(temp), axis=1)
-                        if np.any(check_nans):
-                            print('Nans removed from', amp_folder)
-                    if np.any(check_nans):
-                        temp = temp[~check_nans, :]
-                    data[ci][amp][vi]['data'] = temp
-                    means = np.zeros(temp.shape[0])
-                    for t in range(temp.shape[0]):
-                        (mean, std_dev) = weighted_avg_and_std(temp[t, :], weights)
-                        means[t] = mean
-                    data[ci][amp][vi]['mean'] = means
-                    data[ci][amp][vi]['min'] = np.min(temp, axis=1)
-                    data[ci][amp][vi]['max'] = np.max(temp, axis=1)
-            if temp is not None:
-                t_hrs = data[ci][amp][10]['data'][:, 0]
-                cap = t_hrs * amp
-                data[ci][amp]['capacity'] = cap
-    return data
-
-
 def load_cases(filepath):
     d = {}
     for file in os.listdir(filepath):
@@ -279,7 +152,6 @@ def load_data(filepath):
     config = configparser.ConfigParser()
     net = get_net(filepath=filepath, filename='net.pnm')
     weights = get_weights(net)
-    # cases = get_cases()
     amps = get_amp_cases(filepath)
     variables = get_saved_var_names()
     data = {}
@@ -474,7 +346,7 @@ def spacetime(data, case_list, amp_list, var=0, group='neg', normed=False):
 
 
 def add_figure_label(ax, index):
-    t = ax.text(-0.1, 1.15, abc(index).lower(), transform=ax.transAxes,
+    t = ax.text(-0.1, 1.15, abc[index], transform=ax.transAxes,
                 fontsize=14, va='top')
     t.set_bbox(dict(facecolor='white', alpha=1.0, edgecolor='black'))
 
@@ -620,26 +492,6 @@ def combined_subplot(data, case_list, amp_list, var=0,
         ax.legend()
 
 
-def multi_var_subplot_old(data, case_list, amp_list, var_list, normed=False,
-                          landscape=True):
-    nplot = len(var_list)
-    if landscape:
-        nrows = 1
-        ncols = nplot
-    else:
-        nrows = nplot
-        ncols = 1
-    fig, axes = plt.subplots(nrows, ncols, figsize=(int(6 * ncols), int(4 * nrows)),
-                             sharex=True)
-    for vi in range(nplot):
-        ax = axes[vi]
-        combined_subplot(data, case_list, amp_list, var=var_list[vi],
-                         normed=normed, ax=ax)
-        ax.grid()
-    plt.ticklabel_format(axis='y', style='sci')
-    return fig, axes
-
-
 def multi_var_subplot(data, case_list, amp_list, var_list, normed=False,
                       landscape=True, nplot=None):
     if nplot is None:
@@ -651,7 +503,6 @@ def multi_var_subplot(data, case_list, amp_list, var_list, normed=False,
         nrows = nplot
         ncols = 1
     fig, axes = plt.subplots(nrows, ncols, figsize=(int(6 * ncols), int(4 * nrows)))
-    abc = ascii_lowercase
     subi = 0
     for vi in range(len(var_list)):
         ax = axes[vi]
@@ -870,11 +721,3 @@ def get_SOC_vs_cap(data, case, amp):
     soc = lith - lith[-1]
     soc = soc / soc.max()
     return np.vstack((cap, soc)).T
-
-
-def load_experimental():
-    data_list = []
-    for ef in exp_files:
-        fp = os.path.join(exp_root, ef)
-        data_list.append(pd.read_csv(fp))
-    return data_list
