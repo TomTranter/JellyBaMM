@@ -24,8 +24,8 @@ config = ecm.load_test_config()
 for I_app in [1.0, 2.0, 3.0]:
     spm_sim = ecm.make_spm(I_app, config)
     inputs = {"Current": I_app,
-              'Electrode height [m]': e_height}
-
+              "Electrode height [m]": e_height}
+    external_variables = {"Volume-averaged cell temperature": 0.0}
     dt = 100
     t = 0
     v_check = True
@@ -34,7 +34,8 @@ for I_app in [1.0, 2.0, 3.0]:
     i = 0
     while v_check and i < 7200 / dt:
         spm_sim.step(dt=dt,
-                     inputs=inputs)
+                     inputs=inputs,
+                     external_variables=external_variables)
         v_check = ecm.check_vlim(spm_sim.solution, low=2.5, high=4.7)
         i += 1
 
