@@ -1,0 +1,61 @@
+[RUN]
+I_app_a = 0.5
+parallel = False
+hours = 0.5
+model = SPMe
+vlim_lower = 2.7
+vlim_upper = 4.7
+third = False
+[GEOMETRY]
+domain = model
+dtheta = 10
+layer_spacing = 195e-6
+length_3d = 0.080
+Nlayers = 5
+pos_tabs = -1
+neg_tabs = 0
+nunit_OneD = 1000
+spacing_OneD = 0.001
+[THICKNESS]
+pixel_size = 10.4e-6
+neg_electrode = 8.0
+pos_electrode = 7.0
+neg_cc = 2.0
+pos_cc = 2.0
+sep = 2.0
+[MATERIAL]
+neg_rho = 1347.33
+neg_cp = 1437.4
+neg_k = 1.04
+neg_cc_rho = 2702
+neg_cc_cp = 903
+neg_cc_k = 238
+pos_rho = 2428.5
+pos_cp = 1269.21
+pos_k = 1.58
+pos_cc_rho = 8933
+pos_cc_cp = 385
+pos_cc_k = 398
+sep_rho = 1008.98
+sep_cp = 1978.16
+sep_k = 0.334
+[PHYSICS]
+do_thermal = True
+cp = 1399.0
+rho = 2055.0
+K0 = 1.0
+T0 = 298.15
+heat_transfer_coefficient = 28
+neg_cc_econd = 6.0e7
+pos_cc_econd = 6.0e7
+neg_elec_econd = 100
+pos_elec_econd = 100
+[INIT]
+neg_conc = 23800
+pos_conc = 27300
+[OUTPUT]
+save = True
+plot = False
+animate = False
+
+

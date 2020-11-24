@@ -20,7 +20,8 @@ wrk.clear()
 
 
 if __name__ == "__main__":
-    save_root = os.getcwd()
+    save_root = os.path.join(ecm.FIXTURES_DIR, 'cases')
+    save_root = os.path.join(save_root, 'example_case_B')
     print(save_root)
     config = configparser.ConfigParser()
     config.read(os.path.join(save_root, 'config.txt'))
