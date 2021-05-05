@@ -10,7 +10,7 @@ import openpnm as op
 import openpnm.topotools as tt
 from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
-from openpnm.models.physics.generic_source_term import linear
+from openpnm.models.physics.source_terms import linear
 import pybamm
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import time
@@ -362,14 +362,14 @@ def pos_OCP(sto):
             c[3] * sto**3 + c[4] * sto**4 + c[5] * sto**5)
 
 
-def neg_dUdT(sto, c_n_max):
+def neg_dUdT(sto):
     c = [3.25182032e-04, -1.10405547e-03, 2.02525788e-02, -2.02055921e-01,
          7.09962540e-01, -1.13830746e+00, 8.59315741e-01, -2.48497618e-01]
     return (c[0] + c[1] * sto + c[2] * sto**2 + c[3] * sto**3 + c[4] * sto**4 +
             c[5] * sto**5 + c[6] * sto**6 + c[7] * sto**7)
 
 
-def pos_dUdT(sto, c_p_max):
+def pos_dUdT(sto):
     c = [9.90601449e-06, -4.77219388e-04, 4.51317690e-03, -1.33763466e-02,
          1.55768635e-02, -6.33314715e-03]
     return (c[0] + c[1] * sto + c[2] * sto**2 +
