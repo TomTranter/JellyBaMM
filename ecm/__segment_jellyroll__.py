@@ -311,7 +311,9 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
         if layer < counts.max() - 1:
             neighbor = sorted_groups[g, layer + 1]
             if neighbor > -1:
-                sorted_neighbor = np.argwhere(ordered_neg_Ps == neighbor).flatten()[0]
+                sorted_neighbor = np.argwhere(ordered_neg_Ps == neighbor).flatten()
+                if len(sorted_neighbor) > 0:
+                    sorted_neighbor = sorted_neighbor[0]
                 pos_inner_conns.append([i + len(ordered_neg_Ps), sorted_neighbor])
     neg_inner_conns = np.asarray(neg_inner_conns)
     pos_inner_conns = np.asarray(pos_inner_conns)
@@ -387,22 +389,22 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.cell_id'] = net['pore.cell_id'].astype(int)
 
     fig, ax = plt.subplots(figsize=(12, 12))
-    fig = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', fig=fig)
-    fig = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', fig=fig)
-    fig = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', fig=fig)
-    fig = tt.plot_coordinates(net, pores=net.pores('neg_cc'), c='r', fig=fig)
-    fig = tt.plot_coordinates(net, pores=net.pores('pos_cc'), c='b', fig=fig)
-    fig = tt.plot_coordinates(net, pores=net.pores('surface'), c='k', fig=fig)
-    fig = tt.plot_coordinates(net, pores=net.pores('outer'), c='pink', fig=fig)
-    fig = tt.plot_coordinates(net, pores=net.pores('inner'), c='purple', fig=fig)
-    fig = tt.plot_coordinates(net, pores=net.pores('terminal'), c='y', s=100, fig=fig)
-    fig = tt.plot_coordinates(net, pores=net.pores('free_stream'), c='g', fig=fig)
-    fig = tt.plot_connections(net, throats=net.throats('free_stream'), c='g', fig=fig)
+    ax = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', ax=ax)
+    ax = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', ax=ax)
+    ax = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', ax=ax)
+    ax = tt.plot_coordinates(net, pores=net.pores('neg_cc'), c='r', ax=ax)
+    ax = tt.plot_coordinates(net, pores=net.pores('pos_cc'), c='b', ax=ax)
+    ax = tt.plot_coordinates(net, pores=net.pores('surface'), c='k', ax=ax)
+    ax = tt.plot_coordinates(net, pores=net.pores('outer'), c='pink', ax=ax)
+    ax = tt.plot_coordinates(net, pores=net.pores('inner'), c='purple', ax=ax)
+    ax = tt.plot_coordinates(net, pores=net.pores('terminal'), c='y', s=100, ax=ax)
+    ax = tt.plot_coordinates(net, pores=net.pores('free_stream'), c='g', ax=ax)
+    ax = tt.plot_connections(net, throats=net.throats('free_stream'), c='g', ax=ax)
 
     fig, ax = plt.subplots(figsize=(12, 12))
-    fig = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', fig=fig)
-    fig = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', fig=fig)
-    fig = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', fig=fig)
+    ax = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', ax=ax)
+    ax = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', ax=ax)
+    ax = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', ax=ax)
     plt.imshow(im_soft.T)
 
     # Scale and save net
