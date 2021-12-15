@@ -278,7 +278,7 @@ def chargeogram(data, case_list, amp_list, group='neg'):
                                            range=(fmin, fmax), density=True)
                 data_2d[i, :] = hdata * 100
 
-            x_data, y_data = np.meshgrid(norm_roll_pos, bins)
+            x_data, y_data = np.meshgrid(norm_roll_pos, (bins[:-1] + bins[1:])/2)
             heatmap = data_2d.astype(float)
             heatmap[heatmap == 0.0] = np.nan
             im = ax.pcolormesh(x_data, y_data - 100, heatmap.T, cmap=cm.inferno)
