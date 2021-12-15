@@ -4,3 +4,6 @@ ecm.egg-info/
 *.pyc
 .coverage
 ecm/output/1d/
+ecm/output/spiral/1.5A/
+ecm/output/spiral_tesla/
+ecm/output/tomography/3.0A/
