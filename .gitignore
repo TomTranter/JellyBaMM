@@ -3,3 +3,4 @@ ecm/__pycache__/
 ecm.egg-info/
 *.pyc
 .coverage
+ecm/output/1d/
