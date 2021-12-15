@@ -24,33 +24,33 @@ import ecm
 wrk = op.Workspace()
 
 
-def plot_topology(net, fig=None):
+def plot_topology(net, ax=None):
     # inner = net["pore.inner"]
     # outer = net["pore.outer"]
-    if fig is None:
-        fig = plt.figure(figsize=(10, 10))
-    fig = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"),
-                             c="blue", fig=fig)
-    fig = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"),
-                             c="red", fig=fig)
-    fig = pcoord(net, pores=net.pores("neg_cc"), c="blue", s=25, fig=fig)
-    fig = pcoord(net, pores=net.pores("pos_cc"), c="red", s=25, fig=fig)
-    fig = pcoord(net, pores=net["pore.neg_tab"], c="blue", s=75, fig=fig)
-    fig = pcoord(net, pores=net["pore.pos_tab"], c="red", s=75, fig=fig)
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"),
+                             c="blue", ax=ax)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"),
+                             c="red", ax=ax)
+    ax = pcoord(net, pores=net.pores("neg_cc"), c="blue", s=25, ax=ax)
+    ax = pcoord(net, pores=net.pores("pos_cc"), c="red", s=25, ax=ax)
+    ax = pcoord(net, pores=net["pore.neg_tab"], c="blue", s=75, ax=ax)
+    ax = pcoord(net, pores=net["pore.pos_tab"], c="red", s=75, ax=ax)
     try:
-        fig = pcoord(net, pores=net.pores('free_stream'), c="green", fig=fig)
-        fig = pconn(net, throats=net.throats("throat.free_stream"), c="green",
-                    fig=fig)
+        ax = pcoord(net, pores=net.pores('free_stream'), c="green", ax=ax)
+        ax = pconn(net, throats=net.throats("throat.free_stream"), c="green",
+                   ax=ax)
     except KeyError:
         pass
 
     t_sep = net.throats("spm_resistor")
     if len(t_sep) > 0:
-        fig = pconn(
+        ax = pconn(
             net, throats=net.throats("spm_resistor"),
-            c="k", fig=fig
+            c="k", ax=ax
         )
-    return fig
+    return ax
 
 
 def spiral(r, dr, ntheta=36, n=10):

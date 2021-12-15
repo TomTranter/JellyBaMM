@@ -385,7 +385,7 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     return ax
 
 
-def plot_resistors(net, throats, c, fig):
+def plot_resistors(net, throats, c, ax):
     conns = net['throat.conns'][throats]
     coords = net['pore.coords']
     v = coords[conns[:, 1]] - coords[conns[:, 0]]
@@ -404,9 +404,8 @@ def plot_resistors(net, throats, c, fig):
         p_start = p_end
     x_all = np.asarray(x_all)
     y_all = np.asarray(y_all)
-    ax = plt.gca()
     ax.plot(x_all, y_all, c=c)
-    return fig
+    return ax
 
 
 def super_subplot(data, cases_left, cases_right, amp):
