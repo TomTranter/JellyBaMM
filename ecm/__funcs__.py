@@ -29,33 +29,27 @@ def plot_topology(net, ax=None):
     # outer = net["pore.outer"]
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"),
-                             c="blue", ax=ax)
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"),
-                             c="red", ax=ax)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"), c="blue", ax=ax)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"), c="red", ax=ax)
     ax = pcoord(net, pores=net.pores("neg_cc"), c="blue", s=25, ax=ax)
     ax = pcoord(net, pores=net.pores("pos_cc"), c="red", s=25, ax=ax)
     ax = pcoord(net, pores=net["pore.neg_tab"], c="blue", s=75, ax=ax)
     ax = pcoord(net, pores=net["pore.pos_tab"], c="red", s=75, ax=ax)
     try:
-        ax = pcoord(net, pores=net.pores('free_stream'), c="green", ax=ax)
-        ax = pconn(net, throats=net.throats("throat.free_stream"), c="green",
-                   ax=ax)
+        ax = pcoord(net, pores=net.pores("free_stream"), c="green", ax=ax)
+        ax = pconn(net, throats=net.throats("throat.free_stream"), c="green", ax=ax)
     except KeyError:
         pass
 
     t_sep = net.throats("spm_resistor")
     if len(t_sep) > 0:
-        ax = pconn(
-            net, throats=net.throats("spm_resistor"),
-            c="k", ax=ax
-        )
+        ax = pconn(net, throats=net.throats("spm_resistor"), c="k", ax=ax)
     return ax
 
 
 def spiral(r, dr, ntheta=36, n=10):
     theta = np.linspace(0, n * (2 * np.pi), (n * ntheta) + 1)
-    pos = (np.linspace(0, n * ntheta, (n * ntheta) + 1) % ntheta)
+    pos = np.linspace(0, n * ntheta, (n * ntheta) + 1) % ntheta
     pos = pos.astype(int)
     rad = r + np.linspace(0, n * dr, (n * ntheta) + 1)
     x = rad * np.cos(theta)
@@ -64,18 +58,18 @@ def spiral(r, dr, ntheta=36, n=10):
 
 
 def make_spiral_net(config):
-    sub = 'GEOMETRY'
-    Nlayers = config.getint(sub, 'Nlayers')
-    dtheta = config.getint(sub, 'dtheta')
-    spacing = config.getfloat(sub, 'layer_spacing')
+    sub = "GEOMETRY"
+    Nlayers = config.getint(sub, "Nlayers")
+    dtheta = config.getint(sub, "dtheta")
+    spacing = config.getfloat(sub, "layer_spacing")
     tesla_tabs = False
     try:
-        pos_tabs = config.getint(sub, 'pos_tabs')
-        neg_tabs = config.getint(sub, 'neg_tabs')
+        pos_tabs = config.getint(sub, "pos_tabs")
+        neg_tabs = config.getint(sub, "neg_tabs")
     except ValueError:
-        print('Tesla tabs')
+        print("Tesla tabs")
         tesla_tabs = True
-    length_3d = config.getfloat(sub, 'length_3d')
+    length_3d = config.getfloat(sub, "length_3d")
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # total number of unit cells
     N1d = 2
@@ -86,8 +80,7 @@ def make_spiral_net(config):
     assembly[:, 1] = 1
     unit_id = np.tile(np.arange(0, Nunit), (N1d, 1)).T
     prj = op.Project()
-    net = op.network.Cubic(shape=[Nunit, N1d, 1],
-                           spacing=spacing, project=prj)
+    net = op.network.Cubic(shape=[Nunit, N1d, 1], spacing=spacing, project=prj)
     net["pore.pos_cc"] = net["pore.front"]
     net["pore.neg_cc"] = net["pore.back"]
 
@@ -102,9 +95,7 @@ def make_spiral_net(config):
     r_start = net["pore.coords"][net["pore.cell_id"] == 0][:, 1]
     dr = spacing * N1d
     for i in range(N1d):
-        (x, y, rad, pos) = spiral(
-            r_start[i] + inner_r, dr, ntheta=Narc, n=Nlayers
-        )
+        (x, y, rad, pos) = spiral(r_start[i] + inner_r, dr, ntheta=Narc, n=Nlayers)
         mask = net["pore.coords"][:, 1] == r_start[i]
         coords = net["pore.coords"][mask]
         coords[:, 0] = x[:-1]
@@ -148,13 +139,12 @@ def make_spiral_net(config):
             i_right = np.argwhere(dist < 1.5 * spacing)[0][0]
             conns.append([Ps_neg_cc[i_left], Ps_pos_cc[i_right]])
     # Create new throats
-    op.topotools.extend(network=net, throat_conns=conns,
-                        labels=["separator"])
+    op.topotools.extend(network=net, throat_conns=conns, labels=["separator"])
     h = net.check_network_health()
-    if len(h['duplicate_throats']) > 0:
-        trim_Ts = np.asarray(h['duplicate_throats'])[:, 1]
+    if len(h["duplicate_throats"]) > 0:
+        trim_Ts = np.asarray(h["duplicate_throats"])[:, 1]
         op.topotools.trim(network=net, throats=trim_Ts)
-    Ts = net.find_neighbor_throats(pores=net.pores('pos_cc'), mode='xor')
+    Ts = net.find_neighbor_throats(pores=net.pores("pos_cc"), mode="xor")
 
     net["throat.pos_cc"] = False
     net["throat.neg_cc"] = False
@@ -163,22 +153,22 @@ def make_spiral_net(config):
     net["throat.spm_resistor"] = True
     net["throat.spm_resistor"][pos_cc_Ts] = False
     net["throat.spm_resistor"][neg_cc_Ts] = False
-    net['throat.spm_resistor_order'] = -1
+    net["throat.spm_resistor_order"] = -1
     spm_res = net["throat.spm_resistor"]
-    net['throat.spm_resistor_order'][spm_res] = np.arange(np.sum(spm_res))
-    p1 = net['throat.conns'][:, 0]
-    p1_neg = net['pore.neg_cc'][p1]
-    net['throat.spm_neg_inner'] = p1_neg * net["throat.spm_resistor"]
-    net['throat.spm_pos_inner'] = (~p1_neg) * net["throat.spm_resistor"]
-    Ps = net['throat.conns'][Ts].flatten()
+    net["throat.spm_resistor_order"][spm_res] = np.arange(np.sum(spm_res))
+    p1 = net["throat.conns"][:, 0]
+    p1_neg = net["pore.neg_cc"][p1]
+    net["throat.spm_neg_inner"] = p1_neg * net["throat.spm_resistor"]
+    net["throat.spm_pos_inner"] = (~p1_neg) * net["throat.spm_resistor"]
+    Ps = net["throat.conns"][Ts].flatten()
     Ps, counts = np.unique(Ps.flatten(), return_counts=True)
     boundary = Ps[counts == 1]
     net["pore.inner"] = False
     net["pore.outer"] = False
     net["pore.inner"][boundary] = True
     net["pore.outer"][boundary] = True
-    net["pore.inner"][net.pores('pos_cc')] = False
-    net["pore.outer"][net.pores('neg_cc')] = False
+    net["pore.inner"][net.pores("pos_cc")] = False
+    net["pore.outer"][net.pores("neg_cc")] = False
 
     # Free stream convection boundary nodes
     free_rad = inner_r + (Nlayers + 0.5) * dr
@@ -198,14 +188,13 @@ def make_spiral_net(config):
         method="nearest",
     )
 
-    net['throat.free_stream'] = net['throat.stitched']
-    del net['throat.stitched']
+    net["throat.free_stream"] = net["throat.stitched"]
+    del net["throat.stitched"]
 
     free_pores = net.pores("free_stream")
     net["pore.radial_position"][free_pores] = rad[:-1]
     net["pore.arc_index"][free_pores] = pos[:-1]
-    op.topotools.trim(network=net,
-                      throats=net.throats("trimmers"))
+    op.topotools.trim(network=net, throats=net.throats("trimmers"))
 
     net["pore.region_id"][net["pore.free_stream"]] = -1
     net["pore.cell_id"][net["pore.free_stream"]] = -1
@@ -232,13 +221,13 @@ def make_spiral_net(config):
     net["pore.arc_index"][inner_pores] = pos[:-1]
     net["pore.region_id"][net["pore.inner_boundary"]] = -1
     net["pore.cell_id"][net["pore.inner_boundary"]] = -1
-    P1 = net['throat.conns'][:, 0]
-    P2 = net['throat.conns'][:, 1]
+    P1 = net["throat.conns"][:, 0]
+    P2 = net["throat.conns"][:, 1]
     same_arc = net["pore.arc_index"][P1] == net["pore.arc_index"][P2]
-    cross_stitch = np.logical_and(net['throat.stitched'], ~same_arc)
-    net['throat.inner_boundary'] = net['throat.stitched']
-    net['throat.trimmers'][cross_stitch] = True
-    del net['throat.stitched']
+    cross_stitch = np.logical_and(net["throat.stitched"], ~same_arc)
+    net["throat.inner_boundary"] = net["throat.stitched"]
+    net["throat.trimmers"][cross_stitch] = True
+    del net["throat.stitched"]
     del net["pore.left"]
     del net["pore.right"]
     del net["pore.front"]
@@ -248,39 +237,36 @@ def make_spiral_net(config):
     del net["throat.internal"]
     del net["throat.surface"]
 
-    op.topotools.trim(network=net,
-                      throats=net.throats("trimmers"))
+    op.topotools.trim(network=net, throats=net.throats("trimmers"))
 
-    print('N SPM', net.num_throats('spm_resistor'))
+    print("N SPM", net.num_throats("spm_resistor"))
     geo = setup_geometry(net, dtheta, spacing, length_3d=length_3d)
-    net['throat.arc_length'] = np.deg2rad(dtheta) * net["throat.radial_position"]
+    net["throat.arc_length"] = np.deg2rad(dtheta) * net["throat.radial_position"]
     phase = op.phases.GenericPhase(network=net)
-    op.physics.GenericPhysics(network=net,
-                              phase=phase,
-                              geometry=geo)
+    op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
     return prj, arc_edges
 
 
 def make_tomo_net(config):
-    sub = 'GEOMETRY'
-    dtheta = config.getint(sub, 'dtheta')
-    spacing = config.getfloat(sub, 'layer_spacing')
-    length_3d = config.getfloat(sub, 'length_3d')
+    sub = "GEOMETRY"
+    dtheta = config.getint(sub, "dtheta")
+    spacing = config.getfloat(sub, "layer_spacing")
+    length_3d = config.getfloat(sub, "length_3d")
     wrk = op.Workspace()
     input_dir = ecm.INPUT_DIR
-    tomo_pnm = config.get('TOMOGRAPHY', 'filename')
+    tomo_pnm = config.get("TOMOGRAPHY", "filename")
     wrk.load_project(os.path.join(input_dir, tomo_pnm))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
     update_tabs(project, config)
     arc_edges = [0.0]
-    Ps = net.pores('neg_cc')
-    Nunit = net['pore.cell_id'][Ps].max() + 1
+    Ps = net.pores("neg_cc")
+    Nunit = net["pore.cell_id"][Ps].max() + 1
     old_coord = None
     for cell_id in range(Nunit):
-        P = Ps[net['pore.cell_id'][Ps] == cell_id]
-        coord = net['pore.coords'][P]
+        P = Ps[net["pore.cell_id"][Ps] == cell_id]
+        coord = net["pore.coords"][P]
         if old_coord is not None:
             d = np.linalg.norm(coord - old_coord)
             arc_edges.append(arc_edges[-1] + d)
@@ -290,30 +276,28 @@ def make_tomo_net(config):
     arc_edges = np.asarray(arc_edges)
     geo = setup_geometry(net, dtheta, spacing, length_3d=length_3d)
     phase = op.phases.GenericPhase(network=net)
-    op.physics.GenericPhysics(network=net,
-                              phase=phase,
-                              geometry=geo)
+    op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
     return project, arc_edges
 
 
 def setup_ecm_alg(project, config, R):
     net = project.network
-    phase = project.phases()['phase_01']
-    phys = project.physics()['phys_01']
-    length_3d = config.getfloat('GEOMETRY', 'length_3d')
-    neg_cc_econd = config.getfloat('PHYSICS', 'neg_cc_econd')
-    pos_cc_econd = config.getfloat('PHYSICS', 'pos_cc_econd')
-    pixel_size = config.getfloat('THICKNESS', 'pixel_size')
-    t_neg_cc = config.getfloat('THICKNESS', 'neg_cc')
-    t_pos_cc = config.getfloat('THICKNESS', 'pos_cc')
-    cc_unit_len = net['throat.arc_length']
+    phase = project.phases()["phase_01"]
+    phys = project.physics()["phys_01"]
+    length_3d = config.getfloat("GEOMETRY", "length_3d")
+    neg_cc_econd = config.getfloat("PHYSICS", "neg_cc_econd")
+    pos_cc_econd = config.getfloat("PHYSICS", "pos_cc_econd")
+    pixel_size = config.getfloat("THICKNESS", "pixel_size")
+    t_neg_cc = config.getfloat("THICKNESS", "neg_cc")
+    t_pos_cc = config.getfloat("THICKNESS", "pos_cc")
+    cc_unit_len = net["throat.arc_length"]
     neg_econd = neg_cc_econd * (pixel_size * t_neg_cc * length_3d)
     pos_econd = pos_cc_econd * (pixel_size * t_pos_cc * length_3d)
 
     phys["throat.electrical_conductance"] = 1.0
-    neg_Ts = net.throats('neg_cc')
+    neg_Ts = net.throats("neg_cc")
     phys["throat.electrical_conductance"][neg_Ts] = neg_econd / cc_unit_len[neg_Ts]
-    pos_Ts = net.throats('pos_cc')
+    pos_Ts = net.throats("pos_cc")
     phys["throat.electrical_conductance"][pos_Ts] = pos_econd / cc_unit_len[pos_Ts]
     res_Ts = net.throats("spm_resistor")
     phys["throat.electrical_conductance"][res_Ts] = 1 / R
@@ -339,53 +323,103 @@ def RKn_fit(x, U0, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
     term1 = R * T / F * pybamm.log((1 - x) / x)
     term2 = 0
     for k in range(len(A)):
-        a = (2 * x - 1)**(k + 1)
-        b = (2 * x * k * (1 - x))
-        c = (2 * x - 1)**(1 - k)
+        a = (2 * x - 1) ** (k + 1)
+        b = 2 * x * k * (1 - x)
+        c = (2 * x - 1) ** (1 - k)
         term2 += (A[k] / F) * (a - b / c)
     return U0 + term1 + term2
 
 
 def neg_OCP(sto):
-    neg_popt = np.array([2.79099024e-01, 2.72347515e+04, 3.84107939e+04,
-                         2.82700416e+04, -5.08764455e+03, 5.83084069e+04,
-                         2.74900945e+05, -1.58889236e+05, -5.48361415e+05,
-                         3.09910938e+05, 5.56788274e+05])
+    neg_popt = np.array(
+        [
+            2.79099024e-01,
+            2.72347515e04,
+            3.84107939e04,
+            2.82700416e04,
+            -5.08764455e03,
+            5.83084069e04,
+            2.74900945e05,
+            -1.58889236e05,
+            -5.48361415e05,
+            3.09910938e05,
+            5.56788274e05,
+        ]
+    )
     return RKn_fit(sto, *neg_popt)
 
 
 def pos_OCP(sto):
-    c = [5.88523041, -16.64427726,
-         65.89481612, -131.99750794,
-         124.80902818, -44.56278259]
-    return (c[0] + c[1] * sto + c[2] * sto**2 +
-            c[3] * sto**3 + c[4] * sto**4 + c[5] * sto**5)
+    c = [
+        5.88523041,
+        -16.64427726,
+        65.89481612,
+        -131.99750794,
+        124.80902818,
+        -44.56278259,
+    ]
+    return (
+        c[0]
+        + c[1] * sto
+        + c[2] * sto ** 2
+        + c[3] * sto ** 3
+        + c[4] * sto ** 4
+        + c[5] * sto ** 5
+    )
 
 
 def neg_dUdT(sto):
-    c = [3.25182032e-04, -1.10405547e-03, 2.02525788e-02, -2.02055921e-01,
-         7.09962540e-01, -1.13830746e+00, 8.59315741e-01, -2.48497618e-01]
-    return (c[0] + c[1] * sto + c[2] * sto**2 + c[3] * sto**3 + c[4] * sto**4 +
-            c[5] * sto**5 + c[6] * sto**6 + c[7] * sto**7)
+    c = [
+        3.25182032e-04,
+        -1.10405547e-03,
+        2.02525788e-02,
+        -2.02055921e-01,
+        7.09962540e-01,
+        -1.13830746e00,
+        8.59315741e-01,
+        -2.48497618e-01,
+    ]
+    return (
+        c[0]
+        + c[1] * sto
+        + c[2] * sto ** 2
+        + c[3] * sto ** 3
+        + c[4] * sto ** 4
+        + c[5] * sto ** 5
+        + c[6] * sto ** 6
+        + c[7] * sto ** 7
+    )
 
 
 def pos_dUdT(sto):
-    c = [9.90601449e-06, -4.77219388e-04, 4.51317690e-03, -1.33763466e-02,
-         1.55768635e-02, -6.33314715e-03]
-    return (c[0] + c[1] * sto + c[2] * sto**2 +
-            c[3] * sto**3 + c[4] * sto**4 + c[5] * sto**5)
+    c = [
+        9.90601449e-06,
+        -4.77219388e-04,
+        4.51317690e-03,
+        -1.33763466e-02,
+        1.55768635e-02,
+        -6.33314715e-03,
+    ]
+    return (
+        c[0]
+        + c[1] * sto
+        + c[2] * sto ** 2
+        + c[3] * sto ** 3
+        + c[4] * sto ** 4
+        + c[5] * sto ** 5
+    )
 
 
 def make_spm(I_typical, config):
-    thermal = config.getboolean('PHYSICS', 'do_thermal')
-    length_3d = config.getfloat('GEOMETRY', 'length_3d')
-    sub = 'THICKNESS'
-    pixel_size = config.getfloat(sub, 'pixel_size')
-    t_neg_electrode = config.getfloat(sub, 'neg_electrode')
-    t_pos_electrode = config.getfloat(sub, 'pos_electrode')
-    t_sep = config.getfloat(sub, 'sep')
-    t_neg_cc = config.getfloat(sub, 'neg_cc')
-    t_pos_cc = config.getfloat(sub, 'pos_cc')
+    thermal = config.getboolean("PHYSICS", "do_thermal")
+    length_3d = config.getfloat("GEOMETRY", "length_3d")
+    sub = "THICKNESS"
+    pixel_size = config.getfloat(sub, "pixel_size")
+    t_neg_electrode = config.getfloat(sub, "neg_electrode")
+    t_pos_electrode = config.getfloat(sub, "pos_electrode")
+    t_sep = config.getfloat(sub, "sep")
+    t_neg_cc = config.getfloat(sub, "neg_cc")
+    t_pos_cc = config.getfloat(sub, "pos_cc")
     # sub = 'INIT'
     # neg_conc = config.getfloat(sub, 'neg_conc')
     # pos_conc = config.getfloat(sub, 'pos_conc')
@@ -394,11 +428,11 @@ def make_spm(I_typical, config):
     # pos_elec_econd = config.getfloat(sub, 'pos_elec_econd')
     # vlim_lower = config.getfloat('RUN', 'vlim_lower')
     # vlim_upper = config.getfloat('RUN', 'vlim_upper')
-    model_cfg = config.get('RUN', 'model')
+    model_cfg = config.get("RUN", "model")
 
-    if model_cfg == 'SPM':
+    if model_cfg == "SPM":
         model_class = pybamm.lithium_ion.SPM
-    elif model_cfg == 'SPMe':
+    elif model_cfg == "SPMe":
         model_class = pybamm.lithium_ion.SPMe
     else:
         model_class = pybamm.lithium_ion.DFN
@@ -428,12 +462,12 @@ def make_spm(I_typical, config):
     )
     # param.update(
     #     {
-#            "Initial concentration in negative electrode [mol.m-3]": neg_conc,
-#            "Initial concentration in positive electrode [mol.m-3]": pos_conc,
-#            "Negative electrode conductivity [S.m-1]": neg_elec_econd,
-#            "Positive electrode conductivity [S.m-1]": pos_elec_econd,
-#            "Lower voltage cut-off [V]": vlim_lower,
-#            "Upper voltage cut-off [V]": vlim_upper,
+    #            "Initial concentration in negative electrode [mol.m-3]": neg_conc,
+    #            "Initial concentration in positive electrode [mol.m-3]": pos_conc,
+    #            "Negative electrode conductivity [S.m-1]": neg_elec_econd,
+    #            "Positive electrode conductivity [S.m-1]": pos_elec_econd,
+    #            "Lower voltage cut-off [V]": vlim_lower,
+    #            "Upper voltage cut-off [V]": vlim_upper,
     #     }
     # )
     # Dummy wrappers to get round the c_n_max term
@@ -468,8 +502,7 @@ def calc_R(overpotentials, current):
 
 def step_spm(zipped):
     built_model, solver, solution, I_app, e_height, dt, T_av, dead = zipped
-    inputs = {"Current": I_app,
-              'Electrode height [m]': e_height}
+    inputs = {"Current": I_app, "Electrode height [m]": e_height}
     if len(built_model.external_variables) > 0:
         external_variables = {"Volume-averaged cell temperature": T_av}
     else:
@@ -479,24 +512,25 @@ def step_spm(zipped):
         if solution is not None:
             pass
 
-        solution = solver.step(old_solution=solution,
-                               model=built_model,
-                               dt=dt,
-                               external_variables=external_variables,
-                               inputs=inputs,
-                               npts=2,
-                               save=False
-                               )
+        solution = solver.step(
+            old_solution=solution,
+            model=built_model,
+            dt=dt,
+            external_variables=external_variables,
+            inputs=inputs,
+            npts=2,
+            save=False,
+        )
 
     return solution
 
 
 def make_1D_net(config):
-    sub = 'GEOMETRY'
-    Nunit = config.getint(sub, 'nunit_OneD')
-    spacing = config.getfloat(sub, 'spacing_OneD')
-    pos_tabs = config.getint(sub, 'pos_tabs')
-    neg_tabs = config.getint(sub, 'neg_tabs')
+    sub = "GEOMETRY"
+    Nunit = config.getint(sub, "nunit_OneD")
+    spacing = config.getfloat(sub, "spacing_OneD")
+    pos_tabs = config.getint(sub, "pos_tabs")
+    neg_tabs = config.getint(sub, "neg_tabs")
     net = op.network.Cubic([Nunit + 2, 2, 1], spacing)
     net["pore.pos_cc"] = net["pore.front"]
     net["pore.neg_cc"] = net["pore.back"]
@@ -522,10 +556,10 @@ def make_1D_net(config):
     net["throat.spm_resistor"] = True
     net["throat.spm_resistor"][pos_cc_Ts] = False
     net["throat.spm_resistor"][neg_cc_Ts] = False
-    net['throat.spm_resistor_order'] = -1
-    net['throat.spm_resistor_order'][net["throat.spm_resistor"]] = np.arange(Nunit)
-    net['throat.spm_neg_inner'] = net["throat.spm_resistor"]
-    net['pore.free_stream'] = False
+    net["throat.spm_resistor_order"] = -1
+    net["throat.spm_resistor_order"][net["throat.spm_resistor"]] = np.arange(Nunit)
+    net["throat.spm_neg_inner"] = net["throat.spm_resistor"]
+    net["pore.free_stream"] = False
     del net["pore.left"]
     del net["pore.right"]
     del net["pore.front"]
@@ -537,25 +571,21 @@ def make_1D_net(config):
 
     phase = op.phases.GenericPhase(network=net)
 
-    geo = op.geometry.GenericGeometry(
-        network=net, pores=net.Ps, throats=net.Ts
-    )
-    op.physics.GenericPhysics(network=net,
-                              phase=phase,
-                              geometry=geo)
+    geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
+    op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
 
-    net["pore.radial_position"] = net['pore.coords'][:, 0]
+    net["pore.radial_position"] = net["pore.coords"][:, 0]
     net["pore.arc_index"] = np.indices([Nunit + 2, 2, 1])[0].flatten()
     net["pore.region_id"] = -1
     net["pore.cell_id"] = -1
-    net['throat.arc_length'] = spacing
-    net['throat.electrode_height'] = spacing
+    net["throat.arc_length"] = spacing
+    net["throat.electrode_height"] = spacing
     # placeholder
-    net['pore.volume'] = 1.0
-    net['throat.area'] = 1.0
-    net['throat.length'] = 1.0
+    net["pore.volume"] = 1.0
+    net["throat.area"] = 1.0
+    net["throat.length"] = 1.0
     plot_topology(net)
-    return net.project, np.cumsum(net['throat.arc_length'])
+    return net.project, np.cumsum(net["throat.arc_length"])
 
 
 def get_cc_heat(net, alg, V_terminal):
@@ -575,13 +605,15 @@ def get_cc_heat(net, alg, V_terminal):
     I_pos = alg.rate(throats=net.throats("pos_cc"), mode="single")
     Pow_neg = np.abs(dV_neg * I_neg)
     Pow_pos = np.abs(dV_pos * I_pos)
-    net['throat.cc_power_loss'] = 0.0
-    net['throat.cc_power_loss'][net.throats("neg_cc")] = Pow_neg
-    net['throat.cc_power_loss'][net.throats("pos_cc")] = Pow_pos
-    net.add_model(propname='pore.cc_power_loss',
-                  model=op.models.misc.from_neighbor_throats,
-                  prop='throat.cc_power_loss',
-                  mode='max')
+    net["throat.cc_power_loss"] = 0.0
+    net["throat.cc_power_loss"][net.throats("neg_cc")] = Pow_neg
+    net["throat.cc_power_loss"][net.throats("pos_cc")] = Pow_pos
+    net.add_model(
+        propname="pore.cc_power_loss",
+        model=op.models.misc.from_neighbor_throats,
+        prop="throat.cc_power_loss",
+        mode="max",
+    )
 
 
 def run_ecm(net, alg, V_terminal, plot=False):
@@ -593,13 +625,13 @@ def run_ecm(net, alg, V_terminal, plot=False):
     alg.set_value_BC(net.pores("neg_tab"), values=adj)
     alg.run()
     V_local_pnm = alg["pore.potential"][P2] - alg["pore.potential"][P1]
-    V_local_pnm[net['pore.pos_cc'][P1]] *= -1
+    V_local_pnm[net["pore.pos_cc"][P1]] *= -1
     I_local_pnm = alg.rate(throats=net.throats("spm_resistor"), mode="single")
     I_local_pnm *= np.sign(V_terminal.flatten())
     R_local_pnm = V_local_pnm / I_local_pnm
     if plot:
-        pos_mask = net.pores('pos_cc')
-        neg_mask = net.pores('neg_cc')
+        pos_mask = net.pores("pos_cc")
+        neg_mask = net.pores("neg_cc")
         plt.figure()
         plt.plot(alg["pore.potential"][pos_mask])
         plt.plot(alg["pore.potential"][neg_mask])
@@ -610,16 +642,10 @@ def run_ecm(net, alg, V_terminal, plot=False):
 def setup_geometry(net, dtheta, spacing, length_3d):
     # Create Geometry based on circular arc segment
     drad = np.deg2rad(dtheta)
-    geo = op.geometry.GenericGeometry(
-        network=net, pores=net.Ps, throats=net.Ts
-    )
+    geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
     if "throat.radial_position" not in net.props():
-        geo["throat.radial_position"] = net.interpolate_data(
-            "pore.radial_position"
-        )
-    geo["pore.volume"] = (
-        net["pore.radial_position"] * drad * spacing * length_3d
-    )
+        geo["throat.radial_position"] = net.interpolate_data("pore.radial_position")
+    geo["pore.volume"] = net["pore.radial_position"] * drad * spacing * length_3d
     cn = net["throat.conns"]
     C1 = net["pore.coords"][cn[:, 0]]
     C2 = net["pore.coords"][cn[:, 1]]
@@ -629,106 +655,109 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     rPs = geo["pore.arc_index"][net["throat.conns"]]
     sameR = rPs[:, 0] == rPs[:, 1]
     geo["throat.area"] = spacing * length_3d
-    geo['throat.electrode_height'] = geo["throat.radial_position"] * drad
-    geo["throat.area"][sameR] = geo['throat.electrode_height'][sameR] * length_3d
+    geo["throat.electrode_height"] = geo["throat.radial_position"] * drad
+    geo["throat.area"][sameR] = geo["throat.electrode_height"][sameR] * length_3d
     geo["throat.volume"] = 0.0
     geo["throat.volume"][sameR] = geo["throat.area"][sameR] * spacing
     return geo
 
 
 def setup_thermal(project, config):
-    sub = 'PHYSICS'
-    T0 = config.getfloat(sub, 'T0')
+    sub = "PHYSICS"
+    T0 = config.getfloat(sub, "T0")
     lumpy_therm = lump_thermal_props(config)
-    cp = lumpy_therm['lump_Cp']
-    rho = lumpy_therm['lump_rho']
+    cp = lumpy_therm["lump_Cp"]
+    rho = lumpy_therm["lump_rho"]
 
-    heat_transfer_coefficient = config.getfloat(sub, 'heat_transfer_coefficient')
+    heat_transfer_coefficient = config.getfloat(sub, "heat_transfer_coefficient")
     net = project.network
-    geo = project.geometries()['geo_01']
-    phase = project.phases()['phase_01']
-    phys = project.physics()['phys_01']
+    geo = project.geometries()["geo_01"]
+    phase = project.phases()["phase_01"]
+    phys = project.physics()["phys_01"]
     hc = heat_transfer_coefficient / (cp * rho)
     # Set up Phase and Physics
     phase["pore.temperature"] = T0
-    alpha_spiral = lumpy_therm['alpha_spiral']
-    alpha_radial = lumpy_therm['alpha_radial']
-    phys["throat.conductance"] = (
-        1.0 * geo["throat.area"] / geo["throat.length"]
-    )
+    alpha_spiral = lumpy_therm["alpha_spiral"]
+    alpha_radial = lumpy_therm["alpha_radial"]
+    phys["throat.conductance"] = 1.0 * geo["throat.area"] / geo["throat.length"]
     # Apply anisotropic heat conduction
     Ts = net.throats("spm_resistor")
     phys["throat.conductance"][Ts] *= alpha_radial
-    Ts = net.throats("spm_resistor", mode='not')
+    Ts = net.throats("spm_resistor", mode="not")
     phys["throat.conductance"][Ts] *= alpha_spiral
     # Free stream convective flux
     Ts = net.throats("free_stream")
     phys["throat.conductance"][Ts] = geo["throat.area"][Ts] * hc
 
-    print('Mean throat conductance',
-          np.mean(phys['throat.conductance']))
-    print('Mean throat conductance Boundary',
-          np.mean(phys['throat.conductance'][Ts]))
+    print("Mean throat conductance", np.mean(phys["throat.conductance"]))
+    print("Mean throat conductance Boundary", np.mean(phys["throat.conductance"][Ts]))
 
 
 def apply_heat_source(project, Q):
     # The SPMs are defined at the throat but the pores represent the
     # Actual electrode volume so need to interpolate for heat sources
     net = project.network
-    phys = project.physics()['phys_01']
-    spm_Ts = net.throats('spm_resistor')
-    phys['throat.heat_source'] = 0.0
-    phys['throat.heat_source'][spm_Ts] = Q
-    phys.add_model(propname='pore.heat_source',
-                   model=op.models.misc.from_neighbor_throats,
-                   prop='throat.heat_source',
-                   mode='max')
+    phys = project.physics()["phys_01"]
+    spm_Ts = net.throats("spm_resistor")
+    phys["throat.heat_source"] = 0.0
+    phys["throat.heat_source"][spm_Ts] = Q
+    phys.add_model(
+        propname="pore.heat_source",
+        model=op.models.misc.from_neighbor_throats,
+        prop="throat.heat_source",
+        mode="max",
+    )
 
 
 def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     # To Do - test whether this needs to be transient
     net = project.network
-    phase = project.phases()['phase_01']
-    phys = project.physics()['phys_01']
+    phase = project.phases()["phase_01"]
+    phys = project.physics()["phys_01"]
     phys["pore.A1"] = 0.0
-    Q_spm = phys['pore.heat_source'] * net["pore.volume"]
-    Q_cc = net['pore.cc_power_loss']
-    print('Q_spm', np.around(np.sum(Q_spm), 2), '\n',
-          'Q_cc', np.around(np.sum(Q_cc), 2), '\n',
-          'ratio Q_cc/Q_spm', np.around(np.sum(Q_cc) / np.sum(Q_spm), 2))
+    Q_spm = phys["pore.heat_source"] * net["pore.volume"]
+    Q_cc = net["pore.cc_power_loss"]
+    print(
+        "Q_spm",
+        np.around(np.sum(Q_spm), 2),
+        "\n",
+        "Q_cc",
+        np.around(np.sum(Q_cc), 2),
+        "\n",
+        "ratio Q_cc/Q_spm",
+        np.around(np.sum(Q_cc) / np.sum(Q_spm), 2),
+    )
     phys["pore.A2"] = (Q_spm + Q_cc) / (cp * rho)
     # Heat Source
-    T0 = phase['pore.temperature']
+    T0 = phase["pore.temperature"]
     t_step = float(time_step / 10)
     phys.add_model(
-        "pore.source",
-        model=linear,
-        X="pore.temperature",
-        A1="pore.A1",
-        A2="pore.A2",
+        "pore.source", model=linear, X="pore.temperature", A1="pore.A1", A2="pore.A2",
     )
     # Run Transient Heat Transport Algorithm
     alg = op.algorithms.TransientReactiveTransport(network=net)
-    alg.setup(phase=phase,
-              conductance='throat.conductance',
-              quantity='pore.temperature',
-              t_initial=0.0,
-              t_final=time_step,
-              t_step=t_step,
-              t_output=t_step,
-              t_tolerance=1e-9,
-              t_precision=12,
-              rxn_tolerance=1e-9,
-              t_scheme='implicit')
+    alg.setup(
+        phase=phase,
+        conductance="throat.conductance",
+        quantity="pore.temperature",
+        t_initial=0.0,
+        t_final=time_step,
+        t_step=t_step,
+        t_output=t_step,
+        t_tolerance=1e-9,
+        t_precision=12,
+        rxn_tolerance=1e-9,
+        t_scheme="implicit",
+    )
     alg.set_IC(values=T0)
     bulk_Ps = net.pores("free_stream", mode="not")
     alg.set_source("pore.source", bulk_Ps)
     if third:
         # To do - 12 only works if detheta is 10
-        free_pores = net.pores('free_stream')
-        Ps = free_pores[net['pore.arc_index'][free_pores] < 12]
+        free_pores = net.pores("free_stream")
+        Ps = free_pores[net["pore.arc_index"][free_pores] < 12]
     else:
-        Ps = net.pores('free_stream')
+        Ps = net.pores("free_stream")
     alg.set_value_BC(Ps, values=BC_value)
     alg.run()
     print(
@@ -741,8 +770,8 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     project.purge_object(alg)
 
 
-def setup_pool(max_workers, pool_type='Process'):
-    if pool_type == 'Process':
+def setup_pool(max_workers, pool_type="Process"):
+    if pool_type == "Process":
         pool = ProcessPoolExecutor()
     else:
         pool = ThreadPoolExecutor()
@@ -787,32 +816,36 @@ def serial_spm(inputs):
 
 
 def _format_key(key):
-    key = [word + '_' for word in key.split() if '[' not in word]
-    return ''.join(key)[:-1]
+    key = [word + "_" for word in key.split() if "[" not in word]
+    return "".join(key)[:-1]
 
 
-def export(project, save_dir=None, export_dict=None, prefix='', lower_mask=None,
-           save_animation=False):
+def export(
+    project,
+    save_dir=None,
+    export_dict=None,
+    prefix="",
+    lower_mask=None,
+    save_animation=False,
+):
     if save_dir is None:
         save_dir = os.getcwd()
     else:
         if not os.path.isdir(save_dir):
             os.mkdir(save_dir)
     for key in export_dict.keys():
-        for suffix in ['lower', 'upper']:
-            if suffix == 'lower':
+        for suffix in ["lower", "upper"]:
+            if suffix == "lower":
                 mask = lower_mask
             else:
                 mask = ~lower_mask
             data = export_dict[key][:, mask]
-            save_path = os.path.join(save_dir, prefix + _format_key(key) + '_' + suffix)
-            io.savemat(file_name=save_path,
-                       mdict={'data': data},
-                       long_field_names=True)
+            save_path = os.path.join(save_dir, prefix + _format_key(key) + "_" + suffix)
+            io.savemat(file_name=save_path, mdict={"data": data}, long_field_names=True)
 
 
 def polar_transform(x, y):
-    r = np.sqrt(x**2 + y**2)
+    r = np.sqrt(x ** 2 + y ** 2)
     theta = np.arctan2(y, x)
     return r, theta
 
@@ -824,12 +857,12 @@ def cartesian_transform(r, t):
 
 
 def interpolate_spm_number(project):
-    im_soft = np.load(os.path.join(ecm.INPUT_DIR, 'im_soft.npz'))['arr_0']
+    im_soft = np.load(os.path.join(ecm.INPUT_DIR, "im_soft.npz"))["arr_0"]
     x_len, y_len = im_soft.shape
     net = project.network
-    res_Ts = net.throats('spm_resistor')
-    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
-    res_pores = net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]]
+    res_Ts = net.throats("spm_resistor")
+    sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
+    res_pores = net["pore.coords"][net["throat.conns"][res_Ts[sorted_res_Ts]]]
     res_Ts_coords = np.mean(res_pores, axis=1)
     x = res_Ts_coords[:, 0]
     y = res_Ts_coords[:, 1]
@@ -851,8 +884,10 @@ def interpolate_spm_number(project):
     points = np.vstack((all_x, all_y, all_t)).T
     myInterpolator = NearestNDInterpolator(points, all_data)
     f = 1.05
-    grid_x, grid_y = np.mgrid[x.min() * f:x.max() * f:np.complex(x_len, 0),
-                              y.min() * f:y.max() * f:np.complex(y_len, 0)]
+    grid_x, grid_y = np.mgrid[
+        x.min() * f : x.max() * f : np.complex(x_len, 0),
+        y.min() * f : y.max() * f : np.complex(y_len, 0),
+    ]
     arr = myInterpolator(grid_x, grid_y, 0)
     arr[np.isnan(im_soft)] = np.nan
     fig, (ax1, ax2) = plt.subplots(1, 2)
@@ -869,8 +904,8 @@ def interpolate_spm_number_model(project, dim=1000):
     all_t = []
     all_data = []
     # Inner boundary
-    inner_Ts = net.throats('inner_boundary')
-    inner_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][inner_Ts]], axis=1)
+    inner_Ts = net.throats("inner_boundary")
+    inner_Ts_coords = np.mean(net["pore.coords"][net["throat.conns"][inner_Ts]], axis=1)
     x = inner_Ts_coords[:, 0]
     y = inner_Ts_coords[:, 1]
     data = np.ones(len(inner_Ts))[np.newaxis, :] * -1
@@ -881,9 +916,9 @@ def interpolate_spm_number_model(project, dim=1000):
         all_t = all_t + (np.ones(len(x)) * t).tolist()
         all_data = all_data + data[t, :].tolist()
     # Resistor Ts
-    res_Ts = net.throats('spm_resistor')
-    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
-    res_pores = net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]]
+    res_Ts = net.throats("spm_resistor")
+    sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
+    res_pores = net["pore.coords"][net["throat.conns"][res_Ts[sorted_res_Ts]]]
     res_Ts_coords = np.mean(res_pores, axis=1)
     x = res_Ts_coords[:, 0]
     y = res_Ts_coords[:, 1]
@@ -895,8 +930,8 @@ def interpolate_spm_number_model(project, dim=1000):
         all_t = all_t + (np.ones(len(x)) * t).tolist()
         all_data = all_data + data[t, :].tolist()
     # Outer boundary
-    free_Ts = net.throats('free_stream')
-    free_Ts_coords = np.mean(net['pore.coords'][net['throat.conns'][free_Ts]], axis=1)
+    free_Ts = net.throats("free_stream")
+    free_Ts_coords = np.mean(net["pore.coords"][net["throat.conns"][free_Ts]], axis=1)
     x = free_Ts_coords[:, 0]
     y = free_Ts_coords[:, 1]
     data = np.ones(len(free_Ts))[np.newaxis, :] * -1
@@ -914,67 +949,68 @@ def interpolate_spm_number_model(project, dim=1000):
     points = np.vstack((all_x, all_y, all_t)).T
     myInterpolator = NearestNDInterpolator(points, all_data)
     f = 1.05
-    grid_x, grid_y = np.mgrid[x.min() * f:x.max() * f:np.complex(x_len, 0),
-                              y.min() * f:y.max() * f:np.complex(y_len, 0)]
+    grid_x, grid_y = np.mgrid[
+        x.min() * f : x.max() * f : np.complex(x_len, 0),
+        y.min() * f : y.max() * f : np.complex(y_len, 0),
+    ]
     arr = myInterpolator(grid_x, grid_y, 0)
     return arr
 
 
 def check_vlim(solution, low, high):
-    l_check = solution['Terminal voltage [V]'].entries[-1] > low
-    h_check = solution['Terminal voltage [V]'].entries[-1] < high
+    l_check = solution["Terminal voltage [V]"].entries[-1] > low
+    h_check = solution["Terminal voltage [V]"].entries[-1] < high
     return l_check * h_check
 
 
 def run_simulation(I_app, save_path, config):
     max_workers = int(os.cpu_count() / 2)
-    hours = config.getfloat('RUN', 'hours')
+    hours = config.getfloat("RUN", "hours")
     Nsteps = np.int(hours * 60 * I_app) + 1  # number of time steps
     V_over_max = 2.0
-    if config.get('GEOMETRY', 'domain') == 'model':
+    if config.get("GEOMETRY", "domain") == "model":
         project, arc_edges = make_spiral_net(config)
-    elif config.get('GEOMETRY', 'domain') == '1d':
+    elif config.get("GEOMETRY", "domain") == "1d":
         project, arc_edges = make_1D_net(config)
     else:
         project, arc_edges = make_tomo_net(config)
 
     net = project.network
-    if config.get('GEOMETRY', 'domain') != '1d':
+    if config.get("GEOMETRY", "domain") != "1d":
         plot_topology(net)
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
     # connections between cc layers
-    Nspm = net.num_throats('spm_resistor')
+    Nspm = net.num_throats("spm_resistor")
     res_Ts = net.throats("spm_resistor")
-    electrode_heights = net['throat.electrode_height'][res_Ts]
-    print('Total Electrode Height', np.around(np.sum(electrode_heights), 2), 'm')
+    electrode_heights = net["throat.electrode_height"][res_Ts]
+    print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     typical_height = np.mean(electrode_heights)
     I_typical = I_app / Nspm
-    temp_inputs = {"Current": I_typical,
-                   'Electrode height [m]': typical_height}
+    temp_inputs = {"Current": I_typical, "Electrode height [m]": typical_height}
     total_length = arc_edges[-1]  # m
-    print('Total cc length', total_length)
-    print('Total pore volume', np.sum(net['pore.volume']))
-    print('Mean throat area', np.mean(net['throat.area']))
-    print('Num throats', net.num_throats())
-    print('Num throats SPM', Nspm)
-    print('Num throats pos_cc', net.num_throats('pos_cc'))
-    print('Num throats neg_cc', net.num_throats('neg_cc'))
-    print('Typical height', typical_height)
-    print('Typical current', I_typical)
+    print("Total cc length", total_length)
+    print("Total pore volume", np.sum(net["pore.volume"]))
+    print("Mean throat area", np.mean(net["throat.area"]))
+    print("Num throats", net.num_throats())
+    print("Num throats SPM", Nspm)
+    print("Num throats pos_cc", net.num_throats("pos_cc"))
+    print("Num throats neg_cc", net.num_throats("neg_cc"))
+    print("Typical height", typical_height)
+    print("Typical current", I_typical)
     ###########################################################################
     spm_sim = make_spm(I_typical, config)
     width = spm_sim.parameter_values["Electrode width [m]"]
-    t1 = spm_sim.parameter_values['Negative electrode thickness [m]']
-    t2 = spm_sim.parameter_values['Positive electrode thickness [m]']
-    t3 = spm_sim.parameter_values['Negative current collector thickness [m]']
-    t4 = spm_sim.parameter_values['Positive current collector thickness [m]']
-    t5 = spm_sim.parameter_values['Separator thickness [m]']
+    t1 = spm_sim.parameter_values["Negative electrode thickness [m]"]
+    t2 = spm_sim.parameter_values["Positive electrode thickness [m]"]
+    t3 = spm_sim.parameter_values["Negative current collector thickness [m]"]
+    t4 = spm_sim.parameter_values["Positive current collector thickness [m]"]
+    t5 = spm_sim.parameter_values["Separator thickness [m]"]
     ttot = t1 + t2 + t3 + t4 + t5
     A_cc = electrode_heights * width
     bat_vol = np.sum(A_cc * ttot)
-    print('BATTERY ELECTRODE VOLUME', bat_vol)
-    print('18650 VOLUME', 0.065 * np.pi * ((8.75e-3)**2 - (2.0e-3)**2))
+    print("BATTERY ELECTRODE VOLUME", bat_vol)
+    print("18650 VOLUME", 0.065 * np.pi * ((8.75e-3) ** 2 - (2.0e-3) ** 2))
     ###########################################################################
     temp = np.ones([Nsteps, Nspm])
     temp.fill(np.nan)
@@ -1008,15 +1044,23 @@ def run_simulation(I_app, save_path, config):
     Delta_T = param.process_symbol(temp_parms.Delta_T).evaluate(inputs=temp_inputs)
     Delta_T_spm = Delta_T * (typical_height / electrode_heights)
     T_ref = param.process_symbol(temp_parms.T_ref).evaluate()
-    T0 = config.getfloat('PHYSICS', 'T0')
+    T0 = config.getfloat("PHYSICS", "T0")
     lumpy_therm = lump_thermal_props(config)
-    cp = lumpy_therm['lump_Cp']
-    rho = lumpy_therm['lump_rho']
+    cp = lumpy_therm["lump_Cp"]
+    rho = lumpy_therm["lump_rho"]
     T_non_dim = (T0 - T_ref) / Delta_T
-    spm_sol = step_spm((spm_sim.built_model,
-                        spm_sim.solver,
-                        None, I_typical, typical_height, 1e-6,
-                        T_non_dim, False))
+    spm_sol = step_spm(
+        (
+            spm_sim.built_model,
+            spm_sim.solver,
+            None,
+            I_typical,
+            typical_height,
+            1e-6,
+            T_non_dim,
+            False,
+        )
+    )
     # Create dictionaries of evaluator functions from the discretized model
     variable_keys = list(variables.keys())
     overpotential_keys = list(overpotentials.keys())
@@ -1032,8 +1076,8 @@ def run_simulation(I_app, save_path, config):
     R_max = R * 1e6
     # Initialize with a guess for the terminal voltage
     alg = setup_ecm_alg(project, config, guess_R)
-    phys = project.physics()['phys_01']
-    phase = project.phases()['phase_01']
+    phys = project.physics()["phys_01"]
+    phase = project.phases()["phase_01"]
     (V_local_pnm, I_local_pnm, R_local_pnm) = run_ecm(net, alg, V_ecm)
     print("*" * 30)
     print("V local pnm", V_local_pnm, "[V]")
@@ -1045,9 +1089,7 @@ def run_simulation(I_app, save_path, config):
     spm_solvers = [pybamm.CasadiSolver() for i in range(Nspm)]
     spm_params = [spm_sim.parameter_values for i in range(Nspm)]
 
-    solutions = [
-        None for i in range(Nspm)
-    ]
+    solutions = [None for i in range(Nspm)]
     terminal_voltages = np.ones(Nsteps) * np.nan
     V_test = V_ecm
     tol = 1e-5
@@ -1062,27 +1104,27 @@ def run_simulation(I_app, save_path, config):
     tau_spm = []
     for i in range(Nspm):
         temp_tau = spm_params[i].process_symbol(sym_tau)
-        tau_input = {'Electrode height [m]': electrode_heights[i]}
+        tau_input = {"Electrode height [m]": electrode_heights[i]}
         tau_spm.append(temp_tau.evaluate(inputs=tau_input))
     tau_spm = np.asarray(tau_spm)
     dim_time_step = dt
     dead = np.zeros(Nspm, dtype=bool)
-    if config.getboolean('RUN', 'parallel'):
-        pool = setup_pool(max_workers, pool_type='Process')
+    if config.getboolean("RUN", "parallel"):
+        pool = setup_pool(max_workers, pool_type="Process")
     outer_step = 0
-    if config.getboolean('PHYSICS', 'do_thermal'):
+    if config.getboolean("PHYSICS", "do_thermal"):
         setup_thermal(project, config)
     T_non_dim_spm = np.ones(len(res_Ts)) * T_non_dim
     max_temperatures = []
-    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
+    sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
     try:
-        thermal_third = config.getboolean('RUN', 'third')
+        thermal_third = config.getboolean("RUN", "third")
     except KeyError:
         thermal_third = False
     while np.any(~dead) and outer_step < Nsteps and V_test < V_over_max:
         print("*" * 30)
         print("Outer", outer_step)
-        print("Elapsed Simulation Time", np.around((outer_step) * dt, 2), 's')
+        print("Elapsed Simulation Time", np.around((outer_step) * dt, 2), "s")
         # Find terminal voltage that satisfy ecm total currents for R
         current_match = False
         max_inner_steps = 1000
@@ -1091,9 +1133,7 @@ def run_simulation(I_app, save_path, config):
         # Iterate the ecm until the currents match
         t_ecm_start = time.time()
         while (inner_step < max_inner_steps) and (not current_match):
-            (V_local_pnm, I_local_pnm, R_local_pnm) = run_ecm(net,
-                                                              alg,
-                                                              V_test)
+            (V_local_pnm, I_local_pnm, R_local_pnm) = run_ecm(net, alg, V_test)
             tot_I_local_pnm = np.sum(I_local_pnm)
             diff = (I_app - tot_I_local_pnm) / I_app
             if np.absolute(diff) < tol:
@@ -1103,40 +1143,50 @@ def run_simulation(I_app, save_path, config):
             inner_step += 1
         get_cc_heat(net, alg, V_test)
         if V_test < V_over_max:
-            print("N inner", inner_step, 'time per step',
-                  (time.time() - t_ecm_start) / inner_step)
-            print("Over-voltage", np.around(V_test, 2), 'V')
+            print(
+                "N inner",
+                inner_step,
+                "time per step",
+                (time.time() - t_ecm_start) / inner_step,
+            )
+            print("Over-voltage", np.around(V_test, 2), "V")
             all_time_I_local[outer_step, :] = I_local_pnm
             terminal_voltages[outer_step] = V_test
             # I_local_pnm should now sum to match the total applied current
             # Run the spms for the the new I_locals for the next time interval
             time_steps = np.ones(Nspm) * dt
-            bundle_inputs = zip(spm_models, spm_solvers,
-                                solutions, I_local_pnm, electrode_heights,
-                                time_steps, T_non_dim_spm, dead)
+            bundle_inputs = zip(
+                spm_models,
+                spm_solvers,
+                solutions,
+                I_local_pnm,
+                electrode_heights,
+                time_steps,
+                T_non_dim_spm,
+                dead,
+            )
             t_spm_start = time.time()
-            if config.getboolean('RUN', 'parallel'):
-                solutions = pool_spm(
-                    bundle_inputs,
-                    pool,
-                    max_workers
-                )
+            if config.getboolean("RUN", "parallel"):
+                solutions = pool_spm(bundle_inputs, pool, max_workers)
             else:
-                solutions = serial_spm(
-                    bundle_inputs
-                )
-            print('Finished stepping SPMs in ',
-                  np.around((time.time() - t_spm_start), 2), 's')
-            print('Solution size', solutions[0].t.shape)
+                solutions = serial_spm(bundle_inputs)
+            print(
+                "Finished stepping SPMs in ",
+                np.around((time.time() - t_spm_start), 2),
+                "s",
+            )
+            print("Solution size", solutions[0].t.shape)
             # Gather the results for this time step
             results_o = np.ones([Nspm, len(overpotential_keys)]) * np.nan
             t_eval_start = time.time()
             for si, i in enumerate(sorted_res_Ts):
-                if solutions[i].termination != 'final time':
+                if solutions[i].termination != "final time":
                     dead[i] = True
                 else:
-                    temp_inputs = {"Current": I_local_pnm[i],
-                                   'Electrode height [m]': electrode_heights[i]}
+                    temp_inputs = {
+                        "Current": I_local_pnm[i],
+                        "Electrode height [m]": electrode_heights[i],
+                    }
                     for key in lithiations.keys():
                         temp = solutions[i][key].entries[-1]
                         lithiations[key][outer_step, si] = temp
@@ -1148,19 +1198,22 @@ def run_simulation(I_app, save_path, config):
                         temp = solutions[i][key].entries[-1]
                         overpotentials[key][outer_step, si] = temp
                         results_o[i, j] = temp
-                    if config.getboolean('PHYSICS', 'do_thermal'):
+                    if config.getboolean("PHYSICS", "do_thermal"):
                         for j, key in enumerate(heating_keys):
                             temp = solutions[i][key].entries[-1]
                             variables_heating[key][outer_step, si] = temp
-            print('Finished evaluating SPMs in ',
-                  np.around((time.time() - t_eval_start), 2), 's')
-            if config.getboolean('PHYSICS', 'do_thermal'):
+            print(
+                "Finished evaluating SPMs in ",
+                np.around((time.time() - t_eval_start), 2),
+                "s",
+            )
+            if config.getboolean("PHYSICS", "do_thermal"):
                 # Apply Heat Sources
                 # To Do: make this better
                 vh = variables_heating
                 Q_tot = vh["Volume-averaged total heating [W.m-3]"][outer_step, :]
-                Q_ohm_cc = net.interpolate_data('pore.cc_power_loss')[res_Ts]
-                Q_ohm_cc /= net['throat.volume'][res_Ts]
+                Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
+                Q_ohm_cc /= net["throat.volume"][res_Ts]
                 key = "Volume-averaged Ohmic heating CC [W.m-3]"
                 vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
                 Q = Q_tot
@@ -1169,7 +1222,7 @@ def run_simulation(I_app, save_path, config):
                 # Calculate Global Temperature
                 run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
                 # Interpolate the node temperatures for the SPMs
-                spm_temperature = phase.interpolate_data('pore.temperature')[res_Ts]
+                spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
                 all_time_temperature[outer_step, :] = spm_temperature
                 max_temperatures.append(spm_temperature.max())
                 T_non_dim_spm = (spm_temperature - T_ref) / Delta_T_spm
@@ -1178,46 +1231,48 @@ def run_simulation(I_app, save_path, config):
             # Update ecm conductivities for the spm_resistor throats
             sig = 1 / temp_R
             if np.any(temp_R > R_max):
-                print('Max R found')
+                print("Max R found")
                 print(I_local_pnm[temp_R > R_max])
                 dead[temp_R > R_max] = True
                 sig[temp_R > R_max] = 1 / R_max
             if np.any(np.isnan(temp_R)):
-                print('Nans found')
+                print("Nans found")
                 print(I_local_pnm[np.isnan(temp_R)])
                 dead[np.isnan(temp_R)] = True
                 sig[np.isnan(temp_R)] = 1 / R_max
             phys["throat.electrical_conductance"][res_Ts] = sig
             local_R[:, outer_step] = temp_R
             if solutions[0].t.shape[0] > 1:
-                if not check_vlim(solutions[0],
-                                  config.getfloat('RUN', 'vlim_lower'),
-                                  config.getfloat('RUN', 'vlim_upper')):
+                if not check_vlim(
+                    solutions[0],
+                    config.getfloat("RUN", "vlim_lower"),
+                    config.getfloat("RUN", "vlim_upper"),
+                ):
                     dead.fill(True)
-                    print('VOLTAGE LIMITS EXCEEDED')
+                    print("VOLTAGE LIMITS EXCEEDED")
             else:
                 dead.fill(True)
                 print(solutions[0].termination)
 
             outer_step += 1
 
-    if config.getboolean('RUN', 'parallel'):
+    if config.getboolean("RUN", "parallel"):
         shutdown_pool(pool)
 
-    variables['ECM R local'] = local_R[sorted_res_Ts, :outer_step].T
-    variables['ECM I Local'] = all_time_I_local[:outer_step, sorted_res_Ts]
-    variables['Temperature [K]'] = all_time_temperature[:outer_step, sorted_res_Ts]
+    variables["ECM R local"] = local_R[sorted_res_Ts, :outer_step].T
+    variables["ECM I Local"] = all_time_I_local[:outer_step, sorted_res_Ts]
+    variables["Temperature [K]"] = all_time_temperature[:outer_step, sorted_res_Ts]
 
     variables.update(lithiations)
-    if config.getboolean('PHYSICS', 'do_thermal'):
+    if config.getboolean("PHYSICS", "do_thermal"):
         variables.update(variables_heating)
     if outer_step < Nsteps:
         for key in variables.keys():
-            variables[key] = variables[key][:outer_step - 1, :]
+            variables[key] = variables[key][: outer_step - 1, :]
         for key in overpotentials.keys():
-            overpotentials[key] = overpotentials[key][:outer_step - 1, :]
+            overpotentials[key] = overpotentials[key][: outer_step - 1, :]
 
-    if config.getboolean('OUTPUT', 'plot'):
+    if config.getboolean("OUTPUT", "plot"):
         run_ecm(net, alg, V_test, plot=True)
         for key in variables.keys():
             fig, ax = plt.subplots()
@@ -1227,18 +1282,30 @@ def run_simulation(I_app, save_path, config):
 
         fig, ax = plt.subplots()
         ax.plot(max_temperatures)
-        ax.set_xlabel('Discharge Time [h]')
-        ax.set_ylabel('Maximum Temperature [K]')
+        ax.set_xlabel("Discharge Time [h]")
+        ax.set_ylabel("Maximum Temperature [K]")
 
-    if config.getboolean('OUTPUT', 'save'):
-        print('Saving to', save_path)
-        lower_mask = net['throat.spm_neg_inner'][res_Ts[sorted_res_Ts]]
-        export(project, save_path, variables, 'var_',
-               lower_mask=lower_mask, save_animation=False)
-        export(project, save_path, overpotentials, 'eta_',
-               lower_mask=lower_mask, save_animation=False)
+    if config.getboolean("OUTPUT", "save"):
+        print("Saving to", save_path)
+        lower_mask = net["throat.spm_neg_inner"][res_Ts[sorted_res_Ts]]
+        export(
+            project,
+            save_path,
+            variables,
+            "var_",
+            lower_mask=lower_mask,
+            save_animation=False,
+        )
+        export(
+            project,
+            save_path,
+            overpotentials,
+            "eta_",
+            lower_mask=lower_mask,
+            save_animation=False,
+        )
         parent_dir = os.path.dirname(save_path)
-        wrk.save_project(project=project, filename=os.path.join(parent_dir, 'net'))
+        wrk.save_project(project=project, filename=os.path.join(parent_dir, "net"))
         # project.export_data(phases=[phase], filename='ecm.vtp')
 
     print("*" * 30)
@@ -1249,53 +1316,71 @@ def run_simulation(I_app, save_path, config):
 
 def update_tabs(project, config):
     net = project.network
-    sec = 'GEOMETRY'
-    pos_Ps = net.pores('pos_cc')
-    neg_Ps = net.pores('neg_cc')
-    pos_ints = json.loads(config.get(sec, 'pos_tabs'))
-    neg_ints = json.loads(config.get(sec, 'neg_tabs'))
+    sec = "GEOMETRY"
+    pos_Ps = net.pores("pos_cc")
+    neg_Ps = net.pores("neg_cc")
+    pos_ints = json.loads(config.get(sec, "pos_tabs"))
+    neg_ints = json.loads(config.get(sec, "neg_tabs"))
     pos_tabs = pos_Ps[pos_ints]
     neg_tabs = neg_Ps[neg_ints]
-    net['pore.pos_tab'] = False
-    net['pore.neg_tab'] = False
-    net['pore.pos_tab'][pos_tabs] = True
-    net['pore.neg_tab'][neg_tabs] = True
+    net["pore.pos_tab"] = False
+    net["pore.neg_tab"] = False
+    net["pore.pos_tab"][pos_tabs] = True
+    net["pore.neg_tab"][neg_tabs] = True
 
 
 def lump_thermal_props(config):
-    sec = 'THICKNESS'
-    pixel_size = config.getfloat(sec, 'pixel_size')
-    lens = np.array([config.getfloat(sec, 'neg_electrode'),
-                     config.getfloat(sec, 'pos_electrode'),
-                     config.getfloat(sec, 'neg_cc') / 2,
-                     config.getfloat(sec, 'pos_cc') / 2,
-                     config.getfloat(sec, 'sep')])
+    sec = "THICKNESS"
+    pixel_size = config.getfloat(sec, "pixel_size")
+    lens = np.array(
+        [
+            config.getfloat(sec, "neg_electrode"),
+            config.getfloat(sec, "pos_electrode"),
+            config.getfloat(sec, "neg_cc") / 2,
+            config.getfloat(sec, "pos_cc") / 2,
+            config.getfloat(sec, "sep"),
+        ]
+    )
     lens *= pixel_size
-    sec = 'MATERIAL'
-    rhos = np.array([config.getfloat(sec, 'neg_rho'),
-                     config.getfloat(sec, 'pos_rho'),
-                     config.getfloat(sec, 'neg_cc_rho'),
-                     config.getfloat(sec, 'pos_cc_rho'),
-                     config.getfloat(sec, 'sep_rho')])
+    sec = "MATERIAL"
+    rhos = np.array(
+        [
+            config.getfloat(sec, "neg_rho"),
+            config.getfloat(sec, "pos_rho"),
+            config.getfloat(sec, "neg_cc_rho"),
+            config.getfloat(sec, "pos_cc_rho"),
+            config.getfloat(sec, "sep_rho"),
+        ]
+    )
     rho_lump = np.sum(lens * rhos) / np.sum(lens)
-    Cps = np.array([config.getfloat(sec, 'neg_cp'),
-                    config.getfloat(sec, 'pos_cp'),
-                    config.getfloat(sec, 'neg_cc_cp'),
-                    config.getfloat(sec, 'pos_cc_cp'),
-                    config.getfloat(sec, 'sep_cp')])
+    Cps = np.array(
+        [
+            config.getfloat(sec, "neg_cp"),
+            config.getfloat(sec, "pos_cp"),
+            config.getfloat(sec, "neg_cc_cp"),
+            config.getfloat(sec, "pos_cc_cp"),
+            config.getfloat(sec, "sep_cp"),
+        ]
+    )
     Cp_lump = np.sum(lens * rhos * Cps) / np.sum(lens * rhos)
-    ks = np.array([config.getfloat(sec, 'neg_k'),
-                   config.getfloat(sec, 'pos_k'),
-                   config.getfloat(sec, 'neg_cc_k'),
-                   config.getfloat(sec, 'pos_cc_k'),
-                   config.getfloat(sec, 'sep_k')])
+    ks = np.array(
+        [
+            config.getfloat(sec, "neg_k"),
+            config.getfloat(sec, "pos_k"),
+            config.getfloat(sec, "neg_cc_k"),
+            config.getfloat(sec, "pos_cc_k"),
+            config.getfloat(sec, "sep_k"),
+        ]
+    )
     alphas = ks / (rhos * Cps)
     res = 1 / alphas
     print(res)
     R_radial = np.sum(lens * res) / np.sum(lens)
     R_spiral = np.sum(lens) / np.sum(lens / res)
-    out = {'alpha_radial': 1 / R_radial,
-           'alpha_spiral': 1 / R_spiral,
-           'lump_rho': rho_lump,
-           'lump_Cp': Cp_lump}
+    out = {
+        "alpha_radial": 1 / R_radial,
+        "alpha_spiral": 1 / R_spiral,
+        "lump_rho": rho_lump,
+        "lump_Cp": Cp_lump,
+    }
     return out
