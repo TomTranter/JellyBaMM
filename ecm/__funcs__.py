@@ -412,7 +412,7 @@ def make_spm(I_typical, config):
         model = model_class()
     geometry = model.default_geometry
     param = model.default_parameter_values
-    param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.Chen2020)
+    param = pybamm.ParameterValues("Chen2020")
     param.update(
         {
             "Typical current [A]": I_typical,

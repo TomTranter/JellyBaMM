@@ -28,7 +28,7 @@ model.use_simplify = False
 geometry = model.default_geometry
 
 # load parameter values and process model and geometry
-param = pybamm.ParameterValues(chemistry=pybamm.parameter_sets.Chen2020)
+param = pybamm.ParameterValues("Chen2020")
 
 I_app = 17.5
 I_typical = I_app
