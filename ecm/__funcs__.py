@@ -81,8 +81,8 @@ def make_spiral_net(config):
     unit_id = np.tile(np.arange(0, Nunit), (N1d, 1)).T
     prj = op.Project()
     net = op.network.Cubic(shape=[Nunit, N1d, 1], spacing=spacing, project=prj)
-    net["pore.pos_cc"] = net["pore.front"]
-    net["pore.neg_cc"] = net["pore.back"]
+    net["pore.pos_cc"] = net["pore.back"]
+    net["pore.neg_cc"] = net["pore.front"]
 
     net["pore.region_id"] = assembly.flatten()
     net["pore.cell_id"] = unit_id.flatten()

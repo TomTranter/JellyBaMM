@@ -1,5 +1,5 @@
 [RUN]
-I_app_a = 1.5
+I_app_a = 0.5
 parallel = True
 hours = 0.1
 model = SPMe
