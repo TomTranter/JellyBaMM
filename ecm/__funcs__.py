@@ -56,7 +56,6 @@ def current_function(t):
     return pybamm.InputParameter("Current")
 
 
-
 def make_spm(I_typical, config):
     thermal = config.getboolean("PHYSICS", "do_thermal")
     length_3d = config.getfloat("GEOMETRY", "length_3d")
@@ -170,6 +169,7 @@ def step_spm(zipped):
         )
 
     return solution
+
 
 def get_cc_heat(net, alg, V_terminal):
     neg_Ts = net["throat.conns"][net.throats("neg_cc")]
@@ -315,7 +315,11 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     T0 = phase["pore.temperature"]
     t_step = float(time_step / 10)
     phys.add_model(
-        "pore.source", model=linear, X="pore.temperature", A1="pore.A1", A2="pore.A2",
+        "pore.source",
+        model=linear,
+        X="pore.temperature",
+        A1="pore.A1",
+        A2="pore.A2",
     )
     # Run Transient Heat Transport Algorithm
     alg = op.algorithms.TransientReactiveTransport(network=net)
