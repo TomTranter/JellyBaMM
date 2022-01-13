@@ -11,4 +11,5 @@ from .__definitions__ import *
 from .__segment_jellyroll__ import *
 from .__utilities__ import *
 from .__topology__ import *
+from .__battery__ import *
 __version__ = "0.0.1"
