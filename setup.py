@@ -32,6 +32,7 @@ setup(
         "numba",
         "pybamm",
         "openpnm",
+        "ffmpeg-python"
     ],
     author="Tom Tranter",
     author_email="t.g.tranter@gmail.com",
