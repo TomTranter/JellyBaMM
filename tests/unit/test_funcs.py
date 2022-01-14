@@ -11,7 +11,7 @@ import shutil
 import unittest
 
 
-class protocolsTest(unittest.TestCase):
+class funcsTest(unittest.TestCase):
     def _teardown(self, fpath):
         # Delete Data files
         fp = [os.path.join(fpath, file) for file in os.listdir(fpath) if "A" in file]
