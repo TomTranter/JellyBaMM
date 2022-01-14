@@ -86,6 +86,7 @@ def make_spm(I_typical, config):
         model_options = {
             "thermal": "x-lumped",
             "external submodels": ["thermal"],
+            "timescale": 1000,
         }
         model = model_class(model_options)
     else:
