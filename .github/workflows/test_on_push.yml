@@ -38,6 +38,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
+    - name: Install specific version of PyBaMM
+      run: |
+        python -m pip install git+https://github.com/pybamm-team/PyBaMM/tree@issue-1889-scalar-timescale
     - name: Install pybamm_pnm with dependencies
       run: |
         python -m pip install -e .
