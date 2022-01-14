@@ -90,7 +90,10 @@ def make_spm(I_typical, config):
         }
         model = model_class(model_options)
     else:
-        model = model_class()
+        model_options = {
+            "timescale": 1000,
+        }
+        model = model_class(model_options)
     geometry = model.default_geometry
     param = model.default_parameter_values
     param = pybamm.ParameterValues("Chen2020")
