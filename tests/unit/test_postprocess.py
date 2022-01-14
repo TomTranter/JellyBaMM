@@ -71,12 +71,12 @@ class postprocessTest(unittest.TestCase):
         wrk.clear()
         assert 1 == 1
 
-    def test_animate(self):
-        data, amps, cases = self._load(root)
-        fname = os.path.join(children[0], "test.mp4")
-        ecm.animate_data4(data, cases[0], amps[0], variables=[0, 1], filename=fname)
-        os.remove(fname)
-        wrk.clear()
+    # def test_animate(self):
+    #     data, amps, cases = self._load(root)
+    #     fname = os.path.join(children[0], "test.mp4")
+    #     ecm.animate_data4(data, cases[0], amps[0], variables=[0, 1], filename=fname)
+    #     os.remove(fname)
+    #     wrk.clear()
 
     def test_super_subplot(self):
         filepath = os.path.join(ecm.FIXTURES_DIR, "model")
