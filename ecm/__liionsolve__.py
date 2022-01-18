@@ -44,7 +44,7 @@ def run_simulation_lp(I_app, save_path, config):
     if config.get("GEOMETRY", "domain") != "1d":
         ecm.plot_topology(net)
     phase = project.phases()["phase_01"]
-    phys = project.physics()["phys_01"]
+    # phys = project.physics()["phys_01"]
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
     # connections between cc layers

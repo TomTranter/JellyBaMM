@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import ecm
 import configparser
 import os
+import liionpack as lp
 
 plt.close("all")
 
