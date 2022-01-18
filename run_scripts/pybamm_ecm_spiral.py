@@ -27,5 +27,5 @@ if __name__ == "__main__":
     I_apps = [config.get('RUN', key) for key in config['RUN'] if 'i_app' in key]
     for I_app in I_apps:
         save_path = save_root + '\\' + I_app + 'A'
-
-        prj, vrs, sols = ecm.run_simulation_lp(float(I_app), save_path, config)
+        project, output = ecm.run_simulation_lp(float(I_app), save_path, config)
+        lp.plot_output(output)
