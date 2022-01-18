@@ -38,10 +38,11 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
-    - name: Install specific version of PyBaMM
+    - name: Install specific version of PyBaMM and liionpack
       run: |
         pip install wheel
         python -m pip install git+https://github.com/pybamm-team/PyBaMM@issue-1889-scalar-timescale
+        python -m pip install git+https://github.com/pybamm-team/liionpack@main
     - name: Install pybamm_pnm with dependencies
       run: |
         python -m pip install -e .
