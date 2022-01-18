@@ -88,7 +88,6 @@ def make_parameters(I_typical, config):
             "Typical current [A]": I_typical,
             "Current function [A]": current_function,
             "Electrode height [m]": "[input]",
-            
             "Electrode width [m]": length_3d,
             "Negative electrode thickness [m]": t_neg_electrode * pixel_size,
             "Positive electrode thickness [m]": t_pos_electrode * pixel_size,

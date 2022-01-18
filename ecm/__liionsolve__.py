@@ -20,6 +20,7 @@ def fT_non_dim(parameter_values, T):
     T_ref = parameter_values.evaluate(param.T_ref)
     return (T - T_ref) / Delta_T
 
+
 def do_heating():
     pass
 
@@ -117,7 +118,9 @@ def run_simulation_lp(I_app, save_path, config):
     # Thermal parameters                                                      #
     ###########################################################################
     params = pybamm.LithiumIonParameters()
-    Delta_T = parameter_values.process_symbol(params.Delta_T).evaluate(inputs=temp_inputs)
+    Delta_T = parameter_values.process_symbol(params.Delta_T).evaluate(
+        inputs=temp_inputs
+    )
     Delta_T_spm = Delta_T * (typical_height / electrode_heights)
     T_ref = parameter_values.process_symbol(params.T_ref).evaluate()
     T0 = config.getfloat("PHYSICS", "T0")
@@ -149,8 +152,8 @@ def run_simulation_lp(I_app, save_path, config):
     dim_time_step = 10
     neg_econd, pos_econd = ecm.cc_cond(project, config)
     # To Do Replace this with netlist lookup
-    Rbn = 1/np.mean(neg_econd)
-    Rbp = 1/np.mean(pos_econd)
+    Rbn = 1 / np.mean(neg_econd)
+    Rbp = 1 / np.mean(pos_econd)
     Rs = 1e-2
     Ri = 60
     V = 3.6
@@ -159,7 +162,7 @@ def run_simulation_lp(I_app, save_path, config):
     T0 = parameter_values["Initial temperature [K]"]
     T0_non_dim = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     e_heights = net["throat.electrode_height"][net.throats("throat.spm_resistor")]
-    inputs={
+    inputs = {
         "Electrode height [m]": e_heights,
     }
     external_variables = {"Volume-averaged cell temperature": T0_non_dim}
@@ -182,7 +185,7 @@ def run_simulation_lp(I_app, save_path, config):
         nproc=max_workers,
         initial_soc=0.5,
     )
-    Qvar = 'Volume-averaged total heating [W.m-3]'
+    Qvar = "Volume-averaged total heating [W.m-3]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
     lp.logger.notice("Starting step solve")
     vlims_ok = True
@@ -203,8 +206,7 @@ def run_simulation_lp(I_app, save_path, config):
             Q[np.isnan(Q)] = 0.0
             ecm.apply_heat_source(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho,
-                                   thermal_third)
+            ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             all_time_temperature[outer_step, :] = spm_temperature
@@ -239,7 +241,6 @@ def run_simulation_lp(I_app, save_path, config):
         for key in overpotentials.keys():
             overpotentials[key] = overpotentials[key][: outer_step - 1, :]
 
-
     if config.getboolean("OUTPUT", "save"):
         print("Saving to", save_path)
         lower_mask = net["throat.spm_neg_inner"][res_Ts[sorted_res_Ts]]
@@ -267,4 +268,3 @@ def run_simulation_lp(I_app, save_path, config):
     print("ECM Sim time", ticker.time() - st)
     print("*" * 30)
     return project, manager.step_output()
-
