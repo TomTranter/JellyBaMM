@@ -295,7 +295,8 @@ def run_simulation_lp(I_app, save_path, config):
                 Q[np.isnan(Q)] = 0.0
                 ecm.apply_heat_source(project, Q)
                 # Calculate Global Temperature
-                ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+                ecm.run_step_transient(project, dim_time_step, T0, cp, rho,
+                                       thermal_third)
                 # Interpolate the node temperatures for the SPMs
                 spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
                 all_time_temperature[outer_step, :] = spm_temperature
