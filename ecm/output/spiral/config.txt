@@ -1,7 +1,7 @@
 [RUN]
-I_app_a = 5
+I_app_a = 0.5
 parallel = True
-hours = 1.0
+hours = 0.1
 model = SPMe
 vlim_lower = 2.7
 vlim_upper = 4.7
