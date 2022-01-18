@@ -28,4 +28,4 @@ if __name__ == "__main__":
     for I_app in I_apps:
         save_path = save_root + '\\' + I_app + 'A'
 
-        prj, vrs, sols = ecm.run_simulation(float(I_app), save_path, config)
+        prj, vrs, sols = ecm.run_simulation_lp(float(I_app), save_path, config)
