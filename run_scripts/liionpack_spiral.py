@@ -39,8 +39,8 @@ if __name__ == "__main__":
     I_app = -5.0
     netlist = ecm.network_to_netlist(net, Rbn, Rbp, Rs, Ri, V, I_app)
     lp.power_loss(netlist, include_Ri=False)
-    R_map =netlist["desc"].str.find("R") > -1
-    
+    R_map = netlist["desc"].str.find("R") > -1
+
     pnm_power = np.zeros(net.Nt)
     for i in range(net.Nt):
         T_map = netlist["pnm_throat_id"] == i

@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 wrk = op.Workspace()
 
+
 def get_cc_power_loss(network, netlist):
     pnm_power = np.zeros(network.Nt)
     for i in range(network.Nt):
@@ -128,7 +129,7 @@ def run_simulation_lp(I_app, save_path, config):
     Delta_T = parameter_values.process_symbol(params.Delta_T).evaluate(
         inputs=temp_inputs
     )
-    Delta_T_spm = Delta_T * (typical_height / electrode_heights)
+    # Delta_T_spm = Delta_T * (typical_height / electrode_heights)
     T_ref = parameter_values.process_symbol(params.T_ref).evaluate()
     T0 = config.getfloat("PHYSICS", "T0")
     lumpy_therm = ecm.lump_thermal_props(config)
