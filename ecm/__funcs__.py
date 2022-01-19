@@ -307,6 +307,19 @@ def apply_heat_source(project, Q):
     )
 
 
+def apply_heat_source_lp(project, Q):
+    # The SPMs are defined at the throat but the pores represent the
+    # Actual electrode volume so need to interpolate for heat sources
+    phys = project.physics()["phys_01"]
+    phys["throat.heat_source"] = Q
+    phys.add_model(
+        propname="pore.heat_source",
+        model=op.models.misc.from_neighbor_throats,
+        prop="throat.heat_source",
+        mode="mean",
+    )
+
+
 def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     # To Do - test whether this needs to be transient
     net = project.network

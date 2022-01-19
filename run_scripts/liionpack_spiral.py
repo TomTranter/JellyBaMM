@@ -19,13 +19,6 @@ wrk = op.Workspace()
 wrk.clear()
 
 
-def fn(n):
-    if n == 0:
-        return "0"
-    else:
-        return "N" + str(n).zfill(3)
-
-
 if __name__ == "__main__":
     save_root = os.path.join(ecm.OUTPUT_DIR, "spiral")
     print(save_root)
@@ -35,7 +28,7 @@ if __name__ == "__main__":
     I_apps = [config.get("RUN", key) for key in config["RUN"] if "i_app" in key]
     prj, arc_edges = ecm.make_spiral_net(config)
     net = prj.network
-    # ecm.plot_topology(net)
+    ecm.plot_topology(net)
 
     # Now make network into liionpack netlist
     Rbn = 1e-4
@@ -45,21 +38,15 @@ if __name__ == "__main__":
     V = 3.6
     I_app = -5.0
     netlist = ecm.network_to_netlist(net, Rbn, Rbp, Rs, Ri, V, I_app)
-    # lp.simple_netlist_plot(netlist)
-    V_node, I_batt = lp.solve_circuit(netlist)
-    fname = "jellyroll.cir"
-    lines = ["* " + os.path.join(os.getcwd(), fname)]
-    for (i, r) in netlist.iterrows():
-        line = r.desc + " " + fn(r.node1) + " " + fn(r.node2) + " " + str(r.value)
-        lines.append(line)
-    lines.append(".op")
-    lines.append(".backanno")
-    lines.append(".end")
-    with open(fname, "w") as f:
-        for line in lines:
-            f.write(line)
-            f.write("\n")
+    lp.power_loss(netlist, include_Ri=False)
+    R_map =netlist["desc"].str.find("R") > -1
+    
+    pnm_power = np.zeros(net.Nt)
+    for i in range(net.Nt):
+        T_map = netlist["pnm_throat_id"] == i
+        pnm_power[i] = np.sum(netlist["power_loss"][T_map])
 
+    V_node, I_batt = lp.solve_circuit(netlist)
     # Cycling experiment, using PyBaMM
     experiment = pybamm.Experiment(
         [

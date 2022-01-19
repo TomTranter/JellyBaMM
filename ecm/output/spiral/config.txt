@@ -1,5 +1,5 @@
 [RUN]
-I_app_a = 0.5
+I_app_a = 5.0
 parallel = True
 hours = 1.0
 model = SPMe
@@ -11,7 +11,7 @@ domain = model
 dtheta = 10
 layer_spacing = 195e-6
 length_3d = 0.080
-Nlayers = 5
+Nlayers = 20
 pos_tabs = -1
 neg_tabs = 0
 [THICKNESS]

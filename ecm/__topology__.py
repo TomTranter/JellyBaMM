@@ -332,7 +332,7 @@ def make_1D_net(config):
     return net.project, np.cumsum(net["throat.arc_length"])
 
 
-def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
+def network_to_netlist(network, Rbn=1e-4, Rbp=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
     r"""
     Make a liionpack netlist from a network
 
@@ -359,13 +359,6 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
         DESCRIPTION.
 
     """
-    # Now make network into liionpack netlist
-    Rbn = 1e-4
-    Rbp = 1e-4
-    Rs = 1e-5
-    Ri = 60
-    V = 3.6
-    I_app = -5.0
     desc = []
     node1 = []
     node2 = []
@@ -376,6 +369,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
     node2_y = []
     xs = network["pore.coords"][:, 0]
     ys = network["pore.coords"][:, 1]
+    Tid = []
 
     # Negative current collector
     for t in network.throats("neg_cc"):
@@ -388,6 +382,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
         node1_y.append(ys[n1])
         node2_x.append(xs[n2])
         node2_y.append(ys[n2])
+        Tid.append(t)
 
     # Positive current collector
     for t in network.throats("pos_cc"):
@@ -400,6 +395,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
         node1_y.append(ys[n1])
         node2_x.append(xs[n2])
         node2_y.append(ys[n2])
+        Tid.append(t)
 
     # check contiguous
     node_max = max((max(node1), max(node2)))
@@ -433,6 +429,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
             node1_y.append(ys[n1])
             node2_x.append(vax)
             node2_y.append(vay)
+            Tid.append(t)
             # Make a battery node Va to Vb
             nn += 1
             desc.append("V" + str(t))
@@ -443,6 +440,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
             node1_y.append(vay)
             node2_x.append(vbx)
             node2_y.append(vby)
+            Tid.append(t)
             # Make an intenal resistor from Vb to pos
             desc.append("Ri" + str(t))
             node1.append(nn)
@@ -452,6 +450,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
             node1_y.append(vby)
             node2_x.append(xs[n2])
             node2_y.append(ys[n2])
+            Tid.append(t)
         else:
             desc.append("V" + str(t))
             node1.append(n1)
@@ -461,6 +460,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
             node1_y.append(ys[n1])
             node2_x.append(xs[n2])
             node2_y.append(ys[n2])
+            Tid.append(t)
 
     # Terminals
     n1 = network.pores("pos_cc")[-1]
@@ -473,6 +473,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
     node1_y.append(ys[n1])
     node2_x.append(xs[n2])
     node2_y.append(ys[n2])
+    Tid.append(-1)
 
     netlist_data = {
         "desc": desc,
@@ -483,6 +484,7 @@ def network_to_netlist(network, Rbn=1e-4, Rb=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=
         "node1_y": node1_y,
         "node2_x": node2_x,
         "node2_y": node2_y,
+        "pnm_throat_id": Tid
     }
     # add internal resistors
     netlist = pd.DataFrame(netlist_data)

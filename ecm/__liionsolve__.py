@@ -13,6 +13,13 @@ from tqdm import tqdm
 
 wrk = op.Workspace()
 
+def get_cc_power_loss(network, netlist):
+    pnm_power = np.zeros(network.Nt)
+    for i in range(network.Nt):
+        T_map = netlist["pnm_throat_id"] == i
+        pnm_power[i] = np.sum(netlist["power_loss"][T_map])
+    return pnm_power
+
 
 def fT_non_dim(parameter_values, T):
     param = pybamm.LithiumIonParameters()
@@ -94,7 +101,7 @@ def run_simulation_lp(I_app, save_path, config):
         "X-averaged negative particle surface concentration [mol.m-3]": temp.copy(),
         "X-averaged positive particle surface concentration [mol.m-3]": temp.copy(),
         "Terminal voltage [V]": temp.copy(),
-        "Time [h]": temp.copy(),
+        "Volume-averaged cell temperature [K]": temp.copy(),
         "Current collector current density [A.m-2]": temp.copy(),
     }
     overpotentials = {
@@ -134,8 +141,6 @@ def run_simulation_lp(I_app, save_path, config):
     ###########################################################################
     local_R = np.zeros([Nspm, Nsteps])
     all_time_I_local = np.zeros([Nsteps, Nspm])
-    all_time_temperature = np.zeros([Nsteps, Nspm])
-    max_temperatures = []
     ###########################################################################
     # Run time config                                                         #
     ###########################################################################
@@ -157,20 +162,20 @@ def run_simulation_lp(I_app, save_path, config):
     Rs = 1e-2
     Ri = 60
     V = 3.6
-    I_app = 0.5
+    # I_app = 0.5
     netlist = ecm.network_to_netlist(net, Rbn, Rbp, Rs, Ri, V, I_app)
     T0 = parameter_values["Initial temperature [K]"]
-    T0_non_dim = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
+    T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     e_heights = net["throat.electrode_height"][net.throats("throat.spm_resistor")]
     inputs = {
         "Electrode height [m]": e_heights,
     }
-    external_variables = {"Volume-averaged cell temperature": T0_non_dim}
+    external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
     experiment = pybamm.Experiment(
         [
             f"Discharge at {I_app} A for {hours} hours",
         ],
-        period="10 seconds",
+        period="30 seconds",
     )
     # Solve the pack
     manager = lp.casadi_manager()
@@ -190,31 +195,30 @@ def run_simulation_lp(I_app, save_path, config):
     lp.logger.notice("Starting step solve")
     vlims_ok = True
     tic = ticker.time()
+    netlist["power_loss"] = 0.0
     with tqdm(total=manager.Nsteps, desc="Stepping simulation") as pbar:
         step = 0
         while step < manager.Nsteps and vlims_ok:
             ###################################################################
+            external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
+            vlims_ok = manager._step(step, external_variables)
+            ###################################################################
             # Apply Heat Sources
-            # ecm.get_cc_heat(net, alg, V_test)
             Q_tot = manager.output[Qid, step, :]
+            Q = get_cc_power_loss(net, netlist)
             # To do - Get cc heat from netlist
             # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
             # Q_ohm_cc /= net["throat.volume"][res_Ts]
             # key = "Volume-averaged Ohmic heating CC [W.m-3]"
             # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
-            Q = Q_tot
-            Q[np.isnan(Q)] = 0.0
-            ecm.apply_heat_source(project, Q)
+            Q[res_Ts] += Q_tot
+            ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
             ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
-            all_time_temperature[outer_step, :] = spm_temperature
-            max_temperatures.append(spm_temperature.max())
-            T_non_dim_spm = (spm_temperature - T_ref) / Delta_T_spm
+            T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
-            external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
-            vlims_ok = manager._step(step, external_variables)
             step += 1
             pbar.update(1)
     manager.step = step
@@ -230,7 +234,6 @@ def run_simulation_lp(I_app, save_path, config):
     ###########################################################################
     variables["ECM R local"] = local_R[sorted_res_Ts, :outer_step].T
     variables["ECM I Local"] = all_time_I_local[:outer_step, sorted_res_Ts]
-    variables["Temperature [K]"] = all_time_temperature[:outer_step, sorted_res_Ts]
 
     variables.update(lithiations)
     if config.getboolean("PHYSICS", "do_thermal"):
