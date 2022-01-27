@@ -161,7 +161,7 @@ def run_simulation_lp(I_app, save_path, config):
     Rbn = 1 / np.mean(neg_econd)
     Rbp = 1 / np.mean(pos_econd)
     Rs = 1e-2
-    Ri = 60
+    Ri = 90
     V = 3.6
     # I_app = 0.5
     netlist = ecm.network_to_netlist(net, Rbn, Rbp, Rs, Ri, V, I_app)
@@ -180,7 +180,7 @@ def run_simulation_lp(I_app, save_path, config):
     )
     # Solve the pack
     manager = lp.casadi_manager()
-    manager.step_solve(
+    manager.solve(
         netlist=netlist,
         sim_func=lp.thermal_external,
         parameter_values=parameter_values,
@@ -190,6 +190,7 @@ def run_simulation_lp(I_app, save_path, config):
         external_variables=external_variables,
         nproc=max_workers,
         initial_soc=0.5,
+        setup_only=True
     )
     Qvar = "Volume-averaged total heating [W.m-3]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
