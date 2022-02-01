@@ -332,7 +332,7 @@ def make_1D_net(config):
     return net.project, np.cumsum(net["throat.arc_length"])
 
 
-def network_to_netlist(network, Rbn=1e-4, Rbp=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
+def network_to_netlist(network, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
     r"""
     Make a liionpack netlist from a network
 
@@ -340,10 +340,6 @@ def network_to_netlist(network, Rbn=1e-4, Rbp=1e-4, Rs=1e-5, Ri=60, V=3.6, I_app
     ----------
     network : TYPE
         DESCRIPTION.
-    Rbn : TYPE, optional
-        DESCRIPTION. The default is 1e-4.
-    Rb : TYPE, optional
-        DESCRIPTION. The default is 1e-4.
     Rs : TYPE, optional
         DESCRIPTION. The default is 1e-5.
     Ri : TYPE, optional

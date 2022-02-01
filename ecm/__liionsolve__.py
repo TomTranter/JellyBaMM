@@ -9,6 +9,7 @@ import time as ticker
 import openpnm as op
 import liionpack as lp
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 
 wrk = op.Workspace()
@@ -104,8 +105,8 @@ def run_simulation_lp(I_app, save_path, config):
         "X-averaged positive electrode extent of lithiation": temp.copy(),
     }
     variables = {
-        "X-averaged negative particle surface concentration [mol.m-3]": temp.copy(),
-        "X-averaged positive particle surface concentration [mol.m-3]": temp.copy(),
+        # "X-averaged negative particle surface concentration [mol.m-3]": temp.copy(),
+        # "X-averaged positive particle surface concentration [mol.m-3]": temp.copy(),
         "Terminal voltage [V]": temp.copy(),
         "Volume-averaged cell temperature [K]": temp.copy(),
         "Current collector current density [A.m-2]": temp.copy(),
@@ -118,15 +119,16 @@ def run_simulation_lp(I_app, save_path, config):
         "Change in measured open circuit voltage [V]": temp.copy(),
     }
     variables_heating = {
-        "Volume-averaged Ohmic heating [W.m-3]": temp.copy(),
-        "Volume-averaged irreversible electrochemical heating [W.m-3]": temp.copy(),
-        "Volume-averaged reversible heating [W.m-3]": temp.copy(),
+        # "Volume-averaged Ohmic heating [W.m-3]": temp.copy(),
+        # "Volume-averaged irreversible electrochemical heating [W.m-3]": temp.copy(),
+        # "Volume-averaged reversible heating [W.m-3]": temp.copy(),
         "Volume-averaged total heating [W.m-3]": temp.copy(),
     }
+    lithiations_keys = list(lithiations.keys())
     variable_keys = list(variables.keys())
     overpotential_keys = list(overpotentials.keys())
     heating_keys = list(variables_heating.keys())
-    output_variables = variable_keys + overpotential_keys + heating_keys
+    output_variables = variable_keys + heating_keys + lithiations_keys
     ###########################################################################
     # Thermal parameters                                                      #
     ###########################################################################
@@ -162,14 +164,11 @@ def run_simulation_lp(I_app, save_path, config):
     ###########################################################################
     dim_time_step = 10
     neg_econd, pos_econd = ecm.cc_cond(project, config)
-    # To Do Replace this with netlist lookup
-    Rbn = 1 / np.mean(neg_econd)
-    Rbp = 1 / np.mean(pos_econd)
-    Rs = 1e-2
-    Ri = 90
-    V = 3.6
+    Rs = 1e-2  # series resistance
+    Ri = 90  # initial guess for internal resistance
+    V = 3.6  # initial guess for cell voltage
     # I_app = 0.5
-    netlist = ecm.network_to_netlist(net, Rbn, Rbp, Rs, Ri, V, I_app)
+    netlist = ecm.network_to_netlist(net, Rs, Ri, V, I_app)
     T0 = parameter_values["Initial temperature [K]"]
     T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     e_heights = net["throat.electrode_height"][net.throats("throat.spm_resistor")]
@@ -206,6 +205,7 @@ def run_simulation_lp(I_app, save_path, config):
     vlims_ok = True
     tic = ticker.time()
     netlist["power_loss"] = 0.0
+    plt.figure()
     with tqdm(total=manager.Nsteps, desc="Initialising simulation") as pbar:
         step = 0
         # reset = True
@@ -232,6 +232,9 @@ def run_simulation_lp(I_app, save_path, config):
             ###################################################################
             step += 1
             pbar.update(1)
+            temp_Ri = np.array(netlist.loc[manager.Ri_map].value)
+            plt.scatter(e_heights, temp_Ri, label=str(step))
+    plt.legend()
     manager.step = step
     toc = ticker.time()
     lp.logger.notice("Initial step solve finished")
