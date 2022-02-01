@@ -177,6 +177,72 @@ def run_simulation_lp(I_app, save_path, config):
     inputs = {
         "Electrode height [m]": e_heights,
     }
+    ###########################################################################
+    # Initialisation
+    external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
+    experiment = pybamm.Experiment(
+        [
+            f"Discharge at {I_app} A for 4 seconds",
+        ],
+        period="1 second",
+    )
+    # Solve the pack
+    manager = lp.casadi_manager()
+    manager.solve(
+        netlist=netlist,
+        sim_func=lp.thermal_external,
+        parameter_values=parameter_values,
+        experiment=experiment,
+        output_variables=output_variables,
+        inputs=inputs,
+        external_variables=external_variables,
+        nproc=max_workers,
+        initial_soc=0.5,
+        setup_only=True
+    )
+    Qvar = "Volume-averaged total heating [W.m-3]"
+    Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
+    lp.logger.notice("Starting initial step solve")
+    vlims_ok = True
+    tic = ticker.time()
+    netlist["power_loss"] = 0.0
+    with tqdm(total=manager.Nsteps, desc="Initialising simulation") as pbar:
+        step = 0
+        # reset = True
+        while step < manager.Nsteps and vlims_ok:
+            ###################################################################
+            external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
+            vlims_ok = manager._step(step, external_variables)
+            ###################################################################
+            # Apply Heat Sources
+            Q_tot = manager.output[Qid, step, :]
+            Q = get_cc_power_loss(net, netlist)
+            # To do - Get cc heat from netlist
+            # Q_ohm_cc = net.interpolate_data("pore.cc_power_loss")[res_Ts]
+            # Q_ohm_cc /= net["throat.volume"][res_Ts]
+            # key = "Volume-averaged Ohmic heating CC [W.m-3]"
+            # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
+            Q[res_Ts] += Q_tot
+            ecm.apply_heat_source_lp(project, Q)
+            # Calculate Global Temperature
+            ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            # Interpolate the node temperatures for the SPMs
+            spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
+            T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
+            ###################################################################
+            step += 1
+            pbar.update(1)
+    manager.step = step
+    toc = ticker.time()
+    lp.logger.notice("Initial step solve finished")
+    lp.logger.notice("Total stepping time " + str(np.around(toc - tic, 3)) + "s")
+    lp.logger.notice(
+        "Time per step " + str(np.around((toc - tic) / manager.Nsteps, 3)) + "s"
+    )
+    ###########################################################################
+    # Real Solve
+    ###########################################################################
+    T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
     experiment = pybamm.Experiment(
         [
