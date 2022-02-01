@@ -40,7 +40,12 @@ def run_simulation_lp(I_app, save_path, config):
     st = ticker.time()
     max_workers = int(os.cpu_count() / 2)
     hours = config.getfloat("RUN", "hours")
-    Nsteps = np.int(hours * 60 * I_app) + 1  # number of time steps
+    try:
+        dt = config.getfloat("RUN", "dt")
+        Nsteps = np.int(np.ceil(hours * 3600 / dt) + 1)
+    except:
+        dt = 30
+        Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
     if config.get("GEOMETRY", "domain") == "model":
         project, arc_edges = ecm.make_spiral_net(config)
     elif config.get("GEOMETRY", "domain") == "1d":
@@ -52,7 +57,7 @@ def run_simulation_lp(I_app, save_path, config):
     if config.get("GEOMETRY", "domain") != "1d":
         ecm.plot_topology(net)
     phase = project.phases()["phase_01"]
-    # phys = project.physics()["phys_01"]
+    phys = project.physics()["phys_01"]
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
     # connections between cc layers
@@ -168,6 +173,7 @@ def run_simulation_lp(I_app, save_path, config):
     T0 = parameter_values["Initial temperature [K]"]
     T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     e_heights = net["throat.electrode_height"][net.throats("throat.spm_resistor")]
+    # e_heights.fill(np.mean(e_heights))
     inputs = {
         "Electrode height [m]": e_heights,
     }
@@ -176,7 +182,7 @@ def run_simulation_lp(I_app, save_path, config):
         [
             f"Discharge at {I_app} A for {hours} hours",
         ],
-        period="30 seconds",
+        period=f"{dt} seconds",
     )
     # Solve the pack
     manager = lp.casadi_manager()
@@ -200,6 +206,7 @@ def run_simulation_lp(I_app, save_path, config):
     netlist["power_loss"] = 0.0
     with tqdm(total=manager.Nsteps, desc="Stepping simulation") as pbar:
         step = 0
+        # reset = True
         while step < manager.Nsteps and vlims_ok:
             ###################################################################
             external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}

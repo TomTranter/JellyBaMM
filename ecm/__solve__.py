@@ -19,7 +19,7 @@ def run_simulation(I_app, save_path, config):
     ###########################################################################
     max_workers = int(os.cpu_count() / 2)
     hours = config.getfloat("RUN", "hours")
-    Nsteps = np.int(hours * 60 * I_app) + 1  # number of time steps
+    Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
     V_over_max = 2.0
     if config.get("GEOMETRY", "domain") == "model":
         project, arc_edges = ecm.make_spiral_net(config)

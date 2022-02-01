@@ -35,6 +35,9 @@ def cc_cond(project, config):
     neg_econd = neg_econd / cc_len[neg_Ts]
     pos_Ts = net.throats("pos_cc")
     pos_econd = pos_econd / cc_len[pos_Ts]
+    net['throat.electrical_conductance'] = 0.0
+    net['throat.electrical_conductance'][neg_Ts] = neg_econd
+    net['throat.electrical_conductance'][pos_Ts] = pos_econd
     return neg_econd, pos_econd
 
 
