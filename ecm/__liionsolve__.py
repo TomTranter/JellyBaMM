@@ -197,7 +197,7 @@ def run_simulation_lp(I_app, save_path, config):
         external_variables=external_variables,
         nproc=max_workers,
         initial_soc=0.5,
-        setup_only=True
+        setup_only=True,
     )
     Qvar = "Volume-averaged total heating [W.m-3]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]
@@ -265,7 +265,7 @@ def run_simulation_lp(I_app, save_path, config):
         external_variables=external_variables,
         nproc=max_workers,
         initial_soc=0.5,
-        setup_only=True
+        setup_only=True,
     )
     Qvar = "Volume-averaged total heating [W.m-3]"
     Qid = np.argwhere(np.asarray(manager.variable_names) == Qvar).flatten()[0]

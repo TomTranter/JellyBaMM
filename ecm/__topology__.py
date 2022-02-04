@@ -373,7 +373,7 @@ def network_to_netlist(network, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
         n1, n2 = network["throat.conns"][t]
         node1.append(n1)
         node2.append(n2)
-        value.append(1/network['throat.electrical_conductance'][t])
+        value.append(1 / network["throat.electrical_conductance"][t])
         node1_x.append(xs[n1])
         node1_y.append(ys[n1])
         node2_x.append(xs[n2])
@@ -386,7 +386,7 @@ def network_to_netlist(network, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
         n1, n2 = network["throat.conns"][t]
         node1.append(n1)
         node2.append(n2)
-        value.append(1/network['throat.electrical_conductance'][t])
+        value.append(1 / network["throat.electrical_conductance"][t])
         node1_x.append(xs[n1])
         node1_y.append(ys[n1])
         node2_x.append(xs[n2])
@@ -480,7 +480,7 @@ def network_to_netlist(network, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
         "node1_y": node1_y,
         "node2_x": node2_x,
         "node2_y": node2_y,
-        "pnm_throat_id": Tid
+        "pnm_throat_id": Tid,
     }
     # add internal resistors
     netlist = pd.DataFrame(netlist_data)
