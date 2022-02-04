@@ -33,5 +33,6 @@ if __name__ == "__main__":
                 float(I_app), save_path, config
             )
         else:
-            project, output = ecm.run_simulation_lp(float(I_app), save_path, config)
+            project, output = ecm.run_simulation_lp(float(I_app), save_path,
+                                                    config)
             lp.plot_output(output)

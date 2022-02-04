@@ -10,6 +10,7 @@ import openpnm as op
 import liionpack as lp
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import configparser
 
 
 wrk = op.Workspace()
@@ -44,7 +45,7 @@ def run_simulation_lp(I_app, save_path, config):
     try:
         dt = config.getfloat("RUN", "dt")
         Nsteps = np.int(np.ceil(hours * 3600 / dt) + 1)
-    except:
+    except configparser.NoOptionError:
         dt = 30
         Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
     if config.get("GEOMETRY", "domain") == "model":
@@ -58,7 +59,6 @@ def run_simulation_lp(I_app, save_path, config):
     if config.get("GEOMETRY", "domain") != "1d":
         ecm.plot_topology(net)
     phase = project.phases()["phase_01"]
-    phys = project.physics()["phys_01"]
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
     # connections between cc layers
@@ -126,7 +126,6 @@ def run_simulation_lp(I_app, save_path, config):
     }
     lithiations_keys = list(lithiations.keys())
     variable_keys = list(variables.keys())
-    overpotential_keys = list(overpotentials.keys())
     heating_keys = list(variables_heating.keys())
     output_variables = variable_keys + heating_keys + lithiations_keys
     ###########################################################################
