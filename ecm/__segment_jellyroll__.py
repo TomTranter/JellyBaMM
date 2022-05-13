@@ -303,8 +303,10 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
         if layer < counts.max() - 1:
             neighbor = sorted_groups[g, layer + 1]
             if neighbor > -1:
-                sorted_neighbor = np.argwhere(ordered_pos_Ps == neighbor).flatten()[0]
-                neg_inner_conns.append([i, sorted_neighbor + len(ordered_neg_Ps)])
+                sorted_neighbor = np.argwhere(ordered_pos_Ps == neighbor).flatten()
+                if len(sorted_neighbor) > 0:
+                    sorted_neighbor = sorted_neighbor[0]
+                    neg_inner_conns.append([i, sorted_neighbor + len(ordered_neg_Ps)])
     pos_inner_conns = []
     for i, p_pos in enumerate(ordered_pos_Ps):
         g, layer = np.argwhere(sorted_groups == p_pos).flatten()
@@ -314,7 +316,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
                 sorted_neighbor = np.argwhere(ordered_neg_Ps == neighbor).flatten()
                 if len(sorted_neighbor) > 0:
                     sorted_neighbor = sorted_neighbor[0]
-                pos_inner_conns.append([i + len(ordered_neg_Ps), sorted_neighbor])
+                    pos_inner_conns.append([i + len(ordered_neg_Ps), sorted_neighbor])
     neg_inner_conns = np.asarray(neg_inner_conns)
     pos_inner_conns = np.asarray(pos_inner_conns)
 
