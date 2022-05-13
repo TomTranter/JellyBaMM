@@ -283,8 +283,15 @@ def make_1D_net(config):
     tt.trim(net, throats=T)
     T = net.find_neighbor_throats(net.pores("right"), mode="xnor")
     tt.trim(net, throats=T)
+    
     pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
     neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
+
+    net.add_boundary_pores(labels=['front', 'back'])
+    net["pore.free_stream"] = np.logical_or(net["pore.front_boundary"],
+                                            net["pore.back_boundary"])
+    net["throat.free_stream"] = np.logical_or(net["throat.front_boundary"],
+                                              net["throat.back_boundary"])
 
     pos_tab_nodes = net.pores()[net["pore.pos_cc"]][pos_tabs]
     neg_tab_nodes = net.pores()[net["pore.neg_cc"]][neg_tabs]
@@ -300,14 +307,17 @@ def make_1D_net(config):
     net["throat.spm_resistor"] = True
     net["throat.spm_resistor"][pos_cc_Ts] = False
     net["throat.spm_resistor"][neg_cc_Ts] = False
+    net["throat.spm_resistor"][net["throat.free_stream"]] = False
     net["throat.spm_resistor_order"] = -1
     net["throat.spm_resistor_order"][net["throat.spm_resistor"]] = np.arange(Nunit)
     net["throat.spm_neg_inner"] = net["throat.spm_resistor"]
-    net["pore.free_stream"] = False
+
     del net["pore.left"]
     del net["pore.right"]
     del net["pore.front"]
+    del net["pore.front_boundary"]
     del net["pore.back"]
+    del net["pore.back_boundary"]
     del net["pore.internal"]
     del net["pore.surface"]
     del net["throat.internal"]
@@ -319,7 +329,7 @@ def make_1D_net(config):
     op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
 
     net["pore.radial_position"] = net["pore.coords"][:, 0]
-    net["pore.arc_index"] = np.indices([Nunit + 2, 2, 1])[0].flatten()
+    net["pore.arc_index"] = np.indices([Nunit + 2, 4, 1])[0].flatten()
     net["pore.region_id"] = -1
     net["pore.cell_id"] = -1
     net["throat.arc_length"] = spacing

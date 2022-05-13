@@ -40,7 +40,7 @@ sep_rho = 1008.98
 sep_cp = 1978.16
 sep_k = 0.334
 [PHYSICS]
-do_thermal = False
+do_thermal = True
 cp = 1399.0
 rho = 2055.0
 K0 = 1.0
