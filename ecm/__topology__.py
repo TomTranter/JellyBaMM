@@ -283,7 +283,7 @@ def make_1D_net(config):
     tt.trim(net, throats=T)
     T = net.find_neighbor_throats(net.pores("right"), mode="xnor")
     tt.trim(net, throats=T)
-    
+
     pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
     neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
 
