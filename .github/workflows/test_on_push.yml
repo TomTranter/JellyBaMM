@@ -42,7 +42,7 @@ jobs:
       run: |
         pip install wheel
         python -m pip install -e .
-    - name: Install specific version of PyBaMM and liionpack and sympy
+    - name: Install specific version of PyBaMM and liionpack
       run: |
         python -m pip install pybamm==22.3
         python -m pip install git+https://github.com/pybamm-team/liionpack@main
