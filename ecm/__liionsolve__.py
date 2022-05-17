@@ -91,36 +91,6 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, save_path, proj
     ###########################################################################
     # Output variables                                                        #
     ###########################################################################
-    # temp = np.ones([Nsteps, Nspm])
-    # temp.fill(np.nan)
-    # lithiations = {
-    #     "X-averaged negative electrode extent of lithiation": temp.copy(),
-    #     "X-averaged positive electrode extent of lithiation": temp.copy(),
-    # }
-    # variables = {
-    #     # "X-averaged negative particle surface concentration [mol.m-3]": temp.copy(),
-    #     # "X-averaged positive particle surface concentration [mol.m-3]": temp.copy(),
-    #     "Terminal voltage [V]": temp.copy(),
-    #     "Volume-averaged cell temperature [K]": temp.copy(),
-    #     "Current collector current density [A.m-2]": temp.copy(),
-    # }
-    # overpotentials = {
-    #     "X-averaged battery reaction overpotential [V]": temp.copy(),
-    #     "X-averaged battery concentration overpotential [V]": temp.copy(),
-    #     "X-averaged battery electrolyte ohmic losses [V]": temp.copy(),
-    #     "X-averaged battery solid phase ohmic losses [V]": temp.copy(),
-    #     "Change in measured open circuit voltage [V]": temp.copy(),
-    # }
-    # variables_heating = {
-    #     # "Volume-averaged Ohmic heating [W.m-3]": temp.copy(),
-    #     # "Volume-averaged irreversible electrochemical heating [W.m-3]": temp.copy(),
-    #     # "Volume-averaged reversible heating [W.m-3]": temp.copy(),
-    #     "Volume-averaged total heating [W.m-3]": temp.copy(),
-    # }
-    # lithiations_keys = list(lithiations.keys())
-    # variable_keys = list(variables.keys())
-    # heating_keys = list(variables_heating.keys())
-    # output_variables = variable_keys + heating_keys + lithiations_keys
     output_variables = ecm.output_variables()
     ###########################################################################
     # Thermal parameters                                                      #
@@ -131,27 +101,24 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, save_path, proj
     )
     # Delta_T_spm = Delta_T * (typical_height / electrode_heights)
     T_ref = parameter_values.process_symbol(params.T_ref).evaluate()
-    T0 = config.getfloat("PHYSICS", "T0")
-    lumpy_therm = ecm.lump_thermal_props(config)
+    T0 = parameter_values["Initial temperature [K]"]
+    lumpy_therm = ecm.lump_thermal_props(parameter_values)
     cp = lumpy_therm["lump_Cp"]
     rho = lumpy_therm["lump_rho"]
     T_non_dim = (T0 - T_ref) / Delta_T
     T_non_dim_spm = np.ones(len(res_Ts)) * T_non_dim
-    ###########################################################################
-    # Simulation variables
-    ###########################################################################
-    # local_R = np.zeros([Nspm, Nsteps])
-    # all_time_I_local = np.zeros([Nsteps, Nspm])
+
     ###########################################################################
     # Run time config                                                         #
     ###########################################################################
     # outer_step = 0
-    if config.getboolean("PHYSICS", "do_thermal"):
-        ecm.setup_thermal(project, config)
-    try:
-        thermal_third = config.getboolean("RUN", "third")
-    except KeyError:
-        thermal_third = False
+    # if config.getboolean("PHYSICS", "do_thermal"):
+    # Always do thermal
+    ecm.setup_thermal(project, parameter_values)
+    # try:
+    #     thermal_third = config.getboolean("RUN", "third")
+    # except KeyError:
+    thermal_third = False
     ###########################################################################
     # New Liionpack code                                                      #
     ###########################################################################
@@ -240,12 +207,6 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, save_path, proj
     ###########################################################################
     T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
-    # experiment = pybamm.Experiment(
-    #     [
-    #         f"Discharge at {I_app} A for {hours} hours",
-    #     ],
-    #     period=f"{dt} seconds",
-    # )
     # Solve the pack
     manager = lp.casadi_manager()
     manager.solve(
@@ -299,44 +260,6 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, save_path, proj
     lp.logger.notice(
         "Time per step " + str(np.around((toc - tic) / manager.Nsteps, 3)) + "s"
     )
-
-    ###########################################################################
-    # Collect output                                                          #
-    ###########################################################################
-    # variables["ECM R local"] = local_R[sorted_res_Ts, :outer_step].T
-    # variables["ECM I Local"] = all_time_I_local[:outer_step, sorted_res_Ts]
-
-    # variables.update(lithiations)
-    # if config.getboolean("PHYSICS", "do_thermal"):
-    #     variables.update(variables_heating)
-    # if outer_step < Nsteps:
-    #     for key in variables.keys():
-    #         variables[key] = variables[key][: outer_step - 1, :]
-    #     for key in overpotentials.keys():
-    #         overpotentials[key] = overpotentials[key][: outer_step - 1, :]
-
-    # if config.getboolean("OUTPUT", "save"):
-    #     print("Saving to", save_path)
-    #     lower_mask = net["throat.spm_neg_inner"][res_Ts[sorted_res_Ts]]
-    #     ecm.export(
-    #         project,
-    #         save_path,
-    #         variables,
-    #         "var_",
-    #         lower_mask=lower_mask,
-    #         save_animation=False,
-    #     )
-    #     ecm.export(
-    #         project,
-    #         save_path,
-    #         overpotentials,
-    #         "eta_",
-    #         lower_mask=lower_mask,
-    #         save_animation=False,
-    #     )
-    #     parent_dir = os.path.dirname(save_path)
-    #     wrk.save_project(project=project, filename=os.path.join(parent_dir, "net"))
-    #     # project.export_data(phases=[phase], filename='ecm.vtp')
 
     print("*" * 30)
     print("ECM Sim time", ticker.time() - st)

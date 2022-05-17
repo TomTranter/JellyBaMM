@@ -25,7 +25,7 @@ if __name__ == "__main__":
     print(save_root)
     config = configparser.ConfigParser()
     config.read(os.path.join(save_root, "config.txt"))
-    print(ecm.lump_thermal_props(config))
+
     # Experiment
     I_app = 0.35
     dt = 30
@@ -64,6 +64,7 @@ if __name__ == "__main__":
     # Passing None as initial_soc will take values from Parameter set and apply
     # uniformly everywhere
     initial_soc = None
+    thermal_props = print(ecm.lump_thermal_props(param))
     # Run simulation
     project, output = ecm.run_simulation_lp(parameter_values=param,
                                             experiment=experiment,

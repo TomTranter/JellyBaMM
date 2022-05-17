@@ -294,19 +294,20 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     return geo
 
 
-def setup_thermal(project, config):
-    sub = "PHYSICS"
-    T0 = config.getfloat(sub, "T0")
-    lumpy_therm = lump_thermal_props(config)
+def setup_thermal(project, parameter_values):
+    # sub = "PHYSICS"
+    # T0 = config.getfloat(sub, "T0")
+    T0 = parameter_values["Initial temperature [K]"]
+    lumpy_therm = lump_thermal_props(parameter_values)
     cp = lumpy_therm["lump_Cp"]
     rho = lumpy_therm["lump_rho"]
-
-    heat_transfer_coefficient = config.getfloat(sub, "heat_transfer_coefficient")
+    total_htc = parameter_values["Total heat transfer coefficient [W.m-2.K-1]"]
+    # heat_transfer_coefficient = config.getfloat(sub, "heat_transfer_coefficient")
     net = project.network
     geo = project.geometries()["geo_01"]
     phase = project.phases()["phase_01"]
     phys = project.physics()["phys_01"]
-    hc = heat_transfer_coefficient / (cp * rho)
+    hc = total_htc / (cp * rho)
     # Set up Phase and Physics
     phase["pore.temperature"] = T0
     alpha_spiral = lumpy_therm["alpha_spiral"]
@@ -628,52 +629,36 @@ def update_tabs(project, config):
     net["pore.neg_tab"][neg_tabs] = True
 
 
-def lump_thermal_props(config):
-    sec = "THICKNESS"
-    pixel_size = config.getfloat(sec, "pixel_size")
-    lens = np.array(
-        [
-            config.getfloat(sec, "neg_electrode"),
-            config.getfloat(sec, "pos_electrode"),
-            config.getfloat(sec, "neg_cc") / 2,
-            config.getfloat(sec, "pos_cc") / 2,
-            config.getfloat(sec, "sep"),
+def lump_thermal_props(param):
+    layers = [
+        "Negative electrode",
+        "Positive electrode",
+        "Negative current collector",
+        "Positive current collector",
+        "Separator",
         ]
-    )
-    lens *= pixel_size
-    sec = "MATERIAL"
-    rhos = np.array(
-        [
-            config.getfloat(sec, "neg_rho"),
-            config.getfloat(sec, "pos_rho"),
-            config.getfloat(sec, "neg_cc_rho"),
-            config.getfloat(sec, "pos_cc_rho"),
-            config.getfloat(sec, "sep_rho"),
+    props = [
+        "thickness [m]",
+        "density [kg.m-3]",
+        "specific heat capacity [J.kg-1.K-1]",
+        "thermal conductivity [W.m-1.K-1]"
         ]
-    )
+    all_props = np.zeros([len(props), len(layers)])
+    for i, prop in enumerate(props):
+        for j, l in enumerate(layers):
+            all_props[i][j] = param[l + " " + prop]
+    # Break them up
+    lens = all_props[:, 0]
+    rhos = all_props[:, 1]
+    Cps = all_props[:, 2]
+    ks = all_props[:, 3]
+    # Lumped props
     rho_lump = np.sum(lens * rhos) / np.sum(lens)
-    Cps = np.array(
-        [
-            config.getfloat(sec, "neg_cp"),
-            config.getfloat(sec, "pos_cp"),
-            config.getfloat(sec, "neg_cc_cp"),
-            config.getfloat(sec, "pos_cc_cp"),
-            config.getfloat(sec, "sep_cp"),
-        ]
-    )
     Cp_lump = np.sum(lens * rhos * Cps) / np.sum(lens * rhos)
-    ks = np.array(
-        [
-            config.getfloat(sec, "neg_k"),
-            config.getfloat(sec, "pos_k"),
-            config.getfloat(sec, "neg_cc_k"),
-            config.getfloat(sec, "pos_cc_k"),
-            config.getfloat(sec, "sep_k"),
-        ]
-    )
+    # Thermal diffusivity alpha = k / (rho * Cp)
     alphas = ks / (rhos * Cps)
+    # Thermal resistance
     res = 1 / alphas
-    print(res)
     R_radial = np.sum(lens * res) / np.sum(lens)
     R_spiral = np.sum(lens) / np.sum(lens / res)
     out = {
