@@ -1,9 +1,0 @@
-[THICKNESS]
-length_3d = 0.08
-pixel_size = 10.4e-6
-neg_electrode = 8.0
-pos_electrode = 7.0
-neg_cc = 2.0
-pos_cc = 2.0
-sep = 2.0
-

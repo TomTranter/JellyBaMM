@@ -8,7 +8,6 @@ Created on Wed Oct 21 11:25:15 2020
 import openpnm as op
 import matplotlib.pyplot as plt
 import ecm
-import configparser
 import os
 import liionpack as lp
 import pybamm
@@ -23,12 +22,6 @@ wrk.clear()
 
 if __name__ == "__main__":
     save_root = os.path.join(ecm.OUTPUT_DIR, '1d')
-    print(save_root)
-    config = configparser.ConfigParser()
-    config.read(os.path.join(save_root, 'config.txt'))
-    print(ecm.lump_thermal_props(config))
-    ecm.print_config(config)
-
     # Experiment
     I_app = 1.0
     dt = 30
@@ -56,6 +49,10 @@ if __name__ == "__main__":
     # This parameter set has the longer length set to the Electrode width
     # We want to swap this round
     param['Electrode width [m]'] = length_3d
-    project, output = ecm.run_simulation_lp(param, experiment, save_path,
-                                            project, config)
+    initial_soc = None
+    project, output = ecm.run_simulation_lp(parameter_values=param,
+                                            experiment=experiment,
+                                            initial_soc=initial_soc,
+                                            save_path=save_path,
+                                            project=project)
     lp.plot_output(output)

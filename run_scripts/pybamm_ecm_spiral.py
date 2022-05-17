@@ -8,7 +8,6 @@ Created on Wed Oct 21 11:25:15 2020
 import openpnm as op
 import matplotlib.pyplot as plt
 import ecm
-import configparser
 import os
 import liionpack as lp
 import pybamm
@@ -22,10 +21,6 @@ wrk.clear()
 
 if __name__ == "__main__":
     save_root = os.path.join(ecm.OUTPUT_DIR, "spiral")
-    print(save_root)
-    config = configparser.ConfigParser()
-    config.read(os.path.join(save_root, "config.txt"))
-
     # Experiment
     I_app = 0.35
     dt = 30
@@ -70,6 +65,5 @@ if __name__ == "__main__":
                                             experiment=experiment,
                                             initial_soc=initial_soc,
                                             save_path=save_path,
-                                            project=project,
-                                            config=config)
+                                            project=project)
     lp.plot_output(output)

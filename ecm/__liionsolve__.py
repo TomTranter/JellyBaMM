@@ -35,7 +35,7 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(parameter_values, experiment, initial_soc, save_path, project, config):
+def run_simulation_lp(parameter_values, experiment, initial_soc, save_path, project):
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
