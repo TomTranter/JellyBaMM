@@ -1,3 +1,2 @@
 openpnm
 pybamm==22.3
-jaxlib
