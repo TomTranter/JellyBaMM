@@ -11,6 +11,8 @@ import ecm
 import configparser
 import os
 import liionpack as lp
+import pybamm
+
 
 plt.close("all")
 
@@ -24,25 +26,33 @@ if __name__ == "__main__":
     config = configparser.ConfigParser()
     config.read(os.path.join(save_root, "config.txt"))
     print(ecm.lump_thermal_props(config))
-    I_apps = [config.get("RUN", key) for key in config["RUN"] if "i_app" in key]
-    for I_app in I_apps:
-        save_path = save_root + "\\" + I_app + "A"
-        Nlayers = 2
-        dtheta = 10
-        spacing = 195e-6  # To do should come from params
-        pos_tabs = [-1]
-        neg_tabs = [0]
-        length_3d = 0.08
-        tesla_tabs = False
-        project, arc_edges = ecm.make_spiral_net(Nlayers,
-                                                 dtheta,
-                                                 spacing,
-                                                 pos_tabs,
-                                                 neg_tabs,
-                                                 length_3d,
-                                                 tesla_tabs)
-        project, output = ecm.run_simulation_lp(float(I_app),
-                                                save_path,
-                                                project,
-                                                config)
-        lp.plot_output(output)
+    I_app = 0.35
+    dt = 30
+    Nsteps = 12
+    hours = dt * Nsteps / 3600
+    save_path = save_root + "\\" + str(I_app) + "A"
+    Nlayers = 2
+    dtheta = 10
+    spacing = 195e-6  # To do should come from params
+    pos_tabs = [-1]
+    neg_tabs = [0]
+    length_3d = 0.08
+    tesla_tabs = False
+    experiment = pybamm.Experiment(
+        [
+            f"Discharge at {I_app} A for {hours} hours",
+        ],
+        period=f"{dt} seconds",
+    )
+    project, arc_edges = ecm.make_spiral_net(Nlayers,
+                                             dtheta,
+                                             spacing,
+                                             pos_tabs,
+                                             neg_tabs,
+                                             length_3d,
+                                             tesla_tabs)
+    project, output = ecm.run_simulation_lp(experiment,
+                                            save_path,
+                                            project,
+                                            config)
+    lp.plot_output(output)

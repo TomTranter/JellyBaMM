@@ -11,6 +11,7 @@ import ecm
 import configparser
 import os
 import liionpack as lp
+import pybamm
 
 
 plt.close("all")
@@ -28,14 +29,22 @@ if __name__ == "__main__":
     print(ecm.lump_thermal_props(config))
     ecm.print_config(config)
 
-    I_apps = [config.get('RUN', key) for key in config['RUN'] if 'i_app' in key]
-    for I_app in I_apps:
-        save_path = save_root + '\\' + I_app + 'A'
-        Nunit = 10
-        spacing = 0.1
-        pos_tabs = [-1]
-        neg_tabs = [0]
-        project, arc_edges = ecm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
-        project, output = ecm.run_simulation_lp(float(I_app), save_path,
-                                                project, config)
-        lp.plot_output(output)
+    I_app = 1.0
+    dt = 30
+    Nsteps = 12
+    hours = dt * Nsteps / 3600
+    save_path = save_root + '\\' + str(I_app) + 'A'
+    Nunit = 10
+    spacing = 0.1
+    pos_tabs = [-1]
+    neg_tabs = [0]
+    project, arc_edges = ecm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
+    experiment = pybamm.Experiment(
+        [
+            f"Discharge at {I_app} A for {hours} hours",
+        ],
+        period=f"{dt} seconds",
+    )
+    project, output = ecm.run_simulation_lp(experiment, save_path,
+                                            project, config)
+    lp.plot_output(output)

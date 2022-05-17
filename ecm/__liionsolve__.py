@@ -35,7 +35,7 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(I_app, save_path, project, config):
+def run_simulation_lp(experiment, save_path, project, config):
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
@@ -59,6 +59,8 @@ def run_simulation_lp(I_app, save_path, project, config):
     electrode_heights = net["throat.electrode_height"][res_Ts]
     print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     typical_height = np.mean(electrode_heights)
+    # Take I_app from first command of the experiment
+    I_app = experiment.operating_conditions[0]['electric'][0]
     I_typical = I_app / Nspm
     temp_inputs = {"Current": I_typical, "Electrode height [m]": typical_height}
 
@@ -168,7 +170,7 @@ def run_simulation_lp(I_app, save_path, project, config):
     ###########################################################################
     # Initialisation
     external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
-    experiment = pybamm.Experiment(
+    experiment_init = pybamm.Experiment(
         [
             f"Discharge at {I_app} A for 4 seconds",
         ],
@@ -180,7 +182,7 @@ def run_simulation_lp(I_app, save_path, project, config):
         netlist=netlist,
         sim_func=lp.thermal_external,
         parameter_values=parameter_values,
-        experiment=experiment,
+        experiment=experiment_init,
         output_variables=output_variables,
         inputs=inputs,
         external_variables=external_variables,
@@ -236,12 +238,12 @@ def run_simulation_lp(I_app, save_path, project, config):
     ###########################################################################
     T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
-    experiment = pybamm.Experiment(
-        [
-            f"Discharge at {I_app} A for {hours} hours",
-        ],
-        period=f"{dt} seconds",
-    )
+    # experiment = pybamm.Experiment(
+    #     [
+    #         f"Discharge at {I_app} A for {hours} hours",
+    #     ],
+    #     period=f"{dt} seconds",
+    # )
     # Solve the pack
     manager = lp.casadi_manager()
     manager.solve(
