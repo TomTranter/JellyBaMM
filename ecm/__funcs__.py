@@ -74,49 +74,6 @@ def output_variables():
     ]
 
 
-def make_spm(I_typical, config):
-    thermal = config.getboolean("PHYSICS", "do_thermal")
-
-    model_cfg = config.get("RUN", "model")
-
-    if model_cfg == "SPM":
-        model_class = pybamm.lithium_ion.SPM
-    elif model_cfg == "SPMe":
-        model_class = pybamm.lithium_ion.SPMe
-    else:
-        model_class = pybamm.lithium_ion.DFN
-    if thermal:
-        model_options = {
-            "thermal": "x-lumped",
-            "external submodels": ["thermal"],
-            "timescale": 1000,
-        }
-        model = model_class(model_options)
-    else:
-        model_options = {
-            "timescale": 1000,
-        }
-        model = model_class(model_options)
-    geometry = model.default_geometry
-    param = make_parameters(I_typical, config)
-    param.process_model(model)
-    param.process_geometry(geometry)
-    var = pybamm.standard_spatial_vars
-    var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 10, var.r_p: 10}
-    spatial_methods = model.default_spatial_methods
-    solver = pybamm.CasadiSolver()
-    sim = pybamm.Simulation(
-        model=model,
-        geometry=geometry,
-        parameter_values=param,
-        var_pts=var_pts,
-        spatial_methods=spatial_methods,
-        solver=solver,
-    )
-    sim.build(check_model=True)
-    return sim
-
-
 def calc_R(overpotentials, current):
     totdV = -np.sum(overpotentials, axis=1)
     return totdV / current
