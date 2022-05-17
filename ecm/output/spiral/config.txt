@@ -1,13 +1,5 @@
 [RUN]
-I_app_a = 0.35
-parallel = True
-hours = 0.1
-model = SPMe
-vlim_lower = 2.7
-vlim_upper = 4.7
-third = False
-dt = 30
-chemistry = Chen2020
+third = True
 [THICKNESS]
 length_3d = 0.08
 pixel_size = 10.4e-6

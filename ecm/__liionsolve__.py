@@ -10,7 +10,7 @@ import openpnm as op
 import liionpack as lp
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import configparser
+# import configparser
 
 
 wrk = op.Workspace()
@@ -41,13 +41,13 @@ def run_simulation_lp(parameter_values, experiment, save_path, project, config):
     ###########################################################################
     st = ticker.time()
     max_workers = int(os.cpu_count() / 2)
-    hours = config.getfloat("RUN", "hours")
-    try:
-        dt = config.getfloat("RUN", "dt")
-        Nsteps = np.int(np.ceil(hours * 3600 / dt) + 1)
-    except configparser.NoOptionError:
-        dt = 30
-        Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
+    # hours = config.getfloat("RUN", "hours")
+    # try:
+        # dt = config.getfloat("RUN", "dt")
+        # Nsteps = np.int(np.ceil(hours * 3600 / dt) + 1)
+    # except configparser.NoOptionError:
+        # dt = 30
+        # Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
     net = project.network
     phase = project.phases()["phase_01"]
     # The jellyroll layers are double sided around the cc except for the inner
@@ -55,7 +55,7 @@ def run_simulation_lp(parameter_values, experiment, save_path, project, config):
     # connections between cc layers
     Nspm = net.num_throats("spm_resistor")
     res_Ts = net.throats("spm_resistor")
-    sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
+    # sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
     electrode_heights = net["throat.electrode_height"][res_Ts]
     print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     typical_height = np.mean(electrode_heights)
@@ -91,36 +91,37 @@ def run_simulation_lp(parameter_values, experiment, save_path, project, config):
     ###########################################################################
     # Output variables                                                        #
     ###########################################################################
-    temp = np.ones([Nsteps, Nspm])
-    temp.fill(np.nan)
-    lithiations = {
-        "X-averaged negative electrode extent of lithiation": temp.copy(),
-        "X-averaged positive electrode extent of lithiation": temp.copy(),
-    }
-    variables = {
-        # "X-averaged negative particle surface concentration [mol.m-3]": temp.copy(),
-        # "X-averaged positive particle surface concentration [mol.m-3]": temp.copy(),
-        "Terminal voltage [V]": temp.copy(),
-        "Volume-averaged cell temperature [K]": temp.copy(),
-        "Current collector current density [A.m-2]": temp.copy(),
-    }
-    overpotentials = {
-        "X-averaged battery reaction overpotential [V]": temp.copy(),
-        "X-averaged battery concentration overpotential [V]": temp.copy(),
-        "X-averaged battery electrolyte ohmic losses [V]": temp.copy(),
-        "X-averaged battery solid phase ohmic losses [V]": temp.copy(),
-        "Change in measured open circuit voltage [V]": temp.copy(),
-    }
-    variables_heating = {
-        # "Volume-averaged Ohmic heating [W.m-3]": temp.copy(),
-        # "Volume-averaged irreversible electrochemical heating [W.m-3]": temp.copy(),
-        # "Volume-averaged reversible heating [W.m-3]": temp.copy(),
-        "Volume-averaged total heating [W.m-3]": temp.copy(),
-    }
-    lithiations_keys = list(lithiations.keys())
-    variable_keys = list(variables.keys())
-    heating_keys = list(variables_heating.keys())
-    output_variables = variable_keys + heating_keys + lithiations_keys
+    # temp = np.ones([Nsteps, Nspm])
+    # temp.fill(np.nan)
+    # lithiations = {
+    #     "X-averaged negative electrode extent of lithiation": temp.copy(),
+    #     "X-averaged positive electrode extent of lithiation": temp.copy(),
+    # }
+    # variables = {
+    #     # "X-averaged negative particle surface concentration [mol.m-3]": temp.copy(),
+    #     # "X-averaged positive particle surface concentration [mol.m-3]": temp.copy(),
+    #     "Terminal voltage [V]": temp.copy(),
+    #     "Volume-averaged cell temperature [K]": temp.copy(),
+    #     "Current collector current density [A.m-2]": temp.copy(),
+    # }
+    # overpotentials = {
+    #     "X-averaged battery reaction overpotential [V]": temp.copy(),
+    #     "X-averaged battery concentration overpotential [V]": temp.copy(),
+    #     "X-averaged battery electrolyte ohmic losses [V]": temp.copy(),
+    #     "X-averaged battery solid phase ohmic losses [V]": temp.copy(),
+    #     "Change in measured open circuit voltage [V]": temp.copy(),
+    # }
+    # variables_heating = {
+    #     # "Volume-averaged Ohmic heating [W.m-3]": temp.copy(),
+    #     # "Volume-averaged irreversible electrochemical heating [W.m-3]": temp.copy(),
+    #     # "Volume-averaged reversible heating [W.m-3]": temp.copy(),
+    #     "Volume-averaged total heating [W.m-3]": temp.copy(),
+    # }
+    # lithiations_keys = list(lithiations.keys())
+    # variable_keys = list(variables.keys())
+    # heating_keys = list(variables_heating.keys())
+    # output_variables = variable_keys + heating_keys + lithiations_keys
+    output_variables = ecm.output_variables()
     ###########################################################################
     # Thermal parameters                                                      #
     ###########################################################################
@@ -139,12 +140,12 @@ def run_simulation_lp(parameter_values, experiment, save_path, project, config):
     ###########################################################################
     # Simulation variables
     ###########################################################################
-    local_R = np.zeros([Nspm, Nsteps])
-    all_time_I_local = np.zeros([Nsteps, Nspm])
+    # local_R = np.zeros([Nspm, Nsteps])
+    # all_time_I_local = np.zeros([Nsteps, Nspm])
     ###########################################################################
     # Run time config                                                         #
     ###########################################################################
-    outer_step = 0
+    # outer_step = 0
     if config.getboolean("PHYSICS", "do_thermal"):
         ecm.setup_thermal(project, config)
     try:
@@ -302,40 +303,40 @@ def run_simulation_lp(parameter_values, experiment, save_path, project, config):
     ###########################################################################
     # Collect output                                                          #
     ###########################################################################
-    variables["ECM R local"] = local_R[sorted_res_Ts, :outer_step].T
-    variables["ECM I Local"] = all_time_I_local[:outer_step, sorted_res_Ts]
+    # variables["ECM R local"] = local_R[sorted_res_Ts, :outer_step].T
+    # variables["ECM I Local"] = all_time_I_local[:outer_step, sorted_res_Ts]
 
-    variables.update(lithiations)
-    if config.getboolean("PHYSICS", "do_thermal"):
-        variables.update(variables_heating)
-    if outer_step < Nsteps:
-        for key in variables.keys():
-            variables[key] = variables[key][: outer_step - 1, :]
-        for key in overpotentials.keys():
-            overpotentials[key] = overpotentials[key][: outer_step - 1, :]
+    # variables.update(lithiations)
+    # if config.getboolean("PHYSICS", "do_thermal"):
+    #     variables.update(variables_heating)
+    # if outer_step < Nsteps:
+    #     for key in variables.keys():
+    #         variables[key] = variables[key][: outer_step - 1, :]
+    #     for key in overpotentials.keys():
+    #         overpotentials[key] = overpotentials[key][: outer_step - 1, :]
 
-    if config.getboolean("OUTPUT", "save"):
-        print("Saving to", save_path)
-        lower_mask = net["throat.spm_neg_inner"][res_Ts[sorted_res_Ts]]
-        ecm.export(
-            project,
-            save_path,
-            variables,
-            "var_",
-            lower_mask=lower_mask,
-            save_animation=False,
-        )
-        ecm.export(
-            project,
-            save_path,
-            overpotentials,
-            "eta_",
-            lower_mask=lower_mask,
-            save_animation=False,
-        )
-        parent_dir = os.path.dirname(save_path)
-        wrk.save_project(project=project, filename=os.path.join(parent_dir, "net"))
-        # project.export_data(phases=[phase], filename='ecm.vtp')
+    # if config.getboolean("OUTPUT", "save"):
+    #     print("Saving to", save_path)
+    #     lower_mask = net["throat.spm_neg_inner"][res_Ts[sorted_res_Ts]]
+    #     ecm.export(
+    #         project,
+    #         save_path,
+    #         variables,
+    #         "var_",
+    #         lower_mask=lower_mask,
+    #         save_animation=False,
+    #     )
+    #     ecm.export(
+    #         project,
+    #         save_path,
+    #         overpotentials,
+    #         "eta_",
+    #         lower_mask=lower_mask,
+    #         save_animation=False,
+    #     )
+    #     parent_dir = os.path.dirname(save_path)
+    #     wrk.save_project(project=project, filename=os.path.join(parent_dir, "net"))
+    #     # project.export_data(phases=[phase], filename='ecm.vtp')
 
     print("*" * 30)
     print("ECM Sim time", ticker.time() - st)

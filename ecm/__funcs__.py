@@ -121,6 +121,24 @@ def adjust_parameters(parameter_values, I_typical):
     parameter_values.update({"Current": "[input]"}, check_already_exists=False)
     return parameter_values
 
+def output_variables():
+
+    return [
+        "Terminal voltage [V]",
+        "Volume-averaged cell temperature [K]",
+        "Current collector current density [A.m-2]",
+        "X-averaged negative electrode extent of lithiation",
+        "X-averaged positive electrode extent of lithiation",
+        "Volume-averaged total heating [W.m-3]",
+        "X-averaged battery reaction overpotential [V]",
+        "X-averaged battery concentration overpotential [V]",
+        "X-averaged battery electrolyte ohmic losses [V]",
+        "X-averaged battery solid phase ohmic losses [V]",
+        "Change in measured open circuit voltage [V]",
+        ]
+
+
+
 def make_spm(I_typical, config):
     thermal = config.getboolean("PHYSICS", "do_thermal")
 
