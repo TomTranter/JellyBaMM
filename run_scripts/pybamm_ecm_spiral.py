@@ -61,10 +61,14 @@ if __name__ == "__main__":
     # This parameter set has the longer length set to the Electrode width
     # We want to swap this round
     param['Electrode width [m]'] = length_3d
+    # Passing None as initial_soc will take values from Parameter set and apply
+    # uniformly everywhere
+    initial_soc = None
     # Run simulation
-    project, output = ecm.run_simulation_lp(param,
-                                            experiment,
-                                            save_path,
-                                            project,
-                                            config)
+    project, output = ecm.run_simulation_lp(parameter_values=param,
+                                            experiment=experiment,
+                                            initial_soc=initial_soc,
+                                            save_path=save_path,
+                                            project=project,
+                                            config=config)
     lp.plot_output(output)

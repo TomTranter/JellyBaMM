@@ -38,9 +38,3 @@ pos_elec_econd = 100
 [INIT]
 neg_conc = 23800
 pos_conc = 27300
-[OUTPUT]
-save = True
-plot = True
-animate = False
-
-

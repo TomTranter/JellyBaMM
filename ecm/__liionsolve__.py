@@ -35,7 +35,7 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(parameter_values, experiment, save_path, project, config):
+def run_simulation_lp(parameter_values, experiment, initial_soc, save_path, project, config):
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
@@ -189,7 +189,7 @@ def run_simulation_lp(parameter_values, experiment, save_path, project, config):
         inputs=inputs,
         external_variables=external_variables,
         nproc=max_workers,
-        initial_soc=0.5,
+        initial_soc=initial_soc,
         setup_only=True,
     )
     Qvar = "Volume-averaged total heating [W.m-3]"
@@ -257,7 +257,7 @@ def run_simulation_lp(parameter_values, experiment, save_path, project, config):
         inputs=inputs,
         external_variables=external_variables,
         nproc=max_workers,
-        initial_soc=0.5,
+        initial_soc=initial_soc,
         setup_only=True,
     )
     Qvar = "Volume-averaged total heating [W.m-3]"
