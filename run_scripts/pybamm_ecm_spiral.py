@@ -17,7 +17,6 @@ plt.close("all")
 # pybamm.set_logging_level("INFO")
 wrk = op.Workspace()
 wrk.clear()
-mode = "new"
 
 if __name__ == "__main__":
     save_root = os.path.join(ecm.OUTPUT_DIR, "spiral")
@@ -28,11 +27,22 @@ if __name__ == "__main__":
     I_apps = [config.get("RUN", key) for key in config["RUN"] if "i_app" in key]
     for I_app in I_apps:
         save_path = save_root + "\\" + I_app + "A"
-        if mode == "old":
-            project, output, variables = ecm.run_simulation(
-                float(I_app), save_path, config
-            )
-        else:
-            project, output = ecm.run_simulation_lp(float(I_app), save_path,
-                                                    config)
-            lp.plot_output(output)
+        Nlayers = 2
+        dtheta = 10
+        spacing = 195e-6 # To do should come from params
+        pos_tabs = [-1]
+        neg_tabs = [0]
+        length_3d = 0.08
+        tesla_tabs = False
+        project, arc_edges = ecm.make_spiral_net(Nlayers,
+                                                 dtheta,
+                                                 spacing,
+                                                 pos_tabs,
+                                                 neg_tabs,
+                                                 length_3d,
+                                                 tesla_tabs)
+        project, output = ecm.run_simulation_lp(float(I_app),
+                                                save_path,
+                                                project,
+                                                config)
+        lp.plot_output(output)

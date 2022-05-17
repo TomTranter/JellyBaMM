@@ -35,7 +35,7 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(I_app, save_path, config):
+def run_simulation_lp(I_app, save_path, project, config):
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
@@ -48,12 +48,12 @@ def run_simulation_lp(I_app, save_path, config):
     except configparser.NoOptionError:
         dt = 30
         Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
-    if config.get("GEOMETRY", "domain") == "model":
-        project, arc_edges = ecm.make_spiral_net(config)
-    elif config.get("GEOMETRY", "domain") == "1d":
-        project, arc_edges = ecm.make_1D_net(config)
-    else:
-        project, arc_edges = ecm.make_tomo_net(config)
+    # if config.get("GEOMETRY", "domain") == "model":
+    #     project, arc_edges = ecm.make_spiral_net(config)
+    # elif config.get("GEOMETRY", "domain") == "1d":
+    #     project, arc_edges = ecm.make_1D_net(config)
+    # else:
+    #     project, arc_edges = ecm.make_tomo_net(config)
 
     net = project.network
     if config.get("GEOMETRY", "domain") != "1d":
@@ -70,8 +70,7 @@ def run_simulation_lp(I_app, save_path, config):
     typical_height = np.mean(electrode_heights)
     I_typical = I_app / Nspm
     temp_inputs = {"Current": I_typical, "Electrode height [m]": typical_height}
-    total_length = arc_edges[-1]  # m
-    print("Total cc length", total_length)
+
     print("Total pore volume", np.sum(net["pore.volume"]))
     print("Mean throat area", np.mean(net["throat.area"]))
     print("Num throats", net.num_throats())
