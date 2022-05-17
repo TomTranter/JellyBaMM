@@ -7,6 +7,7 @@ model = SPMe
 vlim_lower = 2.7
 vlim_upper = 4.7
 third = False
+chemistry = Chen2020
 [GEOMETRY]
 domain = tomo
 dtheta = 10

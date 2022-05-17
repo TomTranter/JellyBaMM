@@ -232,7 +232,7 @@ def run_simulation_lp(I_app, save_path, config):
             step += 1
             pbar.update(1)
             temp_Ri = np.array(netlist.loc[manager.Ri_map].value)
-            plt.scatter(e_heights, temp_Ri, label=str(step))
+            plt.scatter(np.arange(len(temp_Ri)), temp_Ri, label=str(step))
     plt.legend()
     manager.step = step
     toc = ticker.time()

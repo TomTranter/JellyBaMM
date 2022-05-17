@@ -6,6 +6,7 @@ model = SPMe
 vlim_lower = 2.7
 vlim_upper = 4.7
 third = False
+chemistry = Chen2020
 [GEOMETRY]
 domain = 1d
 dtheta = 10
@@ -14,8 +15,8 @@ length_3d = 0.080
 Nlayers = 4
 pos_tabs = -1
 neg_tabs = 0
-nunit_OneD = 100
-spacing_OneD = 0.01
+nunit_OneD = 5
+spacing_OneD = 0.2
 [THICKNESS]
 pixel_size = 10.4e-6
 neg_electrode = 8.0

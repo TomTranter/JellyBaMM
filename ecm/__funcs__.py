@@ -85,7 +85,8 @@ def make_parameters(I_typical, config):
     t_sep = config.getfloat(sub, "sep")
     t_neg_cc = config.getfloat(sub, "neg_cc")
     t_pos_cc = config.getfloat(sub, "pos_cc")
-    param = pybamm.ParameterValues("Chen2020")
+    chemistry = config.get("RUN", "chemistry")
+    param = pybamm.ParameterValues(chemistry)
     param.update(
         {
             "Typical current [A]": I_typical,

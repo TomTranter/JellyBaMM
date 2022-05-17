@@ -7,6 +7,7 @@ vlim_lower = 2.7
 vlim_upper = 4.7
 third = False
 dt = 30
+chemistry = Chen2020
 [GEOMETRY]
 domain = model
 dtheta = 10
