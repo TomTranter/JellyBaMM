@@ -108,6 +108,18 @@ def make_parameters(I_typical, config):
     param.update({"Current": "[input]"}, check_already_exists=False)
     return param
 
+def adjust_parameters(parameter_values, I_typical):
+
+    parameter_values.update(
+        {
+            "Typical current [A]": I_typical,
+            "Current function [A]": current_function,
+            "Electrode height [m]": "[input]",
+            # "Electrode width [m]": length_3d,
+        }
+    )
+    parameter_values.update({"Current": "[input]"}, check_already_exists=False)
+    return parameter_values
 
 def make_spm(I_typical, config):
     thermal = config.getboolean("PHYSICS", "do_thermal")

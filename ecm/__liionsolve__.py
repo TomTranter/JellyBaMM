@@ -35,7 +35,7 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(experiment, save_path, project, config):
+def run_simulation_lp(parameter_values, experiment, save_path, project, config):
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
@@ -75,7 +75,8 @@ def run_simulation_lp(experiment, save_path, project, config):
     ###########################################################################
     # Make the pybamm simulation - should be moved to a simfunc               #
     ###########################################################################
-    parameter_values = ecm.make_parameters(I_typical, config)
+    # parameter_values = ecm.make_parameters(I_typical, config)
+    parameter_values = ecm.adjust_parameters(parameter_values, I_typical)
     width = parameter_values["Electrode width [m]"]
     t1 = parameter_values["Negative electrode thickness [m]"]
     t2 = parameter_values["Positive electrode thickness [m]"]
