@@ -20,26 +20,6 @@ import ecm
 wrk = op.Workspace()
 
 
-def cc_cond_cfg(project, config):
-    net = project.network
-    length_3d = config.getfloat("THICKNESS", "length_3d")
-    neg_cc_econd = config.getfloat("PHYSICS", "neg_cc_econd")
-    pos_cc_econd = config.getfloat("PHYSICS", "pos_cc_econd")
-    pixel_size = config.getfloat("THICKNESS", "pixel_size")
-    t_neg_cc = config.getfloat("THICKNESS", "neg_cc")
-    t_pos_cc = config.getfloat("THICKNESS", "pos_cc")
-    cc_len = net["throat.arc_length"]
-    neg_econd = neg_cc_econd * (pixel_size * t_neg_cc * length_3d)
-    pos_econd = pos_cc_econd * (pixel_size * t_pos_cc * length_3d)
-    neg_Ts = net.throats("neg_cc")
-    neg_econd = neg_econd / cc_len[neg_Ts]
-    pos_Ts = net.throats("pos_cc")
-    pos_econd = pos_econd / cc_len[pos_Ts]
-    net['throat.electrical_conductance'] = 0.0
-    net['throat.electrical_conductance'][neg_Ts] = neg_econd
-    net['throat.electrical_conductance'][pos_Ts] = pos_econd
-    return neg_econd, pos_econd
-
 def cc_cond(project, param):
     net = project.network
     length_3d = param['Electrode width [m]']
@@ -60,72 +40,9 @@ def cc_cond(project, param):
     return neg_econd, pos_econd
 
 
-def setup_ecm_alg(project, config, R):
-    net = project.network
-    phase = project.phases()["phase_01"]
-    phys = project.physics()["phys_01"]
-    length_3d = config.getfloat("GEOMETRY", "length_3d")
-    neg_cc_econd = config.getfloat("PHYSICS", "neg_cc_econd")
-    pos_cc_econd = config.getfloat("PHYSICS", "pos_cc_econd")
-    pixel_size = config.getfloat("THICKNESS", "pixel_size")
-    t_neg_cc = config.getfloat("THICKNESS", "neg_cc")
-    t_pos_cc = config.getfloat("THICKNESS", "pos_cc")
-    cc_unit_len = net["throat.arc_length"]
-    neg_econd = neg_cc_econd * (pixel_size * t_neg_cc * length_3d)
-    pos_econd = pos_cc_econd * (pixel_size * t_pos_cc * length_3d)
-
-    phys["throat.electrical_conductance"] = 1.0
-    neg_Ts = net.throats("neg_cc")
-    phys["throat.electrical_conductance"][neg_Ts] = neg_econd / cc_unit_len[neg_Ts]
-    pos_Ts = net.throats("pos_cc")
-    phys["throat.electrical_conductance"][pos_Ts] = pos_econd / cc_unit_len[pos_Ts]
-    res_Ts = net.throats("spm_resistor")
-    phys["throat.electrical_conductance"][res_Ts] = 1 / R
-    alg = op.algorithms.OhmicConduction(network=net)
-    alg.setup(
-        phase=phase,
-        quantity="pore.potential",
-        conductance="throat.electrical_conductance",
-    )
-    alg.settings["rxn_tolerance"] = 1e-8
-    return alg
-
-
 def current_function(t):
     return pybamm.InputParameter("Current")
 
-
-def make_parameters(I_typical, config):
-    sub = "THICKNESS"
-    length_3d = config.getfloat(sub, "length_3d")
-    pixel_size = config.getfloat(sub, "pixel_size")
-    t_neg_electrode = config.getfloat(sub, "neg_electrode")
-    t_pos_electrode = config.getfloat(sub, "pos_electrode")
-    t_sep = config.getfloat(sub, "sep")
-    t_neg_cc = config.getfloat(sub, "neg_cc")
-    t_pos_cc = config.getfloat(sub, "pos_cc")
-    chemistry = config.get("RUN", "chemistry")
-    param = pybamm.ParameterValues(chemistry)
-    param.update(
-        {
-            "Typical current [A]": I_typical,
-            "Current function [A]": current_function,
-            "Electrode height [m]": "[input]",
-            "Electrode width [m]": length_3d,
-            "Negative electrode thickness [m]": t_neg_electrode * pixel_size,
-            "Positive electrode thickness [m]": t_pos_electrode * pixel_size,
-            "Separator thickness [m]": t_sep * pixel_size,
-            "Negative current collector thickness [m]": t_neg_cc * pixel_size,
-            "Positive current collector thickness [m]": t_pos_cc * pixel_size,
-        }
-    )
-
-    param["Negative electrode OCP [V]"] = ecm.neg_OCP
-    param["Positive electrode OCP [V]"] = ecm.pos_OCP
-    param["Negative electrode OCP entropic change [V.K-1]"] = ecm.neg_dUdT
-    param["Positive electrode OCP entropic change [V.K-1]"] = ecm.pos_dUdT
-    param.update({"Current": "[input]"}, check_already_exists=False)
-    return param
 
 def adjust_parameters(parameter_values, I_typical):
 
@@ -134,7 +51,6 @@ def adjust_parameters(parameter_values, I_typical):
             "Typical current [A]": I_typical,
             "Current function [A]": current_function,
             "Electrode height [m]": "[input]",
-            # "Electrode width [m]": length_3d,
         }
     )
     parameter_values.update({"Current": "[input]"}, check_already_exists=False)
@@ -306,14 +222,11 @@ def setup_geometry(net, dtheta, spacing, length_3d):
 
 
 def setup_thermal(project, parameter_values):
-    # sub = "PHYSICS"
-    # T0 = config.getfloat(sub, "T0")
     T0 = parameter_values["Initial temperature [K]"]
     lumpy_therm = lump_thermal_props(parameter_values)
     cp = lumpy_therm["lump_Cp"]
     rho = lumpy_therm["lump_rho"]
     total_htc = parameter_values["Total heat transfer coefficient [W.m-2.K-1]"]
-    # heat_transfer_coefficient = config.getfloat(sub, "heat_transfer_coefficient")
     net = project.network
     geo = project.geometries()["geo_01"]
     phase = project.phases()["phase_01"]
