@@ -29,6 +29,7 @@ setup(
     ],
     packages=["ecm"],
     install_requires=[
+        "jax"
         "numba",
         "pybamm==22.3",
         "openpnm",
