@@ -1,2 +1,2 @@
 openpnm
-pybamm
+pybamm==22.3
