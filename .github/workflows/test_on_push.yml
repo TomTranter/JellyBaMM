@@ -43,7 +43,7 @@ jobs:
         pip install wheel
         python -m pip install pybamm==22.3
         python -m pip install git+https://github.com/pybamm-team/liionpack@main
-        python -m pip install sympy==1.10
+        python -m pip install sympy==1.10.1
     - name: Install pybamm_pnm with dependencies
       run: |
         python -m pip install -e .
