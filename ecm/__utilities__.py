@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Oct 29 10:35:17 2020
+#
+# Utilities
+#
 
-@author: Tom
-"""
 import ecm
 import os
 import numpy as np
