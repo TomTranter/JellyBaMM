@@ -22,7 +22,7 @@ wrk = op.Workspace()
 
 def cc_cond(project, param):
     net = project.network
-    length_3d = param['Electrode width [m]']
+    length_3d = param["Electrode width [m]"]
     neg_cc_econd = param["Negative current collector conductivity [S.m-1]"]
     pos_cc_econd = param["Positive current collector conductivity [S.m-1]"]
     t_neg_cc = param["Negative current collector thickness [m]"]
@@ -34,9 +34,9 @@ def cc_cond(project, param):
     neg_econd = neg_econd / cc_len[neg_Ts]
     pos_Ts = net.throats("pos_cc")
     pos_econd = pos_econd / cc_len[pos_Ts]
-    net['throat.electrical_conductance'] = 0.0
-    net['throat.electrical_conductance'][neg_Ts] = neg_econd
-    net['throat.electrical_conductance'][pos_Ts] = pos_econd
+    net["throat.electrical_conductance"] = 0.0
+    net["throat.electrical_conductance"][neg_Ts] = neg_econd
+    net["throat.electrical_conductance"][pos_Ts] = pos_econd
     return neg_econd, pos_econd
 
 
@@ -56,6 +56,7 @@ def adjust_parameters(parameter_values, I_typical):
     parameter_values.update({"Current": "[input]"}, check_already_exists=False)
     return parameter_values
 
+
 def output_variables():
 
     return [
@@ -70,8 +71,7 @@ def output_variables():
         "X-averaged battery electrolyte ohmic losses [V]",
         "X-averaged battery solid phase ohmic losses [V]",
         "Change in measured open circuit voltage [V]",
-        ]
-
+    ]
 
 
 def make_spm(I_typical, config):
@@ -420,7 +420,7 @@ def export(
 
 
 def polar_transform(x, y):
-    r = np.sqrt(x ** 2 + y ** 2)
+    r = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y, x)
     return r, theta
 
@@ -560,13 +560,13 @@ def lump_thermal_props(param):
         "Negative current collector",
         "Positive current collector",
         "Separator",
-        ]
+    ]
     props = [
         "thickness [m]",
         "density [kg.m-3]",
         "specific heat capacity [J.kg-1.K-1]",
-        "thermal conductivity [W.m-1.K-1]"
-        ]
+        "thermal conductivity [W.m-1.K-1]",
+    ]
     all_props = np.zeros([len(props), len(layers)])
     for i, prop in enumerate(props):
         for j, l in enumerate(layers):

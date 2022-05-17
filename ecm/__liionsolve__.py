@@ -10,6 +10,7 @@ import openpnm as op
 import liionpack as lp
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+
 # import configparser
 
 
@@ -43,11 +44,11 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     max_workers = int(os.cpu_count() / 2)
     # hours = config.getfloat("RUN", "hours")
     # try:
-        # dt = config.getfloat("RUN", "dt")
-        # Nsteps = np.int(np.ceil(hours * 3600 / dt) + 1)
+    # dt = config.getfloat("RUN", "dt")
+    # Nsteps = np.int(np.ceil(hours * 3600 / dt) + 1)
     # except configparser.NoOptionError:
-        # dt = 30
-        # Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
+    # dt = 30
+    # Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
     net = project.network
     phase = project.phases()["phase_01"]
     # The jellyroll layers are double sided around the cc except for the inner
@@ -60,7 +61,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     typical_height = np.mean(electrode_heights)
     # Take I_app from first command of the experiment
-    I_app = experiment.operating_conditions[0]['electric'][0]
+    I_app = experiment.operating_conditions[0]["electric"][0]
     I_typical = I_app / Nspm
     temp_inputs = {"Current": I_typical, "Electrode height [m]": typical_height}
 
