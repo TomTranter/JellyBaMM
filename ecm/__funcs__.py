@@ -20,7 +20,7 @@ import ecm
 wrk = op.Workspace()
 
 
-def cc_cond(project, config):
+def cc_cond_cfg(project, config):
     net = project.network
     length_3d = config.getfloat("THICKNESS", "length_3d")
     neg_cc_econd = config.getfloat("PHYSICS", "neg_cc_econd")
@@ -31,6 +31,25 @@ def cc_cond(project, config):
     cc_len = net["throat.arc_length"]
     neg_econd = neg_cc_econd * (pixel_size * t_neg_cc * length_3d)
     pos_econd = pos_cc_econd * (pixel_size * t_pos_cc * length_3d)
+    neg_Ts = net.throats("neg_cc")
+    neg_econd = neg_econd / cc_len[neg_Ts]
+    pos_Ts = net.throats("pos_cc")
+    pos_econd = pos_econd / cc_len[pos_Ts]
+    net['throat.electrical_conductance'] = 0.0
+    net['throat.electrical_conductance'][neg_Ts] = neg_econd
+    net['throat.electrical_conductance'][pos_Ts] = pos_econd
+    return neg_econd, pos_econd
+
+def cc_cond(project, param):
+    net = project.network
+    length_3d = param['Electrode width [m]']
+    neg_cc_econd = param["Negative current collector conductivity [S.m-1]"]
+    pos_cc_econd = param["Positive current collector conductivity [S.m-1]"]
+    t_neg_cc = param["Negative current collector thickness [m]"]
+    t_pos_cc = param["Positive current collector thickness [m]"]
+    cc_len = net["throat.arc_length"]
+    neg_econd = neg_cc_econd * (t_neg_cc * length_3d)
+    pos_econd = pos_cc_econd * (t_pos_cc * length_3d)
     neg_Ts = net.throats("neg_cc")
     neg_econd = neg_econd / cc_len[neg_Ts]
     pos_Ts = net.throats("pos_cc")
@@ -142,14 +161,6 @@ def output_variables():
 def make_spm(I_typical, config):
     thermal = config.getboolean("PHYSICS", "do_thermal")
 
-    # sub = 'INIT'
-    # neg_conc = config.getfloat(sub, 'neg_conc')
-    # pos_conc = config.getfloat(sub, 'pos_conc')
-    # sub = 'PHYSICS'
-    # neg_elec_econd = config.getfloat(sub, 'neg_elec_econd')
-    # pos_elec_econd = config.getfloat(sub, 'pos_elec_econd')
-    # vlim_lower = config.getfloat('RUN', 'vlim_lower')
-    # vlim_upper = config.getfloat('RUN', 'vlim_upper')
     model_cfg = config.get("RUN", "model")
 
     if model_cfg == "SPM":

@@ -123,7 +123,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, save_path, proj
     # New Liionpack code                                                      #
     ###########################################################################
     dim_time_step = 10
-    neg_econd, pos_econd = ecm.cc_cond(project, config)
+    neg_econd, pos_econd = ecm.cc_cond(project, parameter_values)
     Rs = 1e-2  # series resistance
     Ri = 90  # initial guess for internal resistance
     V = 3.6  # initial guess for cell voltage

@@ -6,8 +6,4 @@ pos_electrode = 7.0
 neg_cc = 2.0
 pos_cc = 2.0
 sep = 2.0
-[PHYSICS]
-neg_cc_econd = 6.0e7
-pos_cc_econd = 3.0e7
-neg_elec_econd = 100
-pos_elec_econd = 100
+
