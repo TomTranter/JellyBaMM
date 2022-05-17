@@ -19,7 +19,7 @@ def current_function(t):
 
 
 increment_current = True
-model = pybamm.lithium_ion.DFN()
+model = pybamm.lithium_ion.DFN({'timescale': 1.0})
 geometry = model.default_geometry
 param = model.default_parameter_values
 param.update(

@@ -4,54 +4,112 @@
 
 import ecm
 import openpnm as op
-import matplotlib.pyplot as plt
-import configparser
-import os
-import shutil
+import pybamm
 import unittest
 
+
+wrk = op.Workspace()
 
 class funcsTest(unittest.TestCase):
     def _teardown(self, fpath):
         # Delete Data files
-        fp = [os.path.join(fpath, file) for file in os.listdir(fpath) if "A" in file]
-        for folder in fp:
-            shutil.rmtree(folder)
+        pass
 
-    def _ecm_general(self, config_location):
-        wrk = op.Workspace()
-        wrk.clear()
-        config = configparser.ConfigParser()
-        config.read(os.path.join(config_location, "config.txt"))
-        config.set("OUTPUT", "save", "True")
-        config.set("OUTPUT", "plot", "False")
-        I_apps = [config.get("RUN", key) for key in config["RUN"] if "i_app" in key]
-        for I_app in I_apps:
-            save_path = config_location + "\\" + I_app + "A"
-            prj, vrs, sols = ecm.run_simulation(float(I_app), save_path, config)
-        plt.close("all")
-        # _teardown(config_location)
-        assert 1 == 1
+    def _ecm_general(self, project):    
+        # Experiment
+        I_app = 0.35
+        dt = 30
+        Nsteps = 2
+        hours = dt * Nsteps / 3600
+        experiment = pybamm.Experiment(
+            [
+                f"Discharge at {I_app} A for {hours} hours",
+            ],
+            period=f"{dt} seconds",
+        )
+
+    
+        # Parameter set
+        param = pybamm.ParameterValues("Chen2020")
+        # JellyBaMM discretises the spiral using the electrode height for spiral length
+        # This parameter set has the longer length set to the Electrode width
+        # We want to swap this round
+        param['Electrode width [m]'] = 0.08
+        # Passing None as initial_soc will take values from Parameter set and apply
+        # uniformly everywhere
+        initial_soc = None
+    
+        # Run simulation
+        project, output = ecm.run_simulation_lp(parameter_values=param,
+                                                experiment=experiment,
+                                                initial_soc=initial_soc,
+                                                project=project)
+        assert output is not None
 
     def test_ecm_spiral(self):
-        config_location = os.path.join(ecm.OUTPUT_DIR, "spiral")
-        self._ecm_general(config_location)
+        wrk.clear()
+        Nlayers = 2
+        dtheta = 10
+        spacing = 195e-6  # To do should come from params
+        pos_tabs = [-1]
+        neg_tabs = [0]
+        length_3d = 0.08
+        tesla_tabs = False
+        # OpenPNM project
+        project, arc_edges = ecm.make_spiral_net(Nlayers,
+                                                  dtheta,
+                                                  spacing,
+                                                  pos_tabs,
+                                                  neg_tabs,
+                                                  length_3d,
+                                                  tesla_tabs)
+        self._ecm_general(project)
 
     def test_ecm_spiral_tesla(self):
-        config_location = os.path.join(ecm.OUTPUT_DIR, "spiral_tesla")
-        self._ecm_general(config_location)
+        wrk.clear()
+        Nlayers = 2
+        dtheta = 10
+        spacing = 195e-6  # To do should come from params
+        pos_tabs = [-1]
+        neg_tabs = [0]
+        length_3d = 0.08
+        tesla_tabs = True
+        # OpenPNM project
+        project, arc_edges = ecm.make_spiral_net(Nlayers,
+                                                  dtheta,
+                                                  spacing,
+                                                  pos_tabs,
+                                                  neg_tabs,
+                                                  length_3d,
+                                                  tesla_tabs)
+        self._ecm_general(project)
+
 
     def test_ecm_tomo(self):
-        config_location = os.path.join(ecm.OUTPUT_DIR, "tomography")
-        self._ecm_general(config_location)
+        wrk.clear()
+        # Geometry of spiral
+        tomo_pnm = "spider_net.pnm"
+        dtheta = 10
+        spacing = 195e-6
+        length_3d = 0.08
+        pos_tabs = [-1]
+        neg_tabs = [0]   
+        # OpenPNM project
+        project, arc_edges = ecm.make_tomo_net(tomo_pnm, dtheta, spacing,
+                                                length_3d, pos_tabs, neg_tabs)
+        self._ecm_general(project)
 
     def test_ecm_1d(self):
-        config_location = os.path.join(ecm.OUTPUT_DIR, "1d")
-        self._ecm_general(config_location)
+        wrk.clear()
+        # Geometry of 1D mesh
+        Nunit = 100
+        spacing = 0.01
+        pos_tabs = [-1]
+        neg_tabs = [0]
+        # OpenPNM project
+        project, arc_edges = ecm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
+        self._ecm_general(project)
 
-    def test_func(self):
-        test_config = ecm.load_test_config()
-        ecm.print_config(test_config)
 
 
 if __name__ == "__main__":

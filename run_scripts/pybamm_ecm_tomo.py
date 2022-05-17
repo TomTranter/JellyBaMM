@@ -1,14 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Oct 21 11:25:15 2020
-
-@author: Tom
-"""
+#
+# Example using a tomography image
+#
 
 import openpnm as op
 import matplotlib.pyplot as plt
 import ecm
-import os
 import liionpack as lp
 import pybamm
 
@@ -21,7 +17,13 @@ wrk.clear()
 
 
 if __name__ == "__main__":
-    save_root = os.path.join(ecm.OUTPUT_DIR, 'tomography')
+    # Geometry of spiral
+    tomo_pnm = "spider_net.pnm"
+    dtheta = 10
+    spacing = 195e-6
+    length_3d = 0.08
+    pos_tabs = [-1]
+    neg_tabs = [0]
 
     # Experiment
     I_app = 3.0
@@ -34,19 +36,11 @@ if __name__ == "__main__":
         ],
         period=f"{dt} seconds",
     )
-    save_path = save_root + "\\" + str(I_app) + "A"
-
-    # Geometry of spiral
-    tomo_pnm = "spider_net.pnm"
-    dtheta = 10
-    spacing = 195e-6
-    length_3d = 0.08
-    pos_tabs = [-1]
-    neg_tabs = [0]
 
     # OpenPNM project
     project, arc_edges = ecm.make_tomo_net(tomo_pnm, dtheta, spacing,
                                            length_3d, pos_tabs, neg_tabs)
+
     # Parameter set
     param = pybamm.ParameterValues("Chen2020")
     # JellyBaMM discretises the spiral using the electrode height for spiral length
@@ -55,10 +49,10 @@ if __name__ == "__main__":
     param['Electrode width [m]'] = length_3d
     initial_soc = None
     thermal_props = print(ecm.lump_thermal_props(param))
+
     # Run simulation
     project, output = ecm.run_simulation_lp(parameter_values=param,
                                             experiment=experiment,
                                             initial_soc=initial_soc,
-                                            save_path=save_path,
                                             project=project)
     lp.plot_output(output)
