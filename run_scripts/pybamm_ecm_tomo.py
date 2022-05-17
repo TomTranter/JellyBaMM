@@ -36,6 +36,8 @@ if __name__ == "__main__":
         length_3d = 0.08
         pos_tabs = [-1]
         neg_tabs = [0]
-        project, arc_edges = ecm.make_tomo_net(tomo_pnm, dtheta, spacing, length_3d, pos_tabs, neg_tabs)
-        project, output = ecm.run_simulation_lp(float(I_app), save_path, project, config)
+        project, arc_edges = ecm.make_tomo_net(tomo_pnm, dtheta, spacing,
+                                               length_3d, pos_tabs, neg_tabs)
+        project, output = ecm.run_simulation_lp(float(I_app), save_path,
+                                                project, config)
         lp.plot_output(output)

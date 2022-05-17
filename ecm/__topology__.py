@@ -46,7 +46,8 @@ def spiral(r, dr, ntheta=36, n=10):
     return (x, y, rad, pos)
 
 
-def make_spiral_net(Nlayers, dtheta, spacing, pos_tabs, neg_tabs, length_3d, tesla_tabs):
+def make_spiral_net(Nlayers, dtheta, spacing, pos_tabs, neg_tabs,
+                    length_3d, tesla_tabs):
     r"""
     Generate a perfect spiral network
 
@@ -75,18 +76,6 @@ def make_spiral_net(Nlayers, dtheta, spacing, pos_tabs, neg_tabs, length_3d, tes
         DESCRIPTION.
 
     """
-    # sub = "GEOMETRY"
-    # Nlayers = config.getint(sub, "Nlayers")
-    # dtheta = config.getint(sub, "dtheta")
-    # spacing = config.getfloat(sub, "layer_spacing")
-    # tesla_tabs = False
-    # try:
-        # pos_tabs = config.getint(sub, "pos_tabs")
-        # neg_tabs = config.getint(sub, "neg_tabs")
-    # except ValueError:
-        # print("Tesla tabs")
-        # tesla_tabs = True
-    # length_3d = config.getfloat(sub, "length_3d")
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # total number of unit cells
     N1d = 2
@@ -265,22 +254,14 @@ def make_spiral_net(Nlayers, dtheta, spacing, pos_tabs, neg_tabs, length_3d, tes
 
 
 def make_tomo_net(tomo_pnm, dtheta, spacing, length_3d, pos_tabs, neg_tabs):
-    # sub = "GEOMETRY"
-    # dtheta = config.getint(sub, "dtheta")
-    # spacing = config.getfloat(sub, "layer_spacing")
-    # length_3d = config.getfloat(sub, "length_3d")
     wrk = op.Workspace()
     input_dir = ecm.INPUT_DIR
-    # tomo_pnm = config.get("TOMOGRAPHY", "filename")
     wrk.load_project(os.path.join(input_dir, tomo_pnm))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
-    # ecm.update_tabs(project, config)
     pos_Ps = net.pores("pos_cc")
     neg_Ps = net.pores("neg_cc")
-    # pos_ints = json.loads(config.get(sec, "pos_tabs"))
-    # neg_ints = json.loads(config.get(sec, "neg_tabs"))
     # Translate relative indices into absolute indices
     pos_tabs = pos_Ps[pos_tabs]
     neg_tabs = neg_Ps[neg_tabs]
@@ -288,7 +269,7 @@ def make_tomo_net(tomo_pnm, dtheta, spacing, length_3d, pos_tabs, neg_tabs):
     net["pore.neg_tab"] = False
     net["pore.pos_tab"][pos_tabs] = True
     net["pore.neg_tab"][neg_tabs] = True
-    
+
     arc_edges = [0.0]
     Ps = net.pores("neg_cc")
     Nunit = net["pore.cell_id"][Ps].max() + 1

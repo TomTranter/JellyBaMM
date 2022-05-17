@@ -36,5 +36,6 @@ if __name__ == "__main__":
         pos_tabs = [-1]
         neg_tabs = [0]
         project, arc_edges = ecm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
-        project, output = ecm.run_simulation_lp(float(I_app), save_path, project, config)
-        # lp.plot_output(output)
+        project, output = ecm.run_simulation_lp(float(I_app), save_path,
+                                                project, config)
+        lp.plot_output(output)

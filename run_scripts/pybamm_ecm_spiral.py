@@ -29,7 +29,7 @@ if __name__ == "__main__":
         save_path = save_root + "\\" + I_app + "A"
         Nlayers = 2
         dtheta = 10
-        spacing = 195e-6 # To do should come from params
+        spacing = 195e-6  # To do should come from params
         pos_tabs = [-1]
         neg_tabs = [0]
         length_3d = 0.08
