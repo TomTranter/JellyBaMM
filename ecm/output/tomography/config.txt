@@ -8,17 +8,8 @@ vlim_lower = 2.7
 vlim_upper = 4.7
 third = False
 chemistry = Chen2020
-[GEOMETRY]
-domain = tomo
-dtheta = 10
-layer_spacing = 195e-6
-length_3d = 0.080
-Nlayers = 40
-pos_tabs = -1
-neg_tabs = 0
-[TOMOGRAPHY]
-filename = spider_net.pnm
 [THICKNESS]
+length_3d = 0.08
 pixel_size = 10.4e-6
 neg_electrode = 8.0
 pos_electrode = 7.0

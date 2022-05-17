@@ -22,7 +22,7 @@ wrk = op.Workspace()
 
 def cc_cond(project, config):
     net = project.network
-    length_3d = config.getfloat("GEOMETRY", "length_3d")
+    length_3d = config.getfloat("THICKNESS", "length_3d")
     neg_cc_econd = config.getfloat("PHYSICS", "neg_cc_econd")
     pos_cc_econd = config.getfloat("PHYSICS", "pos_cc_econd")
     pixel_size = config.getfloat("THICKNESS", "pixel_size")
@@ -77,8 +77,8 @@ def current_function(t):
 
 
 def make_parameters(I_typical, config):
-    length_3d = config.getfloat("GEOMETRY", "length_3d")
     sub = "THICKNESS"
+    length_3d = config.getfloat(sub, "length_3d")
     pixel_size = config.getfloat(sub, "pixel_size")
     t_neg_electrode = config.getfloat(sub, "neg_electrode")
     t_pos_electrode = config.getfloat(sub, "pos_electrode")

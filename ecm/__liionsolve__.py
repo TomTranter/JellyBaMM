@@ -48,16 +48,7 @@ def run_simulation_lp(I_app, save_path, project, config):
     except configparser.NoOptionError:
         dt = 30
         Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
-    # if config.get("GEOMETRY", "domain") == "model":
-    #     project, arc_edges = ecm.make_spiral_net(config)
-    # elif config.get("GEOMETRY", "domain") == "1d":
-    #     project, arc_edges = ecm.make_1D_net(config)
-    # else:
-    #     project, arc_edges = ecm.make_tomo_net(config)
-
     net = project.network
-    if config.get("GEOMETRY", "domain") != "1d":
-        ecm.plot_topology(net)
     phase = project.phases()["phase_01"]
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
