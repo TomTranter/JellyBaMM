@@ -41,7 +41,7 @@ jobs:
     - name: Install specific version of PyBaMM and liionpack
       run: |
         pip install wheel
-        python -m pip install git+https://github.com/pybamm-team/PyBaMM@develop
+        python -m pip install git+https://github.com/pybamm-team/PyBaMM@22.3
         python -m pip install git+https://github.com/pybamm-team/liionpack@main
     - name: Install pybamm_pnm with dependencies
       run: |
