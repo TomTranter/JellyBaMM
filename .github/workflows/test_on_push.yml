@@ -41,11 +41,17 @@ jobs:
     - name: Install specific version of PyBaMM and liionpack
       run: |
         pip install wheel
-        python -m pip install pybamm==22.3
-        python -m pip install git+https://github.com/pybamm-team/liionpack@main
+        python -m pip install git+https://github.com/pybamm-team/pybamm@develop
+        pybamm_install_jax
+        python -m pip install git+https://github.com/pybamm-team/liionpack@scalar_timescale
     - name: Install pybamm_pnm with dependencies
       run: |
+        pip install wheel
         python -m pip install -e .
+    - name: Install latest sympy
+      run: |
+        python -m pip install sympy==1.10.1
+
     - name: Run tests and generate coverage report
       run: |
         python -m pip install coverage

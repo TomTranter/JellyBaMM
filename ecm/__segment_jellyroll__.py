@@ -41,7 +41,7 @@ def average_images(path=None):
         can = ims[i] < 25000
         sel_ero = np.ones([5, 5])
         sel_dil = np.ones([2, 2])
-        can = binary_dilation(binary_erosion(can, selem=sel_ero), sel_dil)
+        can = binary_dilation(binary_erosion(can, footprint=sel_ero), sel_dil)
         labels = label(can)
         mask = labels != 1
         masks.append(mask)
@@ -160,7 +160,7 @@ def label_layers(im, dt, mhs, can_width=30, im_thresh=19000, small_feature_size=
             skel = medial_axis(tmp, return_distance=False)
             skel = skel.astype(np.uint8)
             # sum the values in the kernel to identify joints and ends
-            skel_rank_sum = rank.sum(skel, selem=square(3))
+            skel_rank_sum = rank.sum(skel, footprint=square(3))
             # only keep sums in the skeleton
             skel_rank_sum *= skel
             tmp2 = skel_rank_sum.copy()
@@ -206,7 +206,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     med_ax = medial_axis(lines)
     plt.figure()
     plt.imshow(med_ax)
-    med_ax = binary_dilation(med_ax, selem=square(2))
+    med_ax = binary_dilation(med_ax, footprint=square(2))
     # Multiply cc image by -1 along the dividing lines to define nodes
     cc_im[med_ax] *= -1
     # Extract coordinates of nodes on the current collectors

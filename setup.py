@@ -30,7 +30,7 @@ setup(
     packages=["ecm"],
     install_requires=[
         "numba",
-        "pybamm",
+        "pybamm==22.3",
         "openpnm",
         "ffmpeg-python"
     ],

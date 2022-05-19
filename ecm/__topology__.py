@@ -46,19 +46,36 @@ def spiral(r, dr, ntheta=36, n=10):
     return (x, y, rad, pos)
 
 
-def make_spiral_net(config):
-    sub = "GEOMETRY"
-    Nlayers = config.getint(sub, "Nlayers")
-    dtheta = config.getint(sub, "dtheta")
-    spacing = config.getfloat(sub, "layer_spacing")
-    tesla_tabs = False
-    try:
-        pos_tabs = config.getint(sub, "pos_tabs")
-        neg_tabs = config.getint(sub, "neg_tabs")
-    except ValueError:
-        print("Tesla tabs")
-        tesla_tabs = True
-    length_3d = config.getfloat(sub, "length_3d")
+def make_spiral_net(Nlayers, dtheta, spacing, pos_tabs, neg_tabs,
+                    length_3d, tesla_tabs):
+    r"""
+    Generate a perfect spiral network
+
+    Parameters
+    ----------
+    Nlayers : TYPE
+        DESCRIPTION.
+    dtheta : TYPE
+        DESCRIPTION.
+    spacing : TYPE
+        DESCRIPTION.
+    pos_tabs : TYPE
+        DESCRIPTION.
+    neg_tabs : TYPE
+        DESCRIPTION.
+    length_3d : TYPE
+        DESCRIPTION.
+    tesla_tabs : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    prj : TYPE
+        DESCRIPTION.
+    arc_edges : TYPE
+        DESCRIPTION.
+
+    """
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
     Nunit = np.int(Nlayers * Narc)  # total number of unit cells
     N1d = 2
@@ -236,19 +253,23 @@ def make_spiral_net(config):
     return prj, arc_edges
 
 
-def make_tomo_net(config):
-    sub = "GEOMETRY"
-    dtheta = config.getint(sub, "dtheta")
-    spacing = config.getfloat(sub, "layer_spacing")
-    length_3d = config.getfloat(sub, "length_3d")
+def make_tomo_net(tomo_pnm, dtheta, spacing, length_3d, pos_tabs, neg_tabs):
     wrk = op.Workspace()
     input_dir = ecm.INPUT_DIR
-    tomo_pnm = config.get("TOMOGRAPHY", "filename")
     wrk.load_project(os.path.join(input_dir, tomo_pnm))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
     net = project.network
-    ecm.update_tabs(project, config)
+    pos_Ps = net.pores("pos_cc")
+    neg_Ps = net.pores("neg_cc")
+    # Translate relative indices into absolute indices
+    pos_tabs = pos_Ps[pos_tabs]
+    neg_tabs = neg_Ps[neg_tabs]
+    net["pore.pos_tab"] = False
+    net["pore.neg_tab"] = False
+    net["pore.pos_tab"][pos_tabs] = True
+    net["pore.neg_tab"][neg_tabs] = True
+
     arc_edges = [0.0]
     Ps = net.pores("neg_cc")
     Nunit = net["pore.cell_id"][Ps].max() + 1
@@ -269,12 +290,27 @@ def make_tomo_net(config):
     return project, arc_edges
 
 
-def make_1D_net(config):
-    sub = "GEOMETRY"
-    Nunit = config.getint(sub, "nunit_OneD")
-    spacing = config.getfloat(sub, "spacing_OneD")
-    pos_tabs = config.getint(sub, "pos_tabs")
-    neg_tabs = config.getint(sub, "neg_tabs")
+def make_1D_net(Nunit, spacing, pos_tabs, neg_tabs):
+    r"""
+    Generate a 1D network of batteries connected in parallel
+
+    Parameters
+    ----------
+    Nunit : TYPE
+        DESCRIPTION.
+    spacing : TYPE
+        DESCRIPTION.
+    pos_tabs : TYPE
+        DESCRIPTION.
+    neg_tabs : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
     net = op.network.Cubic([Nunit + 2, 2, 1], spacing)
     net["pore.pos_cc"] = net["pore.front"]
     net["pore.neg_cc"] = net["pore.back"]
@@ -283,8 +319,15 @@ def make_1D_net(config):
     tt.trim(net, throats=T)
     T = net.find_neighbor_throats(net.pores("right"), mode="xnor")
     tt.trim(net, throats=T)
+
     pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
     neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
+
+    net.add_boundary_pores(labels=['front', 'back'])
+    net["pore.free_stream"] = np.logical_or(net["pore.front_boundary"],
+                                            net["pore.back_boundary"])
+    net["throat.free_stream"] = np.logical_or(net["throat.front_boundary"],
+                                              net["throat.back_boundary"])
 
     pos_tab_nodes = net.pores()[net["pore.pos_cc"]][pos_tabs]
     neg_tab_nodes = net.pores()[net["pore.neg_cc"]][neg_tabs]
@@ -300,14 +343,17 @@ def make_1D_net(config):
     net["throat.spm_resistor"] = True
     net["throat.spm_resistor"][pos_cc_Ts] = False
     net["throat.spm_resistor"][neg_cc_Ts] = False
+    net["throat.spm_resistor"][net["throat.free_stream"]] = False
     net["throat.spm_resistor_order"] = -1
     net["throat.spm_resistor_order"][net["throat.spm_resistor"]] = np.arange(Nunit)
     net["throat.spm_neg_inner"] = net["throat.spm_resistor"]
-    net["pore.free_stream"] = False
+
     del net["pore.left"]
     del net["pore.right"]
     del net["pore.front"]
+    del net["pore.front_boundary"]
     del net["pore.back"]
+    del net["pore.back_boundary"]
     del net["pore.internal"]
     del net["pore.surface"]
     del net["throat.internal"]
@@ -319,7 +365,7 @@ def make_1D_net(config):
     op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
 
     net["pore.radial_position"] = net["pore.coords"][:, 0]
-    net["pore.arc_index"] = np.indices([Nunit + 2, 2, 1])[0].flatten()
+    net["pore.arc_index"] = np.indices([Nunit + 2, 4, 1])[0].flatten()
     net["pore.region_id"] = -1
     net["pore.cell_id"] = -1
     net["throat.arc_length"] = spacing

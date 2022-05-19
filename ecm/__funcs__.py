@@ -20,143 +20,58 @@ import ecm
 wrk = op.Workspace()
 
 
-def cc_cond(project, config):
+def cc_cond(project, param):
     net = project.network
-    length_3d = config.getfloat("GEOMETRY", "length_3d")
-    neg_cc_econd = config.getfloat("PHYSICS", "neg_cc_econd")
-    pos_cc_econd = config.getfloat("PHYSICS", "pos_cc_econd")
-    pixel_size = config.getfloat("THICKNESS", "pixel_size")
-    t_neg_cc = config.getfloat("THICKNESS", "neg_cc")
-    t_pos_cc = config.getfloat("THICKNESS", "pos_cc")
+    length_3d = param["Electrode width [m]"]
+    neg_cc_econd = param["Negative current collector conductivity [S.m-1]"]
+    pos_cc_econd = param["Positive current collector conductivity [S.m-1]"]
+    t_neg_cc = param["Negative current collector thickness [m]"]
+    t_pos_cc = param["Positive current collector thickness [m]"]
     cc_len = net["throat.arc_length"]
-    neg_econd = neg_cc_econd * (pixel_size * t_neg_cc * length_3d)
-    pos_econd = pos_cc_econd * (pixel_size * t_pos_cc * length_3d)
+    neg_econd = neg_cc_econd * (t_neg_cc * length_3d)
+    pos_econd = pos_cc_econd * (t_pos_cc * length_3d)
     neg_Ts = net.throats("neg_cc")
     neg_econd = neg_econd / cc_len[neg_Ts]
     pos_Ts = net.throats("pos_cc")
     pos_econd = pos_econd / cc_len[pos_Ts]
-    net['throat.electrical_conductance'] = 0.0
-    net['throat.electrical_conductance'][neg_Ts] = neg_econd
-    net['throat.electrical_conductance'][pos_Ts] = pos_econd
+    net["throat.electrical_conductance"] = 0.0
+    net["throat.electrical_conductance"][neg_Ts] = neg_econd
+    net["throat.electrical_conductance"][pos_Ts] = pos_econd
     return neg_econd, pos_econd
-
-
-def setup_ecm_alg(project, config, R):
-    net = project.network
-    phase = project.phases()["phase_01"]
-    phys = project.physics()["phys_01"]
-    length_3d = config.getfloat("GEOMETRY", "length_3d")
-    neg_cc_econd = config.getfloat("PHYSICS", "neg_cc_econd")
-    pos_cc_econd = config.getfloat("PHYSICS", "pos_cc_econd")
-    pixel_size = config.getfloat("THICKNESS", "pixel_size")
-    t_neg_cc = config.getfloat("THICKNESS", "neg_cc")
-    t_pos_cc = config.getfloat("THICKNESS", "pos_cc")
-    cc_unit_len = net["throat.arc_length"]
-    neg_econd = neg_cc_econd * (pixel_size * t_neg_cc * length_3d)
-    pos_econd = pos_cc_econd * (pixel_size * t_pos_cc * length_3d)
-
-    phys["throat.electrical_conductance"] = 1.0
-    neg_Ts = net.throats("neg_cc")
-    phys["throat.electrical_conductance"][neg_Ts] = neg_econd / cc_unit_len[neg_Ts]
-    pos_Ts = net.throats("pos_cc")
-    phys["throat.electrical_conductance"][pos_Ts] = pos_econd / cc_unit_len[pos_Ts]
-    res_Ts = net.throats("spm_resistor")
-    phys["throat.electrical_conductance"][res_Ts] = 1 / R
-    alg = op.algorithms.OhmicConduction(network=net)
-    alg.setup(
-        phase=phase,
-        quantity="pore.potential",
-        conductance="throat.electrical_conductance",
-    )
-    alg.settings["rxn_tolerance"] = 1e-8
-    return alg
 
 
 def current_function(t):
     return pybamm.InputParameter("Current")
 
 
-def make_parameters(I_typical, config):
-    length_3d = config.getfloat("GEOMETRY", "length_3d")
-    sub = "THICKNESS"
-    pixel_size = config.getfloat(sub, "pixel_size")
-    t_neg_electrode = config.getfloat(sub, "neg_electrode")
-    t_pos_electrode = config.getfloat(sub, "pos_electrode")
-    t_sep = config.getfloat(sub, "sep")
-    t_neg_cc = config.getfloat(sub, "neg_cc")
-    t_pos_cc = config.getfloat(sub, "pos_cc")
-    param = pybamm.ParameterValues("Chen2020")
-    param.update(
+def adjust_parameters(parameter_values, I_typical):
+
+    parameter_values.update(
         {
             "Typical current [A]": I_typical,
             "Current function [A]": current_function,
             "Electrode height [m]": "[input]",
-            "Electrode width [m]": length_3d,
-            "Negative electrode thickness [m]": t_neg_electrode * pixel_size,
-            "Positive electrode thickness [m]": t_pos_electrode * pixel_size,
-            "Separator thickness [m]": t_sep * pixel_size,
-            "Negative current collector thickness [m]": t_neg_cc * pixel_size,
-            "Positive current collector thickness [m]": t_pos_cc * pixel_size,
         }
     )
-
-    param["Negative electrode OCP [V]"] = ecm.neg_OCP
-    param["Positive electrode OCP [V]"] = ecm.pos_OCP
-    param["Negative electrode OCP entropic change [V.K-1]"] = ecm.neg_dUdT
-    param["Positive electrode OCP entropic change [V.K-1]"] = ecm.pos_dUdT
-    param.update({"Current": "[input]"}, check_already_exists=False)
-    return param
+    parameter_values.update({"Current": "[input]"}, check_already_exists=False)
+    return parameter_values
 
 
-def make_spm(I_typical, config):
-    thermal = config.getboolean("PHYSICS", "do_thermal")
+def output_variables():
 
-    # sub = 'INIT'
-    # neg_conc = config.getfloat(sub, 'neg_conc')
-    # pos_conc = config.getfloat(sub, 'pos_conc')
-    # sub = 'PHYSICS'
-    # neg_elec_econd = config.getfloat(sub, 'neg_elec_econd')
-    # pos_elec_econd = config.getfloat(sub, 'pos_elec_econd')
-    # vlim_lower = config.getfloat('RUN', 'vlim_lower')
-    # vlim_upper = config.getfloat('RUN', 'vlim_upper')
-    model_cfg = config.get("RUN", "model")
-
-    if model_cfg == "SPM":
-        model_class = pybamm.lithium_ion.SPM
-    elif model_cfg == "SPMe":
-        model_class = pybamm.lithium_ion.SPMe
-    else:
-        model_class = pybamm.lithium_ion.DFN
-    if thermal:
-        model_options = {
-            "thermal": "x-lumped",
-            "external submodels": ["thermal"],
-            "timescale": 1000,
-        }
-        model = model_class(model_options)
-    else:
-        model_options = {
-            "timescale": 1000,
-        }
-        model = model_class(model_options)
-    geometry = model.default_geometry
-    param = make_parameters(I_typical, config)
-    param.process_model(model)
-    param.process_geometry(geometry)
-    var = pybamm.standard_spatial_vars
-    var_pts = {var.x_n: 5, var.x_s: 5, var.x_p: 5, var.r_n: 10, var.r_p: 10}
-    spatial_methods = model.default_spatial_methods
-    solver = pybamm.CasadiSolver()
-    sim = pybamm.Simulation(
-        model=model,
-        geometry=geometry,
-        parameter_values=param,
-        var_pts=var_pts,
-        spatial_methods=spatial_methods,
-        solver=solver,
-    )
-    sim.build(check_model=True)
-    return sim
+    return [
+        "Terminal voltage [V]",
+        "Volume-averaged cell temperature [K]",
+        "Current collector current density [A.m-2]",
+        "X-averaged negative electrode extent of lithiation",
+        "X-averaged positive electrode extent of lithiation",
+        "Volume-averaged total heating [W.m-3]",
+        "X-averaged battery reaction overpotential [V]",
+        "X-averaged battery concentration overpotential [V]",
+        "X-averaged battery electrolyte ohmic losses [V]",
+        "X-averaged battery solid phase ohmic losses [V]",
+        "Change in measured open circuit voltage [V]",
+    ]
 
 
 def calc_R(overpotentials, current):
@@ -263,19 +178,17 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     return geo
 
 
-def setup_thermal(project, config):
-    sub = "PHYSICS"
-    T0 = config.getfloat(sub, "T0")
-    lumpy_therm = lump_thermal_props(config)
+def setup_thermal(project, parameter_values):
+    T0 = parameter_values["Initial temperature [K]"]
+    lumpy_therm = lump_thermal_props(parameter_values)
     cp = lumpy_therm["lump_Cp"]
     rho = lumpy_therm["lump_rho"]
-
-    heat_transfer_coefficient = config.getfloat(sub, "heat_transfer_coefficient")
+    total_htc = parameter_values["Total heat transfer coefficient [W.m-2.K-1]"]
     net = project.network
     geo = project.geometries()["geo_01"]
     phase = project.phases()["phase_01"]
     phys = project.physics()["phys_01"]
-    hc = heat_transfer_coefficient / (cp * rho)
+    hc = total_htc / (cp * rho)
     # Set up Phase and Physics
     phase["pore.temperature"] = T0
     alpha_spiral = lumpy_therm["alpha_spiral"]
@@ -464,7 +377,7 @@ def export(
 
 
 def polar_transform(x, y):
-    r = np.sqrt(x ** 2 + y ** 2)
+    r = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y, x)
     return r, theta
 
@@ -597,52 +510,36 @@ def update_tabs(project, config):
     net["pore.neg_tab"][neg_tabs] = True
 
 
-def lump_thermal_props(config):
-    sec = "THICKNESS"
-    pixel_size = config.getfloat(sec, "pixel_size")
-    lens = np.array(
-        [
-            config.getfloat(sec, "neg_electrode"),
-            config.getfloat(sec, "pos_electrode"),
-            config.getfloat(sec, "neg_cc") / 2,
-            config.getfloat(sec, "pos_cc") / 2,
-            config.getfloat(sec, "sep"),
-        ]
-    )
-    lens *= pixel_size
-    sec = "MATERIAL"
-    rhos = np.array(
-        [
-            config.getfloat(sec, "neg_rho"),
-            config.getfloat(sec, "pos_rho"),
-            config.getfloat(sec, "neg_cc_rho"),
-            config.getfloat(sec, "pos_cc_rho"),
-            config.getfloat(sec, "sep_rho"),
-        ]
-    )
+def lump_thermal_props(param):
+    layers = [
+        "Negative electrode",
+        "Positive electrode",
+        "Negative current collector",
+        "Positive current collector",
+        "Separator",
+    ]
+    props = [
+        "thickness [m]",
+        "density [kg.m-3]",
+        "specific heat capacity [J.kg-1.K-1]",
+        "thermal conductivity [W.m-1.K-1]",
+    ]
+    all_props = np.zeros([len(props), len(layers)])
+    for i, prop in enumerate(props):
+        for j, l in enumerate(layers):
+            all_props[i][j] = param[l + " " + prop]
+    # Break them up
+    lens = all_props[:, 0]
+    rhos = all_props[:, 1]
+    Cps = all_props[:, 2]
+    ks = all_props[:, 3]
+    # Lumped props
     rho_lump = np.sum(lens * rhos) / np.sum(lens)
-    Cps = np.array(
-        [
-            config.getfloat(sec, "neg_cp"),
-            config.getfloat(sec, "pos_cp"),
-            config.getfloat(sec, "neg_cc_cp"),
-            config.getfloat(sec, "pos_cc_cp"),
-            config.getfloat(sec, "sep_cp"),
-        ]
-    )
     Cp_lump = np.sum(lens * rhos * Cps) / np.sum(lens * rhos)
-    ks = np.array(
-        [
-            config.getfloat(sec, "neg_k"),
-            config.getfloat(sec, "pos_k"),
-            config.getfloat(sec, "neg_cc_k"),
-            config.getfloat(sec, "pos_cc_k"),
-            config.getfloat(sec, "sep_k"),
-        ]
-    )
+    # Thermal diffusivity alpha = k / (rho * Cp)
     alphas = ks / (rhos * Cps)
+    # Thermal resistance
     res = 1 / alphas
-    print(res)
     R_radial = np.sum(lens * res) / np.sum(lens)
     R_spiral = np.sum(lens) / np.sum(lens / res)
     out = {
