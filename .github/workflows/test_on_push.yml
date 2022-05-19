@@ -42,7 +42,8 @@ jobs:
       run: |
         pip install wheel
         python -m pip install pybamm==22.3
-        python -m pip install git+https://github.com/pybamm-team/liionpack@main
+        python -m pip install git+https://github.com/pybamm-team/liionpack@develop
+        pybamm_install_jax
     - name: Install pybamm_pnm with dependencies
       run: |
         pip install wheel
