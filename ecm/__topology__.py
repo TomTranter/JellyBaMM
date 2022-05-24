@@ -46,7 +46,7 @@ def spiral(r, dr, ntheta=36, n=10):
     return (x, y, rad, pos)
 
 
-def make_spiral_net(Nlayers, dtheta, spacing, pos_tabs, neg_tabs,
+def make_spiral_net(Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs,
                     length_3d, tesla_tabs):
     r"""
     Generate a perfect spiral network
@@ -94,7 +94,6 @@ def make_spiral_net(Nlayers, dtheta, spacing, pos_tabs, neg_tabs,
     net["pore.cell_id"] = unit_id.flatten()
     # Extend the connections in the cell repetition direction
     net["pore.coords"][:, 0] *= 10
-    inner_r = 185 * 1e-5
     # Update coords
     net["pore.radial_position"] = 0.0
     net["pore.arc_index"] = 0
@@ -245,7 +244,7 @@ def make_spiral_net(Nlayers, dtheta, spacing, pos_tabs, neg_tabs,
 
     op.topotools.trim(network=net, throats=net.throats("trimmers"))
 
-    print("N SPM", net.num_throats("spm_resistor"))
+    # print("N SPM", net.num_throats("spm_resistor"))
     geo = ecm.setup_geometry(net, dtheta, spacing, length_3d=length_3d)
     net["throat.arc_length"] = np.deg2rad(dtheta) * net["throat.radial_position"]
     phase = op.phases.GenericPhase(network=net)
@@ -374,7 +373,6 @@ def make_1D_net(Nunit, spacing, pos_tabs, neg_tabs):
     net["pore.volume"] = 1.0
     net["throat.area"] = 1.0
     net["throat.length"] = 1.0
-    ecm.plot_topology(net)
     return net.project, np.cumsum(net["throat.arc_length"])
 
 

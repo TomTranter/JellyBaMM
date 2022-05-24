@@ -67,7 +67,7 @@ def average_images(path=None):
         yl = mids[i, 1] - mhs
         yh = mids[i, 1] + mhs
         crops.append(ims[i][xl:xh, yl:yh] * masks[i][xl:xh, yl:yh])
-        print(i, crops[-1].shape)
+        # print(i, crops[-1].shape)
     # Pick image - replace with average
     im = crops[0].copy()
     dt = np.ones(im.shape)
@@ -120,7 +120,7 @@ def remove_beam_hardening(im, dt, step, deg):
     dat_im = ecm.get_radial_average(im, step, dt)
     im_soft = ecm.adjust_radial_average(im, step, deg, dt)
     dat_soft = ecm.get_radial_average(im_soft, step, dt)
-    fig, axes = plt.subplots(2, 1)
+    fig, axes = plt.subplots(2, 1, figsize=(10, 10))
     axes[0].imshow(im_soft - im.astype(float))
     axes[1].plot(dat_im[:, 0], dat_im[:, 1])
     axes[1].plot(dat_soft[:, 0], dat_soft[:, 1])
@@ -390,24 +390,24 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.cell_id'][net.pores('free_stream')] = -1
     net['pore.cell_id'] = net['pore.cell_id'].astype(int)
 
-    fig, ax = plt.subplots(figsize=(12, 12))
-    ax = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', ax=ax)
-    ax = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', ax=ax)
-    ax = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', ax=ax)
-    ax = tt.plot_coordinates(net, pores=net.pores('neg_cc'), c='r', ax=ax)
-    ax = tt.plot_coordinates(net, pores=net.pores('pos_cc'), c='b', ax=ax)
-    ax = tt.plot_coordinates(net, pores=net.pores('surface'), c='k', ax=ax)
-    ax = tt.plot_coordinates(net, pores=net.pores('outer'), c='pink', ax=ax)
-    ax = tt.plot_coordinates(net, pores=net.pores('inner'), c='purple', ax=ax)
-    ax = tt.plot_coordinates(net, pores=net.pores('terminal'), c='y', s=100, ax=ax)
-    ax = tt.plot_coordinates(net, pores=net.pores('free_stream'), c='g', ax=ax)
-    ax = tt.plot_connections(net, throats=net.throats('free_stream'), c='g', ax=ax)
+    # fig, ax = plt.subplots(figsize=(12, 12))
+    # ax = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', ax=ax)
+    # ax = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', ax=ax)
+    # ax = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', ax=ax)
+    # ax = tt.plot_coordinates(net, pores=net.pores('neg_cc'), c='r', ax=ax)
+    # ax = tt.plot_coordinates(net, pores=net.pores('pos_cc'), c='b', ax=ax)
+    # ax = tt.plot_coordinates(net, pores=net.pores('surface'), c='k', ax=ax)
+    # ax = tt.plot_coordinates(net, pores=net.pores('outer'), c='pink', ax=ax)
+    # ax = tt.plot_coordinates(net, pores=net.pores('inner'), c='purple', ax=ax)
+    # ax = tt.plot_coordinates(net, pores=net.pores('terminal'), c='y', s=100, ax=ax)
+    # ax = tt.plot_coordinates(net, pores=net.pores('free_stream'), c='g', ax=ax)
+    # ax = tt.plot_connections(net, throats=net.throats('free_stream'), c='g', ax=ax)
 
-    fig, ax = plt.subplots(figsize=(12, 12))
-    ax = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', ax=ax)
-    ax = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', ax=ax)
-    ax = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', ax=ax)
-    plt.imshow(im_soft.T)
+    # fig, ax = plt.subplots(figsize=(12, 12))
+    # ax = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', ax=ax)
+    # ax = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', ax=ax)
+    # ax = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', ax=ax)
+    # plt.imshow(im_soft.T)
 
     # Scale and save net
     prj = wrk['proj_01']

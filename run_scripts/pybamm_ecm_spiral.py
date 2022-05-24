@@ -20,6 +20,7 @@ if __name__ == "__main__":
     Nlayers = 2
     dtheta = 10
     spacing = 195e-6  # To do should come from params
+    inner_r = 10 * spacing
     pos_tabs = [-1]
     neg_tabs = [0]
     length_3d = 0.08
@@ -41,11 +42,12 @@ if __name__ == "__main__":
     project, arc_edges = ecm.make_spiral_net(Nlayers,
                                              dtheta,
                                              spacing,
+                                             inner_r,
                                              pos_tabs,
                                              neg_tabs,
                                              length_3d,
                                              tesla_tabs)
-
+    ecm.plot_topology(project.network)
     # Parameter set
     param = pybamm.ParameterValues("Chen2020")
     # JellyBaMM discretises the spiral using the electrode height for spiral length
