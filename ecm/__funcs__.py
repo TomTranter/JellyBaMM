@@ -203,8 +203,8 @@ def setup_thermal(project, parameter_values):
     Ts = net.throats("free_stream")
     phys["throat.conductance"][Ts] = geo["throat.area"][Ts] * hc
 
-    print("Mean throat conductance", np.mean(phys["throat.conductance"]))
-    print("Mean throat conductance Boundary", np.mean(phys["throat.conductance"][Ts]))
+    # print("Mean throat conductance", np.mean(phys["throat.conductance"]))
+    # print("Mean throat conductance Boundary", np.mean(phys["throat.conductance"][Ts]))
 
 
 def apply_heat_source(project, Q):

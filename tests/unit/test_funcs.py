@@ -53,13 +53,15 @@ class funcsTest(unittest.TestCase):
         Nlayers = 2
         dtheta = 10
         spacing = 195e-6  # To do should come from params
+        inner_r = 10 * spacing
         pos_tabs = [-1]
         neg_tabs = [0]
         length_3d = 0.08
         tesla_tabs = False
         # OpenPNM project
         project, arc_edges = ecm.make_spiral_net(
-            Nlayers, dtheta, spacing, pos_tabs, neg_tabs, length_3d, tesla_tabs
+            Nlayers, dtheta, spacing, inner_r,
+            pos_tabs, neg_tabs, length_3d, tesla_tabs
         )
         self._ecm_general(project)
 
@@ -68,13 +70,15 @@ class funcsTest(unittest.TestCase):
         Nlayers = 2
         dtheta = 10
         spacing = 195e-6  # To do should come from params
+        inner_r = 10 * spacing
         pos_tabs = [-1]
         neg_tabs = [0]
         length_3d = 0.08
         tesla_tabs = True
         # OpenPNM project
         project, arc_edges = ecm.make_spiral_net(
-            Nlayers, dtheta, spacing, pos_tabs, neg_tabs, length_3d, tesla_tabs
+            Nlayers, dtheta, spacing, inner_r,
+            pos_tabs, neg_tabs, length_3d, tesla_tabs
         )
         self._ecm_general(project)
 

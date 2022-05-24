@@ -58,36 +58,36 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     res_Ts = net.throats("spm_resistor")
     # sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
     electrode_heights = net["throat.electrode_height"][res_Ts]
-    print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
+    # print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     typical_height = np.mean(electrode_heights)
     # Take I_app from first command of the experiment
     I_app = experiment.operating_conditions[0]["electric"][0]
     I_typical = I_app / Nspm
     temp_inputs = {"Current": I_typical, "Electrode height [m]": typical_height}
 
-    print("Total pore volume", np.sum(net["pore.volume"]))
-    print("Mean throat area", np.mean(net["throat.area"]))
-    print("Num throats", net.num_throats())
-    print("Num throats SPM", Nspm)
-    print("Num throats pos_cc", net.num_throats("pos_cc"))
-    print("Num throats neg_cc", net.num_throats("neg_cc"))
-    print("Typical height", typical_height)
-    print("Typical current", I_typical)
+    # print("Total pore volume", np.sum(net["pore.volume"]))
+    # print("Mean throat area", np.mean(net["throat.area"]))
+    # print("Num throats", net.num_throats())
+    # print("Num throats SPM", Nspm)
+    # print("Num throats pos_cc", net.num_throats("pos_cc"))
+    # print("Num throats neg_cc", net.num_throats("neg_cc"))
+    # print("Typical height", typical_height)
+    # print("Typical current", I_typical)
     ###########################################################################
     # Make the pybamm simulation - should be moved to a simfunc               #
     ###########################################################################
     parameter_values = ecm.adjust_parameters(parameter_values, I_typical)
-    width = parameter_values["Electrode width [m]"]
-    t1 = parameter_values["Negative electrode thickness [m]"]
-    t2 = parameter_values["Positive electrode thickness [m]"]
-    t3 = parameter_values["Negative current collector thickness [m]"]
-    t4 = parameter_values["Positive current collector thickness [m]"]
-    t5 = parameter_values["Separator thickness [m]"]
-    ttot = t1 + t2 + t3 + t4 + t5
-    A_cc = electrode_heights * width
-    bat_vol = np.sum(A_cc * ttot)
-    print("BATTERY ELECTRODE VOLUME", bat_vol)
-    print("18650 VOLUME", 0.065 * np.pi * ((8.75e-3) ** 2 - (2.0e-3) ** 2))
+    # width = parameter_values["Electrode width [m]"]
+    # t1 = parameter_values["Negative electrode thickness [m]"]
+    # t2 = parameter_values["Positive electrode thickness [m]"]
+    # t3 = parameter_values["Negative current collector thickness [m]"]
+    # t4 = parameter_values["Positive current collector thickness [m]"]
+    # t5 = parameter_values["Separator thickness [m]"]
+    # ttot = t1 + t2 + t3 + t4 + t5
+    # A_cc = electrode_heights * width
+    # bat_vol = np.sum(A_cc * ttot)
+    # print("BATTERY ELECTRODE VOLUME", bat_vol)
+    # print("18650 VOLUME", 0.065 * np.pi * ((8.75e-3) ** 2 - (2.0e-3) ** 2))
     ###########################################################################
     # Output variables                                                        #
     ###########################################################################
@@ -146,7 +146,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         period="1 second",
     )
     # Solve the pack
-    manager = lp.casadi_manager()
+    manager = lp.CasadiManager()
     manager.solve(
         netlist=netlist,
         sim_func=lp.thermal_external,
@@ -208,7 +208,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
     # Solve the pack
-    manager = lp.casadi_manager()
+    manager = lp.CasadiManager()
     manager.solve(
         netlist=netlist,
         sim_func=lp.thermal_external,
