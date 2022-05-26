@@ -421,7 +421,7 @@ def plot_resistors(net, throats, c, ax):
         p_start = p_end
     x_all = np.asarray(x_all)
     y_all = np.asarray(y_all)
-    ax.plot(x_all, y_all, c=c)
+    ax.plot(x_all, y_all, color=c)
     return ax
 
 
