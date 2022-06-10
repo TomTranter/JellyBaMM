@@ -1,6 +1,6 @@
-# Contributing to liionpack
+# Contributing to JellyBamm
 
-If you'd like to contribute to liionpack (thanks!), please have a look at the [guidelines below](#workflow).
+If you'd like to contribute to JellyBamm (thanks!), please have a look at the [guidelines below](#workflow).
 
 If you're already familiar with our workflow, maybe have a quick look at the [pre-commit checks](#pre-commit-checks) directly below.
 
@@ -24,28 +24,28 @@ You now have everything you need to start making changes!
 
 ### B. Writing your code
 
-5. liionpack is developed in [Python](https://en.wikipedia.org/wiki/Python_(programming_language)), and makes heavy use of [NumPy](https://en.wikipedia.org/wiki/NumPy) (see also [NumPy for MatLab users](https://numpy.org/doc/stable/user/numpy-for-matlab-users.html) and [Python for R users](http://blog.hackerearth.com/how-can-r-users-learn-python-for-data-science)).
+5. JellyBamm is developed in [Python](https://en.wikipedia.org/wiki/Python_(programming_language)), and makes heavy use of [NumPy](https://en.wikipedia.org/wiki/NumPy) (see also [NumPy for MatLab users](https://numpy.org/doc/stable/user/numpy-for-matlab-users.html) and [Python for R users](http://blog.hackerearth.com/how-can-r-users-learn-python-for-data-science)).
 6. Make sure to follow our [coding style guidelines](#coding-style-guidelines).
 7. Commit your changes to your branch with [useful, descriptive commit messages](https://chris.beams.io/posts/git-commit/): Remember these are publicly visible and should still make sense a few months ahead in time. While developing, you can keep using the GitHub issue you're working on as a place for discussion. [Refer to your commits](https://stackoverflow.com/questions/8910271/how-can-i-reference-a-commit-in-an-issue-comment-on-github) when discussing specific lines of code.
 8. If you want to add a dependency on another library, or re-use code you found somewhere else, have a look at [these guidelines](#dependencies-and-reusing-code).
 
-### C. Merging your changes with liionpack
+### C. Merging your changes with JellyBamm
 
 9. [Test your code!](#testing)
-10. liionpack has online documentation at http://liionpack.readthedocs.io/. To make sure any new methods or classes you added show up there, please read the [documentation](#documentation) section.
+10. JellyBamm has online documentation at http://JellyBamm.readthedocs.io/. To make sure any new methods or classes you added show up there, please read the [documentation](#documentation) section.
 11. If you added a major new feature, perhaps it should be showcased in an [example notebook](#example-notebooks).
-12. When you feel your code is finished, or at least warrants serious discussion, run the [pre-commit checks](#pre-commit-checks) and then create a [pull request](https://help.github.com/articles/about-pull-requests/) (PR) on [liionpack's GitHub page](https://github.com/pybamm-team/liionpack).
-13. Once a PR has been created, it will be reviewed by any member of the community. Changes might be suggested which you can make by simply adding new commits to the branch. When everything's finished, someone with the right GitHub permissions will merge your changes into liionpack main repository.
+12. When you feel your code is finished, or at least warrants serious discussion, run the [pre-commit checks](#pre-commit-checks) and then create a [pull request](https://help.github.com/articles/about-pull-requests/) (PR) on [JellyBamm's GitHub page](https://github.com/pybamm-team/JellyBamm).
+13. Once a PR has been created, it will be reviewed by any member of the community. Changes might be suggested which you can make by simply adding new commits to the branch. When everything's finished, someone with the right GitHub permissions will merge your changes into JellyBamm main repository.
 
 
 
 ## Coding style guidelines
 
-liionpack follows the [PEP8 recommendations](https://www.python.org/dev/peps/pep-0008/) for coding style. These are very common guidelines, and community tools have been developed to check how well projects implement them.
+JellyBamm follows the [PEP8 recommendations](https://www.python.org/dev/peps/pep-0008/) for coding style. These are very common guidelines, and community tools have been developed to check how well projects implement them.
 
 ### Flake8
 
-We use [flake8](http://flake8.pycqa.org/en/latest/) to check our PEP8 adherence. To try this on your system, navigate to the liionpack directory in a console and type
+We use [flake8](http://flake8.pycqa.org/en/latest/) to check our PEP8 adherence. To try this on your system, navigate to the JellyBamm directory in a console and type
 
 ```bash
 flake8
@@ -56,7 +56,7 @@ flake8
 
 We use [black](https://black.readthedocs.io/en/stable/) to automatically configure our code to adhere to PEP8. Black can be used in two ways:
 
-1. Command line: navigate to the liionpack directory in a console and type
+1. Command line: navigate to the JellyBamm directory in a console and type
 
 ```bash
 black {source_file_or_directory}
@@ -77,8 +77,8 @@ Class names are CamelCase, and start with an upper case letter, for example `MyO
 
 ## Dependencies and reusing code
 
-While it's a bad idea for developers to "reinvent the wheel", it's important for users to get a _reasonably sized download and an easy install_. In addition, external libraries can sometimes cease to be supported, and when they contain bugs it might take a while before fixes become available as automatic downloads to liionpack users.
-For these reasons, all dependencies in liionpack should be thought about carefully, and discussed on GitHub.
+While it's a bad idea for developers to "reinvent the wheel", it's important for users to get a _reasonably sized download and an easy install_. In addition, external libraries can sometimes cease to be supported, and when they contain bugs it might take a while before fixes become available as automatic downloads to JellyBamm users.
+For these reasons, all dependencies in JellyBamm should be thought about carefully, and discussed on GitHub.
 
 Direct inclusion of code from other packages is possible, as long as their license permits it and is compatible with ours, but again should be considered carefully and discussed in the group. Snippets from blogs and [stackoverflow](https://stackoverflow.com/) can often be included without attribution, but if they solve a particularly nasty problem (or are very hard to read) it's often a good idea to attribute (and document) them, by making a comment with a link in the source code.
 
@@ -124,7 +124,7 @@ This will open a window in your browser with detailed profiling information.
 
 ## Documentation
 
-liionpack is documented in several ways.
+JellyBamm is documented in several ways.
 
 First and foremost, every method and every class should have a [docstring](https://www.python.org/dev/peps/pep-0257/) that describes in plain terms what it does, and what the expected input and output is.
 
@@ -132,7 +132,7 @@ These docstrings can be fairly simple, but can also make use of [reStructuredTex
 
 In addition, we write a (very) small bit of documentation in separate reStructuredText files in the `docs` directory. Most of what these files do is simply import docstrings from the source code. But they also do things like add tables and indexes. If you've added a new class to a module, search the `docs` directory for that module's `.rst` file and add your class (in alphabetical order) to its index. If you've added a whole new module, copy-paste another module's file and add a link to your new file in the appropriate `index.rst` file.
 
-Using [MKDocs](https://www.mkdocs.org/) the documentation in `docs` can be converted to HTML, PDF, and other formats. In particular, we use it to generate the documentation on http://liionpack.readthedocs.io/
+Using [MKDocs](https://www.mkdocs.org/) the documentation in `docs` can be converted to HTML, PDF, and other formats. In particular, we use it to generate the documentation on http://JellyBamm.readthedocs.io/
 
 ### Building the documentation
 
@@ -145,7 +145,7 @@ And then visit the webpage served at http://127.0.0.1:8000. Each time a change t
 
 ### Example notebooks
 
-Major liionpack features are showcased in [Jupyter notebooks](https://jupyter.org/) stored in the [examples directory](examples/notebooks). Which features are "major" is of course wholly subjective, so please discuss on GitHub first!
+Major JellyBamm features are showcased in [Jupyter notebooks](https://jupyter.org/) stored in the [examples directory](examples/notebooks). Which features are "major" is of course wholly subjective, so please discuss on GitHub first!
 
 
 ## Citations
@@ -213,11 +213,11 @@ then, to view the website:
 asv preview
 ```
 
-Current benchmarks over PyBaMM's history can be viewed at https://pybamm-team.github.io/liionpack-bench/
+Current benchmarks over PyBaMM's history can be viewed at https://pybamm-team.github.io/JellyBamm-bench/
 
 ### Adding benchmarks
 
-To contribute benchmarks to liionpack, add a new benchmark function in one of the files in the `benchmarks/` directory.
+To contribute benchmarks to JellyBamm, add a new benchmark function in one of the files in the `benchmarks/` directory.
 Benchmarks are distributed across multiple files, grouped by theme. You're welcome to add a new file if none of your benchmarks fit into one of the already existing files.
 Inside a benchmark file (e.g. `benchmarks/benchmarks.py`) benchmarks functions are grouped within classes.
 
@@ -252,7 +252,7 @@ asv dev
 
 ### Setuptools
 
-Installation of liionpack _and dependencies_ is handled via [setuptools](http://setuptools.readthedocs.io/)
+Installation of JellyBamm _and dependencies_ is handled via [setuptools](http://setuptools.readthedocs.io/)
 
 Configuration files:
 
@@ -260,13 +260,13 @@ Configuration files:
 setup.py
 ```
 
-Note that this file must be kept in sync with the version number in `liionpack/__init__.py`.
+Note that this file must be kept in sync with the version number in `JellyBamm/__init__.py`.
 
 ### Continuous Integration using GitHub actions
 
-Each change pushed to the liionpack GitHub repository will trigger the test and benchmark suites to be run, using [GitHub actions](https://github.com/features/actions).
+Each change pushed to the JellyBamm GitHub repository will trigger the test and benchmark suites to be run, using [GitHub actions](https://github.com/features/actions).
 
-Tests are run for different operating systems, and for all python versions officially supported by liionpack. If you opened a Pull Request, feedback is directly available on the corresponding page. If all tests pass, a green tick will be displayed next to the corresponding test run. If one or more test(s) fail, a red cross will be displayed instead.
+Tests are run for different operating systems, and for all python versions officially supported by JellyBamm. If you opened a Pull Request, feedback is directly available on the corresponding page. If all tests pass, a green tick will be displayed next to the corresponding test run. If one or more test(s) fail, a red cross will be displayed instead.
 
 Similarly, the benchmark suite is automatically run for the most recently pushed commit. Benchmark results are compared to the results available for the latest commit on the `develop` branch. Should any significant performance regression be found, a red cross will be displayed next to the benchmark run.
 
@@ -276,23 +276,23 @@ Configuration files for various GitHub actions workflow can be found in `.github
 
 ### Codecov
 
-Code coverage (how much of our code is actually seen by the (linux) unit tests) is tested using [Codecov](https://docs.codecov.io/), a report is visible on https://codecov.io/gh/pybamm-team/liionpack.
+Code coverage (how much of our code is actually seen by the (linux) unit tests) is tested using [Codecov](https://docs.codecov.io/), a report is visible on https://codecov.io/gh/pybamm-team/JellyBamm.
 
 
 ### Read the Docs
 
-Documentation is built using https://readthedocs.org/ and published on http://liionpack.readthedocs.io/.
+Documentation is built using https://readthedocs.org/ and published on http://JellyBamm.readthedocs.io/.
 
 ### Google Colab
 
-Editable notebooks are made available using [Google Colab](https://colab.research.google.com/) [here](https://colab.research.google.com/github/pybamm-team/liionpack/blob/main/).
+Editable notebooks are made available using [Google Colab](https://colab.research.google.com/) [here](https://colab.research.google.com/github/pybamm-team/JellyBamm/blob/main/).
 
 ### GitHub
 
 GitHub does some magic with particular filenames. In particular:
 
-- The first page people see when they go to [our GitHub page](https://github.com/pybamm-team/liionpack) displays the contents of our readme, which is written in the [Markdown](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet) format. Some guidelines can be found [here](https://help.github.com/articles/about-readmes/).
-- The license for using liionpack is stored in [LICENSE](LICENSE), and [automatically](https://help.github.com/articles/adding-a-license-to-a-repository/) linked to by GitHub.
+- The first page people see when they go to [our GitHub page](https://github.com/pybamm-team/JellyBamm) displays the contents of our readme, which is written in the [Markdown](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet) format. Some guidelines can be found [here](https://help.github.com/articles/about-readmes/).
+- The license for using JellyBamm is stored in [LICENSE](LICENSE), and [automatically](https://help.github.com/articles/adding-a-license-to-a-repository/) linked to by GitHub.
 - This file, [contributing.md](contributing.md) is recognised as the contribution guidelines and a link is [automatically](https://github.com/blog/1184-contributing-guidelines) displayed when new issues or pull requests are created.
 
 ## Acknowledgements

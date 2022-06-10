@@ -1,4 +1,4 @@
-name: liionpack
+name: JellyBaMM
 dependencies:
   - python
   - pip
