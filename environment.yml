@@ -1,0 +1,10 @@
+name: liionpack
+dependencies:
+  - python
+  - pip
+  - pip:
+    - pybamm
+    - liionpack
+    - mkdocstrings-python-legacy
+    - mkdocs-material
+    - mkdocs-jupyter
