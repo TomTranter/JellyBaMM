@@ -1,4 +1,4 @@
-liionpack is currently in beta testing.
+JellyBaMM is currently in beta testing.
 
 For information on MkDocs visit [mkdocs.org](https://www.mkdocs.org).
 

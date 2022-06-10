@@ -32,6 +32,7 @@ dependencies:
   - pip:
     - pybamm
     - liionpack
+    - openpnm
     - mkdocstrings-python-legacy
     - mkdocs-material
     - mkdocs-jupyter
