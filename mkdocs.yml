@@ -1,4 +1,4 @@
-site_name: liionpack
+site_name: JellyBamm
 
 theme:
     name: material
@@ -32,15 +32,9 @@ nav:
     - About: 'about.md'
     - Installation: 'install.md'
     - Examples:
-        - 'examples/01 Getting Started.ipynb'
-        - 'examples/02 Using inputs.ipynb'
-        - 'examples/03 Experiments.ipynb'
-        - 'examples/04 Initial SoC.ipynb'
-        - 'examples/05 Drive cycles.ipynb'
-        - 'examples/06 Changing a model.ipynb'
-        - 'examples/07 Visualizing larger packs.ipynb'
-        - 'examples/08 SEI degradation model.ipynb'
-        - 'examples/09 Terminal locations.ipynb'
+        - 'examples/01 Getting started.ipynb'
+        - 'examples/02 Network from an image.ipynb'
+        - 'examples/03 Running a simulation.ipynb'
     - Reference: 'reference.md'
     - Code of conduct: 'conduct.md'
     - Contributing: 'contributing.md'
