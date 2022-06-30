@@ -16,15 +16,17 @@ import pandas as pd
 def plot_topology(net, ax=None):
     # inner = net["pore.inner"]
     # outer = net["pore.outer"]
-    c1 = np.array([75/255, 139/255, 190/255, 1]) #Cyan-Blue Azure
-    c1 = np.array([48/255, 105/255, 152/255, 1]) #Lapis Lazuli
-    c2 = np.array([1, 232/255, 115/255, 1]) #Shandy
-    c2 = np.array([1, 212/255, 59/255, 1]) #Sunglow
-    c3 = np.array([100/255, 100/255, 100/255, 1]) #Granite Gray
+    c1 = np.array([[75/255, 139/255, 190/255, 1]]) #Cyan-Blue Azure
+    c1 = np.array([[48/255, 105/255, 152/255, 1]]) #Lapis Lazuli
+    c2 = np.array([[1, 232/255, 115/255, 1]]) #Shandy
+    c2 = np.array([[1, 212/255, 59/255, 1]]) #Sunglow
+    c3 = np.array([[100/255, 100/255, 100/255, 1]]) #Granite Gray
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"), c=c1, ax=ax)
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"), c=c2, ax=ax)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"),
+                            color=c1, ax=ax)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"),
+                            color=c2, ax=ax)
     ax = pcoord(net, pores=net.pores("neg_cc"), color=c1, s=25, ax=ax)
     ax = pcoord(net, pores=net.pores("pos_cc"), color=c2, s=25, ax=ax)
     ax = pcoord(net, pores=net["pore.neg_tab"], color=c1, s=75, ax=ax)
@@ -37,7 +39,7 @@ def plot_topology(net, ax=None):
 
     t_sep = net.throats("spm_resistor")
     if len(t_sep) > 0:
-        ax = pconn(net, throats=net.throats("spm_resistor"), c="k", ax=ax)
+        ax = pconn(net, throats=net.throats("spm_resistor"), color="k", ax=ax)
     return ax
 
 

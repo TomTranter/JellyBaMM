@@ -69,8 +69,9 @@ length_3d = 0.08
 
 
 # OpenPNM project
+
 project, arc_edges = ecm.make_spiral_net(
-    Nlayers, dtheta, width * 1e-6, pos_tabs, neg_tabs, length_3d, tesla_tabs
+    Nlayers, dtheta, width * 1e-6, 15e-5, pos_tabs, neg_tabs, length_3d, tesla_tabs
 )
 
 net = project.network
