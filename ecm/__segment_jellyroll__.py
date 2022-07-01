@@ -369,12 +369,14 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.pos_tab'] = False
     net['pore.neg_tab'][net.pores(['inner', 'neg_cc', 'terminal'], mode='and')] = True
     net['pore.pos_tab'][net.pores(['outer', 'pos_cc', 'terminal'], mode='and')] = True
+    
+    # Add Free Stream Pores
     num_free = net.num_pores('outer')
     outer_pos = net['pore.coords'][net.pores('outer')]
     x = outer_pos[:, 0] - mhs
     y = outer_pos[:, 1] - mhs
     r, t = ecm.polar_transform(x, y)
-    r_new = np.ones(num_free) * (r + 50)
+    r_new = np.ones(num_free) * (r + 25)
     new_x, new_y = ecm.cartesian_transform(r_new, t)
     free_coords = outer_pos.copy()
     free_coords[:, 0] = new_x + mhs
@@ -390,24 +392,28 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.cell_id'][net.pores('free_stream')] = -1
     net['pore.cell_id'] = net['pore.cell_id'].astype(int)
 
-    # fig, ax = plt.subplots(figsize=(12, 12))
-    # ax = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', ax=ax)
-    # ax = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', ax=ax)
-    # ax = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', ax=ax)
-    # ax = tt.plot_coordinates(net, pores=net.pores('neg_cc'), c='r', ax=ax)
-    # ax = tt.plot_coordinates(net, pores=net.pores('pos_cc'), c='b', ax=ax)
-    # ax = tt.plot_coordinates(net, pores=net.pores('surface'), c='k', ax=ax)
-    # ax = tt.plot_coordinates(net, pores=net.pores('outer'), c='pink', ax=ax)
-    # ax = tt.plot_coordinates(net, pores=net.pores('inner'), c='purple', ax=ax)
-    # ax = tt.plot_coordinates(net, pores=net.pores('terminal'), c='y', s=100, ax=ax)
-    # ax = tt.plot_coordinates(net, pores=net.pores('free_stream'), c='g', ax=ax)
-    # ax = tt.plot_connections(net, throats=net.throats('free_stream'), c='g', ax=ax)
+    # Add Inner Boundary Pores
+    num_inner = net.num_pores('inner')
+    inner_pos = net['pore.coords'][net.pores('inner')]
+    x = inner_pos[:, 0] - mhs
+    y = inner_pos[:, 1] - mhs
+    r, t = ecm.polar_transform(x, y)
+    r_new = np.ones(num_free) * (r - 25)
+    new_x, new_y = ecm.cartesian_transform(r_new, t)
+    inner_coords = inner_pos.copy()
+    inner_coords[:, 0] = new_x + mhs
+    inner_coords[:, 1] = new_y + mhs
+    start = len(ordered_neg_Ps) + len(ordered_pos_Ps) - num_inner
+    inner_conns = np.vstack((np.arange(0, num_inner, 1),
+                             np.arange(0, num_inner, 1) + num_inner)).T
+    inner_conns += start
+    tt.extend(net, pore_coords=inner_coords,
+              throat_conns=inner_conns, labels=['inner_boundary'])
+    inner_Ps = net['pore.inner_boundary']
+    net['pore.arc_index'][inner_Ps] = net['pore.arc_index'][net['pore.outer']]
+    net['pore.cell_id'][net.pores('inner_boundary')] = -1
+    net['pore.cell_id'] = net['pore.cell_id'].astype(int)
 
-    # fig, ax = plt.subplots(figsize=(12, 12))
-    # ax = ecm.plot_resistors(net, net.throats('neg_cc'), c='r', ax=ax)
-    # ax = ecm.plot_resistors(net, net.throats('pos_cc'), c='b', ax=ax)
-    # ax = ecm.plot_resistors(net, net.throats('spm_resistor'), c='k', ax=ax)
-    # plt.imshow(im_soft.T)
 
     # Scale and save net
     prj = wrk['proj_01']

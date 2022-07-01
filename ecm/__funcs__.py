@@ -397,22 +397,23 @@ def interpolate_spm_number(project, x_len=2000, y_len=2000):
     all_t = []
     all_data = []
     for label in ["inner_boundary", "spm_resistor", "free_stream"]:
-        res_Ts = net.throats(label)
-        sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
-        res_pores = net["pore.coords"][net["throat.conns"][res_Ts[sorted_res_Ts]]]
-        res_Ts_coords = np.mean(res_pores, axis=1)
-        x = res_Ts_coords[:, 0]
-        y = res_Ts_coords[:, 1]
-        if label == "spm_resistor":
-            data = np.arange(0, len(res_Ts))[np.newaxis, :]
-        else:
-            data = np.ones(len(res_Ts))[np.newaxis, :]*-1
-        data = data.astype(float)
-        for t in range(data.shape[0]):
-            all_x = all_x + x.tolist()
-            all_y = all_y + y.tolist()
-            all_t = all_t + (np.ones(len(x)) * t).tolist()
-            all_data = all_data + data[t, :].tolist()
+        if "throat." + label in net.labels():
+            res_Ts = net.throats(label)
+            sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
+            res_pores = net["pore.coords"][net["throat.conns"][res_Ts[sorted_res_Ts]]]
+            res_Ts_coords = np.mean(res_pores, axis=1)
+            x = res_Ts_coords[:, 0]
+            y = res_Ts_coords[:, 1]
+            if label == "spm_resistor":
+                data = np.arange(0, len(res_Ts))[np.newaxis, :]
+            else:
+                data = np.ones(len(res_Ts))[np.newaxis, :]*-1
+            data = data.astype(float)
+            for t in range(data.shape[0]):
+                all_x = all_x + x.tolist()
+                all_y = all_y + y.tolist()
+                all_t = all_t + (np.ones(len(x)) * t).tolist()
+                all_data = all_data + data[t, :].tolist()
     all_x = np.asarray(all_x)
     all_y = np.asarray(all_y)
     all_t = np.asarray(all_t)

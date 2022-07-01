@@ -31,11 +31,13 @@ def plot_topology(net, ax=None):
     ax = pcoord(net, pores=net.pores("pos_cc"), color=c2, s=25, ax=ax)
     ax = pcoord(net, pores=net["pore.neg_tab"], color=c1, s=75, ax=ax)
     ax = pcoord(net, pores=net["pore.pos_tab"], color=c2, s=75, ax=ax)
-    try:
-        ax = pcoord(net, pores=net.pores("free_stream"), color=c3, ax=ax)
-        ax = pconn(net, throats=net.throats("throat.free_stream"), color=c3, ax=ax)
-    except KeyError:
-        pass
+
+    for label in ["inner_boundary", "free_stream"]:
+        try:
+            ax = pcoord(net, pores=net.pores(label), color=c3, ax=ax)
+            ax = pconn(net, throats=net.throats(label), color=c3, ax=ax)
+        except KeyError:
+            pass
 
     t_sep = net.throats("spm_resistor")
     if len(t_sep) > 0:
@@ -84,7 +86,7 @@ def make_spiral_net(Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs,
 
     """
     Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
-    Nunit = np.int(Nlayers * Narc) + 1  # total number of unit cells
+    Nunit = np.int(Nlayers * Narc)  # total number of unit cells
     N1d = 2
     # 2D assembly
     assembly = np.zeros([Nunit, N1d], dtype=int)
@@ -110,11 +112,11 @@ def make_spiral_net(Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs,
         (x, y, rad, pos) = spiral(r_start[i] + inner_r, dr, ntheta=Narc, n=Nlayers)
         mask = net["pore.coords"][:, 1] == r_start[i]
         coords = net["pore.coords"][mask]
-        coords[:, 0] = x
-        coords[:, 1] = y
+        coords[:, 0] = x[:-1]
+        coords[:, 1] = y[:-1]
         net["pore.coords"][mask] = coords
-        net["pore.radial_position"][mask] = rad
-        net["pore.arc_index"][mask] = pos
+        net["pore.radial_position"][mask] = rad[:-1]
+        net["pore.arc_index"][mask] = pos[:-1]
         if i == 0:
             arc_edges = np.cumsum(np.deg2rad(dtheta) * rad)
             arc_edges -= arc_edges[0]
@@ -148,7 +150,7 @@ def make_spiral_net(Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs,
         vec = coords_right - cl
         dist = np.linalg.norm(vec, axis=1)
         if np.any(dist < 2 * spacing):
-            i_right = np.argwhere(dist < 1.01 * spacing)[0][0]
+            i_right = np.argwhere(dist < 1.5 * spacing)[0][0]
             conns.append([Ps_neg_cc[i_left], Ps_pos_cc[i_right]])
     # Create new throats
     op.topotools.extend(network=net, throat_conns=conns, labels=["separator"])
@@ -183,7 +185,7 @@ def make_spiral_net(Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs,
     net["pore.outer"][net.pores("neg_cc")] = False
 
     # Free stream convection boundary nodes
-    free_rad = inner_r + (Nlayers) * dr
+    free_rad = inner_r + (Nlayers + 0.5) * dr
     (x, y, rad, pos) = spiral(free_rad, dr, ntheta=Narc, n=1)
     net_free = op.network.Cubic(shape=[Narc, 1, 1], spacing=spacing)
 
