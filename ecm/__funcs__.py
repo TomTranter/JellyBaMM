@@ -389,8 +389,6 @@ def cartesian_transform(r, t):
 
 
 def interpolate_spm_number(project, x_len=2000, y_len=2000):
-    # im_soft = np.load(os.path.join(ecm.INPUT_DIR, "im_soft.npz"))["arr_0"]
-    # x_len, y_len = im_soft.shape
     net = project.network
     all_x = []
     all_y = []
@@ -427,9 +425,8 @@ def interpolate_spm_number(project, x_len=2000, y_len=2000):
     ]
     arr = myInterpolator(grid_x, grid_y, 0)
     # arr[arr == -1] = np.nan
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    # ax1.imshow(im_soft)
-    ax2.imshow(arr)
+    fig, (ax1) = plt.subplots(1, 1)
+    ax1.imshow(arr)
     return arr
 
 

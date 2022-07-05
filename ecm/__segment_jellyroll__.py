@@ -381,10 +381,8 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     free_coords = outer_pos.copy()
     free_coords[:, 0] = new_x + mhs
     free_coords[:, 1] = new_y + mhs
-    start = len(ordered_neg_Ps) + len(ordered_pos_Ps) - num_free
-    free_conns = np.vstack((np.arange(0, num_free, 1),
-                            np.arange(0, num_free, 1) + num_free)).T
-    free_conns += start
+    free_conns = np.vstack((net.pores('outer'),
+                            np.arange(0, num_free, 1) + net.Np)).T
     tt.extend(net, pore_coords=free_coords,
               throat_conns=free_conns, labels=['free_stream'])
     free_Ps = net['pore.free_stream']
@@ -398,19 +396,17 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     x = inner_pos[:, 0] - mhs
     y = inner_pos[:, 1] - mhs
     r, t = ecm.polar_transform(x, y)
-    r_new = np.ones(num_free) * (r - 25)
+    r_new = np.ones(num_inner) * (r - 25)
     new_x, new_y = ecm.cartesian_transform(r_new, t)
     inner_coords = inner_pos.copy()
     inner_coords[:, 0] = new_x + mhs
     inner_coords[:, 1] = new_y + mhs
-    start = len(ordered_neg_Ps) + len(ordered_pos_Ps) - num_inner
-    inner_conns = np.vstack((np.arange(0, num_inner, 1),
-                             np.arange(0, num_inner, 1) + num_inner)).T
-    inner_conns += start
+    inner_conns = np.vstack((net.pores('inner'),
+                             np.arange(0, num_inner, 1) + net.Np)).T
     tt.extend(net, pore_coords=inner_coords,
               throat_conns=inner_conns, labels=['inner_boundary'])
     inner_Ps = net['pore.inner_boundary']
-    net['pore.arc_index'][inner_Ps] = net['pore.arc_index'][net['pore.outer']]
+    net['pore.arc_index'][inner_Ps] = net['pore.arc_index'][net['pore.inner']]
     net['pore.cell_id'][net.pores('inner_boundary')] = -1
     net['pore.cell_id'] = net['pore.cell_id'].astype(int)
 
