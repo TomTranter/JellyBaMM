@@ -405,7 +405,7 @@ def interpolate_spm_number(project, x_len=2000, y_len=2000):
             if label == "spm_resistor":
                 data = np.arange(0, len(res_Ts))[np.newaxis, :]
             else:
-                data = np.ones(len(res_Ts))[np.newaxis, :]*-1
+                data = np.ones(len(res_Ts))[np.newaxis, :] * -1
             data = data.astype(float)
             for t in range(data.shape[0]):
                 all_x = all_x + x.tolist()

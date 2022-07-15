@@ -16,17 +16,15 @@ import pandas as pd
 def plot_topology(net, ax=None):
     # inner = net["pore.inner"]
     # outer = net["pore.outer"]
-    c1 = np.array([[75/255, 139/255, 190/255, 1]]) #Cyan-Blue Azure
-    c1 = np.array([[48/255, 105/255, 152/255, 1]]) #Lapis Lazuli
-    c2 = np.array([[1, 232/255, 115/255, 1]]) #Shandy
-    c2 = np.array([[1, 212/255, 59/255, 1]]) #Sunglow
-    c3 = np.array([[100/255, 100/255, 100/255, 1]]) #Granite Gray
+    c1 = np.array([[75 / 255, 139 / 255, 190 / 255, 1]])  # Cyan-Blue Azure
+    c1 = np.array([[48 / 255, 105 / 255, 152 / 255, 1]])  # Lapis Lazuli
+    c2 = np.array([[1, 232 / 255, 115 / 255, 1]])  # Shandy
+    c2 = np.array([[1, 212 / 255, 59 / 255, 1]])  # Sunglow
+    c3 = np.array([[100 / 255, 100 / 255, 100 / 255, 1]])  # Granite Gray
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"),
-                            color=c1, ax=ax)
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"),
-                            color=c2, ax=ax)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"), color=c1, ax=ax)
+    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"), color=c2, ax=ax)
     ax = pcoord(net, pores=net.pores("neg_cc"), color=c1, s=25, ax=ax)
     ax = pcoord(net, pores=net.pores("pos_cc"), color=c2, s=25, ax=ax)
     ax = pcoord(net, pores=net["pore.neg_tab"], color=c1, s=75, ax=ax)
@@ -55,8 +53,9 @@ def spiral(r, dr, ntheta=36, n=10):
     return (x, y, rad, pos)
 
 
-def make_spiral_net(Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs,
-                    length_3d, tesla_tabs):
+def make_spiral_net(
+    Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs, length_3d, tesla_tabs
+):
     r"""
     Generate a perfect spiral network
 
@@ -331,11 +330,13 @@ def make_1D_net(Nunit, spacing, pos_tabs, neg_tabs):
     pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
     neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
 
-    net.add_boundary_pores(labels=['front', 'back'])
-    net["pore.free_stream"] = np.logical_or(net["pore.front_boundary"],
-                                            net["pore.back_boundary"])
-    net["throat.free_stream"] = np.logical_or(net["throat.front_boundary"],
-                                              net["throat.back_boundary"])
+    net.add_boundary_pores(labels=["front", "back"])
+    net["pore.free_stream"] = np.logical_or(
+        net["pore.front_boundary"], net["pore.back_boundary"]
+    )
+    net["throat.free_stream"] = np.logical_or(
+        net["throat.front_boundary"], net["throat.back_boundary"]
+    )
 
     pos_tab_nodes = net.pores()[net["pore.pos_cc"]][pos_tabs]
     neg_tab_nodes = net.pores()[net["pore.neg_cc"]][neg_tabs]
