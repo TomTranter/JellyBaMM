@@ -1,0 +1,40 @@
+site_name: JellyBamm
+
+theme:
+    name: material
+    palette:
+      scheme: slate
+    font:
+      text: Saira
+
+extra_css:
+  - stylesheets/extra.css
+
+strict: false
+
+plugins:
+- search
+- mkdocstrings
+- mkdocs-jupyter:
+    theme: dark
+
+markdown_extensions:
+   - pymdownx.arithmatex
+
+extra_javascript:
+  - mathjax-config.js
+  - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML
+
+docs_dir: docs
+
+nav:
+    - Home: 'index.md'
+    - About: 'about.md'
+    - Installation: 'install.md'
+    - Examples:
+        - 'examples/01 Getting started.ipynb'
+        - 'examples/02 Network from an image.ipynb'
+        - 'examples/03 Running a simulation.ipynb'
+    - Reference: 'reference.md'
+    - Code of conduct: 'conduct.md'
+    - Contributing: 'contributing.md'

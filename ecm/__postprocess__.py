@@ -401,7 +401,7 @@ def stacked_variables(data, case, amp, var_list=[0, 1, 2, 3], ax=None, subi=0):
     return ax
 
 
-def plot_resistors(net, throats, c, ax):
+def plot_resistors(net, throats, color, ax):
     conns = net["throat.conns"][throats]
     coords = net["pore.coords"]
     v = coords[conns[:, 1]] - coords[conns[:, 0]]
@@ -421,7 +421,7 @@ def plot_resistors(net, throats, c, ax):
         p_start = p_end
     x_all = np.asarray(x_all)
     y_all = np.asarray(y_all)
-    ax.plot(x_all, y_all, c=c)
+    ax.plot(x_all, y_all, color=color)
     return ax
 
 

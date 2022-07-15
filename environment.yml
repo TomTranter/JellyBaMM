@@ -1,0 +1,38 @@
+name: JellyBaMM
+dependencies:
+  - python
+  - pip
+  - numpy
+  - scipy
+  - matplotlib
+  - pandas
+  - plotly
+  - openpyxl
+  - tqdm
+  - networkx
+  - jupyter
+  - sympy
+  - ipython
+  - wrapt
+  - sympy
+  - redis
+  - pyyaml
+  - protobuf >=3.8.0,<4.0.0
+  - imageio
+  - grpcio
+  - future
+  - flatbuffers
+  - filelock
+  - deprecated
+  - click
+  - autograd
+  - absl-py
+  - dask
+  - hiredis
+  - pip:
+    - pybamm
+    - liionpack
+    - openpnm
+    - mkdocstrings-python-legacy
+    - mkdocs-material
+    - mkdocs-jupyter

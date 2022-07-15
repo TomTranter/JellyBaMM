@@ -15,7 +15,6 @@ from scipy import io
 import matplotlib.pyplot as plt
 from scipy.interpolate import NearestNDInterpolator
 import json
-import ecm
 
 wrk = op.Workspace()
 
@@ -388,27 +387,30 @@ def cartesian_transform(r, t):
     return x, y
 
 
-def interpolate_spm_number(project):
-    im_soft = np.load(os.path.join(ecm.INPUT_DIR, "im_soft.npz"))["arr_0"]
-    x_len, y_len = im_soft.shape
+def interpolate_spm_number(project, x_len=2000, y_len=2000):
     net = project.network
-    res_Ts = net.throats("spm_resistor")
-    sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
-    res_pores = net["pore.coords"][net["throat.conns"][res_Ts[sorted_res_Ts]]]
-    res_Ts_coords = np.mean(res_pores, axis=1)
-    x = res_Ts_coords[:, 0]
-    y = res_Ts_coords[:, 1]
     all_x = []
     all_y = []
     all_t = []
     all_data = []
-    data = np.arange(0, len(res_Ts))[np.newaxis, :]
-    data = data.astype(float)
-    for t in range(data.shape[0]):
-        all_x = all_x + x.tolist()
-        all_y = all_y + y.tolist()
-        all_t = all_t + (np.ones(len(x)) * t).tolist()
-        all_data = all_data + data[t, :].tolist()
+    for label in ["inner_boundary", "spm_resistor", "free_stream"]:
+        if "throat." + label in net.labels():
+            res_Ts = net.throats(label)
+            sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
+            res_pores = net["pore.coords"][net["throat.conns"][res_Ts[sorted_res_Ts]]]
+            res_Ts_coords = np.mean(res_pores, axis=1)
+            x = res_Ts_coords[:, 0]
+            y = res_Ts_coords[:, 1]
+            if label == "spm_resistor":
+                data = np.arange(0, len(res_Ts))[np.newaxis, :]
+            else:
+                data = np.ones(len(res_Ts))[np.newaxis, :] * -1
+            data = data.astype(float)
+            for t in range(data.shape[0]):
+                all_x = all_x + x.tolist()
+                all_y = all_y + y.tolist()
+                all_t = all_t + (np.ones(len(x)) * t).tolist()
+                all_data = all_data + data[t, :].tolist()
     all_x = np.asarray(all_x)
     all_y = np.asarray(all_y)
     all_t = np.asarray(all_t)
@@ -421,10 +423,9 @@ def interpolate_spm_number(project):
         y.min() * f : y.max() * f : np.complex(y_len, 0),
     ]
     arr = myInterpolator(grid_x, grid_y, 0)
-    arr[np.isnan(im_soft)] = np.nan
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1.imshow(im_soft)
-    ax2.imshow(arr)
+    # arr[arr == -1] = np.nan
+    fig, (ax1) = plt.subplots(1, 1)
+    ax1.imshow(arr)
     return arr
 
 
