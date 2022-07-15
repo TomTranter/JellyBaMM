@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import skimage
+import openpnm as op
+
 print('ECM version', ecm.__version__)
 print('skimage version', skimage.__version__)
-
-import openpnm as op
 wrk = op.Workspace()
 print(wrk)
 

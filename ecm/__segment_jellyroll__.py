@@ -369,7 +369,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.pos_tab'] = False
     net['pore.neg_tab'][net.pores(['inner', 'neg_cc', 'terminal'], mode='and')] = True
     net['pore.pos_tab'][net.pores(['outer', 'pos_cc', 'terminal'], mode='and')] = True
-    
+
     # Add Free Stream Pores
     num_free = net.num_pores('outer')
     outer_pos = net['pore.coords'][net.pores('outer')]
@@ -409,7 +409,6 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.arc_index'][inner_Ps] = net['pore.arc_index'][net['pore.inner']]
     net['pore.cell_id'][net.pores('inner_boundary')] = -1
     net['pore.cell_id'] = net['pore.cell_id'].astype(int)
-
 
     # Scale and save net
     prj = wrk['proj_01']

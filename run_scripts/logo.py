@@ -21,7 +21,6 @@ class RoundedPolygon(patches.PathPatch):
             x00 = x0 + pad * d01
             x01 = x1 - pad * d01
             x10 = x1 + pad * d12
-            x11 = x2 - pad * d12
 
             if i == 0:
                 verts = [x00, x01, x1, x10]

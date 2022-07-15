@@ -15,7 +15,6 @@ from scipy import io
 import matplotlib.pyplot as plt
 from scipy.interpolate import NearestNDInterpolator
 import json
-import ecm
 
 wrk = op.Workspace()
 
