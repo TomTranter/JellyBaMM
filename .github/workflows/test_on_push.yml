@@ -43,7 +43,7 @@ jobs:
         pip install wheel
         python -m pip install git+https://github.com/pybamm-team/pybamm@develop
         pybamm_install_jax
-        python -m pip install git+https://github.com/pybamm-team/liionpack@main
+        python -m pip install git+https://github.com/pybamm-team/liionpack@v0.3.1
     - name: Install pybamm_pnm with dependencies
       run: |
         pip install wheel
