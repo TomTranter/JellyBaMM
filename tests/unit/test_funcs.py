@@ -19,8 +19,8 @@ class funcsTest(unittest.TestCase):
     def _ecm_general(self, project):
         # Experiment
         I_app = 0.35
-        dt = 30
-        Nsteps = 2
+        dt = 5
+        Nsteps = 3
         hours = dt * Nsteps / 3600
         experiment = pybamm.Experiment(
             [
