@@ -25,27 +25,27 @@ class postprocessTest(unittest.TestCase):
         amps = ecm.get_amp_cases(os.path.join(filepath, cases[0]))
         return data, amps, cases
 
-    def test_jellyroll_subplot(self):
-        data = ecm.load_cases(root)
-        case_index = 0
-        amp_index = 0
-        var_index = 0
-        case_folder = children[case_index]
-        amps = ecm.get_amp_cases(case_folder)
-        case = list(data.keys())[case_index]
-        ecm.jellyroll_subplot(
-            data,
-            case,
-            amps[amp_index],
-            var=var_index,
-            soc_list=[[1.0, 0.99], [0.98, 0.97]],
-            global_range=False,
-            dp=1,
-        )
-        if close_plots:
-            plt.close("all")
-        wrk.clear()
-        assert 1 == 1
+    # def test_jellyroll_subplot(self):
+    #     data = ecm.load_cases(root)
+    #     case_index = 0
+    #     amp_index = 0
+    #     var_index = 0
+    #     case_folder = children[case_index]
+    #     amps = ecm.get_amp_cases(case_folder)
+    #     case = list(data.keys())[case_index]
+    #     ecm.jellyroll_subplot(
+    #         data,
+    #         case,
+    #         amps[amp_index],
+    #         var=var_index,
+    #         soc_list=[[1.0, 0.99], [0.98, 0.97]],
+    #         global_range=False,
+    #         dp=1,
+    #     )
+    #     if close_plots:
+    #         plt.close("all")
+    #     wrk.clear()
+    #     assert 1 == 1
 
     def test_multivar_subplot(self):
         data, amps, cases = self._load(root)
