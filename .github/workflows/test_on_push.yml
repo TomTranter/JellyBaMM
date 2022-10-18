@@ -47,6 +47,7 @@ jobs:
     - name: Install pybamm_pnm with dependencies
       run: |
         pip install wheel
+        pip install openpnm==2.8.2
         python -m pip install -e .
     - name: Install latest sympy
       run: |
