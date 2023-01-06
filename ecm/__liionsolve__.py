@@ -61,7 +61,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
     typical_height = np.mean(electrode_heights)
     # Take I_app from first command of the experiment
-    I_app = experiment.operating_conditions[0]["electric"][0]
+    proto = lp.generate_protocol_from_experiment(experiment)
+    I_app = proto[0]
     I_typical = I_app / Nspm
     temp_inputs = {"Current": I_typical, "Electrode height [m]": typical_height}
 
