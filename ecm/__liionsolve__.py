@@ -57,14 +57,11 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     Nspm = net.num_throats("spm_resistor")
     res_Ts = net.throats("spm_resistor")
     # sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
-    electrode_heights = net["throat.electrode_height"][res_Ts]
     # print("Total Electrode Height", np.around(np.sum(electrode_heights), 2), "m")
-    typical_height = np.mean(electrode_heights)
     # Take I_app from first command of the experiment
     proto = lp.generate_protocol_from_experiment(experiment)
     I_app = proto[0]
     I_typical = I_app / Nspm
-    temp_inputs = {"Current": I_typical, "Electrode height [m]": typical_height}
 
     # print("Total pore volume", np.sum(net["pore.volume"]))
     # print("Mean throat area", np.mean(net["throat.area"]))
@@ -96,19 +93,10 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     ###########################################################################
     # Thermal parameters                                                      #
     ###########################################################################
-    params = pybamm.LithiumIonParameters()
-    Delta_T = parameter_values.process_symbol(params.Delta_T).evaluate(
-        inputs=temp_inputs
-    )
-    # Delta_T_spm = Delta_T * (typical_height / electrode_heights)
-    T_ref = parameter_values.process_symbol(params.T_ref).evaluate()
     T0 = parameter_values["Initial temperature [K]"]
     lumpy_therm = ecm.lump_thermal_props(parameter_values)
     cp = lumpy_therm["lump_Cp"]
     rho = lumpy_therm["lump_rho"]
-    T_non_dim = (T0 - T_ref) / Delta_T
-    T_non_dim_spm = np.ones(len(res_Ts)) * T_non_dim
-
     ###########################################################################
     # Run time config                                                         #
     ###########################################################################
@@ -131,15 +119,15 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # I_app = 0.5
     netlist = ecm.network_to_netlist(net, Rs, Ri, V, I_app)
     T0 = parameter_values["Initial temperature [K]"]
-    T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
     e_heights = net["throat.electrode_height"][net.throats("throat.spm_resistor")]
+    spm_temperature = np.ones(Nspm) * T0
     # e_heights.fill(np.mean(e_heights))
     inputs = {
         "Electrode height [m]": e_heights,
+        "Input temperature [K]": spm_temperature
     }
     ###########################################################################
     # Initialisation
-    external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
     experiment_init = pybamm.Experiment(
         [
             f"Discharge at {I_app} A for 4 seconds",
@@ -155,7 +143,6 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         experiment=experiment_init,
         output_variables=output_variables,
         inputs=inputs,
-        external_variables=external_variables,
         nproc=max_workers,
         initial_soc=initial_soc,
         setup_only=True,
@@ -172,8 +159,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         # reset = True
         while step < manager.Nsteps and vlims_ok:
             ###################################################################
-            external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
-            vlims_ok = manager._step(step, external_variables)
+            updated_inputs = {"Input temperature [K]": spm_temperature}
+            vlims_ok = manager._step(step, updated_inputs)
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
@@ -189,7 +176,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
-            T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
+            # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
             step += 1
             pbar.update(1)
@@ -206,8 +193,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     ###########################################################################
     # Real Solve
     ###########################################################################
-    T_non_dim_spm = np.ones(Nspm) * fT_non_dim(parameter_values, T0)
-    external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
+    spm_temperature = np.ones(Nspm) * T0
+    inputs.update({"Input temperature [K]": spm_temperature})
     # Solve the pack
     manager = lp.CasadiManager()
     manager.solve(
@@ -217,7 +204,6 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         experiment=experiment,
         output_variables=output_variables,
         inputs=inputs,
-        external_variables=external_variables,
         nproc=max_workers,
         initial_soc=initial_soc,
         setup_only=True,
@@ -233,8 +219,8 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         # reset = True
         while step < manager.Nsteps and vlims_ok:
             ###################################################################
-            external_variables = {"Volume-averaged cell temperature": T_non_dim_spm}
-            vlims_ok = manager._step(step, external_variables)
+            updated_inputs = {"Input temperature [K]": spm_temperature}
+            vlims_ok = manager._step(step, updated_inputs)
             ###################################################################
             # Apply Heat Sources
             Q_tot = manager.output[Qid, step, :]
@@ -250,7 +236,6 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
-            T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
             step += 1
             pbar.update(1)
