@@ -50,7 +50,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # dt = 30
     # Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
     net = project.network
-    phase = project.phases()["phase_01"]
+    phase = project["phase_01"]
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
     # connections between cc layers

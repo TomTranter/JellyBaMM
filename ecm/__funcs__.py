@@ -47,7 +47,7 @@ def adjust_parameters(parameter_values, I_typical):
 
     parameter_values.update(
         {
-            "Typical current [A]": I_typical,
+            # "Typical current [A]": I_typical,
             "Current function [A]": current_function,
             "Electrode height [m]": "[input]",
         }
@@ -184,23 +184,23 @@ def setup_thermal(project, parameter_values):
     rho = lumpy_therm["lump_rho"]
     total_htc = parameter_values["Total heat transfer coefficient [W.m-2.K-1]"]
     net = project.network
-    geo = project.geometries()["geo_01"]
-    phase = project.phases()["phase_01"]
-    phys = project.physics()["phys_01"]
+    # geo = project.geometries()["geo_01"]
+    phase = project["phase_01"]
+    # phys = project.physics()["phys_01"]
     hc = total_htc / (cp * rho)
     # Set up Phase and Physics
     phase["pore.temperature"] = T0
     alpha_spiral = lumpy_therm["alpha_spiral"]
     alpha_radial = lumpy_therm["alpha_radial"]
-    phys["throat.conductance"] = 1.0 * geo["throat.area"] / geo["throat.length"]
+    net["throat.conductance"] = 1.0 * net["throat.area"] / net["throat.length"]
     # Apply anisotropic heat conduction
     Ts = net.throats("spm_resistor")
-    phys["throat.conductance"][Ts] *= alpha_radial
+    net["throat.conductance"][Ts] *= alpha_radial
     Ts = net.throats("spm_resistor", mode="not")
-    phys["throat.conductance"][Ts] *= alpha_spiral
+    net["throat.conductance"][Ts] *= alpha_spiral
     # Free stream convective flux
     Ts = net.throats("free_stream")
-    phys["throat.conductance"][Ts] = geo["throat.area"][Ts] * hc
+    net["throat.conductance"][Ts] = net["throat.area"][Ts] * hc
 
     # print("Mean throat conductance", np.mean(phys["throat.conductance"]))
     # print("Mean throat conductance Boundary", np.mean(phys["throat.conductance"][Ts]))

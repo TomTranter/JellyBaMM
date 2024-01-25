@@ -254,6 +254,7 @@ def make_spiral_net(
 
     # print("N SPM", net.num_throats("spm_resistor"))
     net = ecm.setup_geometry(net, dtheta, spacing, length_3d=length_3d)
+    # net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
     # net["throat.arc_length"] = np.deg2rad(dtheta) * net["throat.radial_position"]
     phase = op.phase.Phase(network=net)
     # op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
