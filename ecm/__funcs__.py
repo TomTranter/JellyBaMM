@@ -157,24 +157,24 @@ def run_ecm(net, alg, V_terminal, plot=False):
 def setup_geometry(net, dtheta, spacing, length_3d):
     # Create Geometry based on circular arc segment
     drad = np.deg2rad(dtheta)
-    geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
-    if "throat.radial_position" not in net.props():
-        geo["throat.radial_position"] = net.interpolate_data("pore.radial_position")
-    geo["pore.volume"] = net["pore.radial_position"] * drad * spacing * length_3d
+    # geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
+    # if "throat.radial_position" not in net.props():
+    #     net["throat.radial_position"] = net.interpolate_data("pore.radial_position")
+    net["pore.volume"] = net["pore.radial_position"] * drad * spacing * length_3d
     cn = net["throat.conns"]
     C1 = net["pore.coords"][cn[:, 0]]
     C2 = net["pore.coords"][cn[:, 1]]
     D = np.sqrt(((C1 - C2) ** 2).sum(axis=1))
-    geo["throat.length"] = D
+    net["throat.length"] = D
     # Work out if throat connects pores in same radial position
-    rPs = geo["pore.arc_index"][net["throat.conns"]]
+    rPs = net["pore.arc_index"][net["throat.conns"]]
     sameR = rPs[:, 0] == rPs[:, 1]
-    geo["throat.area"] = spacing * length_3d
-    geo["throat.electrode_height"] = geo["throat.radial_position"] * drad
-    geo["throat.area"][sameR] = geo["throat.electrode_height"][sameR] * length_3d
-    geo["throat.volume"] = 0.0
-    geo["throat.volume"][sameR] = geo["throat.area"][sameR] * spacing
-    return geo
+    net["throat.area"] = spacing * length_3d
+    # net["throat.electrode_height"] = net["throat.radial_position"] * drad
+    # net["throat.area"][sameR] = net["throat.electrode_height"][sameR] * length_3d
+    net["throat.volume"] = 0.0
+    net["throat.volume"][sameR] = net["throat.area"][sameR] * spacing
+    return net
 
 
 def setup_thermal(project, parameter_values):
