@@ -419,8 +419,8 @@ def interpolate_spm_number(project, x_len=2000, y_len=2000):
     myInterpolator = NearestNDInterpolator(points, all_data)
     f = 1.05
     grid_x, grid_y = np.mgrid[
-        x.min() * f : x.max() * f : np.complex(x_len, 0),
-        y.min() * f : y.max() * f : np.complex(y_len, 0),
+        x.min() * f : x.max() * f : complex(x_len, 0),
+        y.min() * f : y.max() * f : complex(y_len, 0),
     ]
     arr = myInterpolator(grid_x, grid_y, 0)
     # arr[arr == -1] = np.nan

@@ -53,7 +53,7 @@ def average_images(path=None):
     boxes = np.asarray(boxes)
     x_span = boxes[:, 2] - boxes[:, 0]
     y_span = boxes[:, 3] - boxes[:, 1]
-    mhs = np.int(np.ceil(np.min([x_span.min(), y_span.min()]) / 2))  # min half span
+    mhs = int(np.ceil(np.min([x_span.min(), y_span.min()]) / 2))  # min half span
     # Factorize image size - used for adaptive histogran
     factors = []
     for i in np.arange(2, mhs * 2):
@@ -217,8 +217,8 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
         for l_int in np.arange(N):
             x, y = np.where(lab == l_int + 1)
             if len(x) > 0:
-                coords[l_int] = [np.int(np.around(np.mean(x), 0)),
-                                 np.int(np.around(np.mean(y), 0))]
+                coords[l_int] = [int(np.around(np.mean(x), 0)),
+                                 int(np.around(np.mean(y), 0))]
         cc_coords.append(coords)
     plt.figure()
     plt.imshow(cc_im)
@@ -324,7 +324,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     coords_3d = np.vstack((new_coords[:, 0], new_coords[:, 1],
                            np.zeros(new_coords.shape[0]))).T
     new_conns = np.vstack((neg_conns, pos_conns, neg_inner_conns, pos_inner_conns))
-    net = op.network.GenericNetwork(conns=new_conns, coords=coords_3d)
+    net = op.network.Network(conns=new_conns, coords=coords_3d)
 
     Ps, counts = np.unique(np.hstack((net['throat.conns'][:, 0],
                                       net['throat.conns'][:, 1])), return_counts=True)
@@ -417,8 +417,8 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.coords'][:, 0] -= mean
     net['pore.coords'][:, 1] -= mean
     net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
-    net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
-    net['throat.arc_length'] = net['throat.radial_position'] * np.deg2rad(dtheta)
+    # net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
+    # net['throat.arc_length'] = net['throat.radial_position'] * np.deg2rad(dtheta)
 
     if path is None:
         path = ecm.INPUT_DIR
