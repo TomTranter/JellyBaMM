@@ -158,6 +158,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         step = 0
         # reset = True
         while step < manager.Nsteps and vlims_ok:
+            print(f'Finished step {step}')
             ###################################################################
             updated_inputs = {"Input temperature [K]": spm_temperature}
             vlims_ok = manager._step(step, updated_inputs)
@@ -175,7 +176,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             # Calculate Global Temperature
             ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
             # Interpolate the node temperatures for the SPMs
-            spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
+            spm_temperature = phase.interpolate_data("throat.temperature")[res_Ts]  #! maybe should be the throat temp
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
             step += 1
@@ -218,6 +219,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
         step = 0
         # reset = True
         while step < manager.Nsteps and vlims_ok:
+            print(f'Finished step {step}')
             ###################################################################
             updated_inputs = {"Input temperature [K]": spm_temperature}
             vlims_ok = manager._step(step, updated_inputs)
@@ -235,7 +237,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             # Calculate Global Temperature
             ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
             # Interpolate the node temperatures for the SPMs
-            spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
+            spm_temperature = phase.interpolate_data("throat.temperature")[res_Ts]
             ###################################################################
             step += 1
             pbar.update(1)

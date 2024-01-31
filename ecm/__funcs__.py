@@ -69,7 +69,7 @@ def output_variables():
         "X-averaged battery concentration overpotential [V]",
         "X-averaged battery electrolyte ohmic losses [V]",
         "X-averaged battery solid phase ohmic losses [V]",
-        "Change in measured open circuit voltage [V]",
+        # "Change in measured open circuit voltage [V]",
     ]
 
 
@@ -158,8 +158,8 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     # Create Geometry based on circular arc segment
     drad = np.deg2rad(dtheta)
     # geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
-    # if "throat.radial_position" not in net.props():
-    #     net["throat.radial_position"] = net.interpolate_data("pore.radial_position")
+    if "throat.radial_position" not in net.props():
+        net["throat.radial_position"] = net.interpolate_data("throat.radial_position")
     net["pore.volume"] = net["pore.radial_position"] * drad * spacing * length_3d
     cn = net["throat.conns"]
     C1 = net["pore.coords"][cn[:, 0]]
@@ -170,8 +170,8 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     rPs = net["pore.arc_index"][net["throat.conns"]]
     sameR = rPs[:, 0] == rPs[:, 1]
     net["throat.area"] = spacing * length_3d
-    # net["throat.electrode_height"] = net["throat.radial_position"] * drad
-    # net["throat.area"][sameR] = net["throat.electrode_height"][sameR] * length_3d
+    net["throat.electrode_height"] = net["throat.radial_position"] * drad
+    net["throat.area"][sameR] = net["throat.electrode_height"][sameR] * length_3d
     net["throat.volume"] = 0.0
     net["throat.volume"][sameR] = net["throat.area"][sameR] * spacing
     return net
@@ -192,15 +192,15 @@ def setup_thermal(project, parameter_values):
     phase["pore.temperature"] = T0
     alpha_spiral = lumpy_therm["alpha_spiral"]
     alpha_radial = lumpy_therm["alpha_radial"]
-    net["throat.conductance"] = 1.0 * net["throat.area"] / net["throat.length"]
+    net["throat.thermal_conductance"] = 1.0 * net["throat.area"] / net["throat.length"]
     # Apply anisotropic heat conduction
     Ts = net.throats("spm_resistor")
-    net["throat.conductance"][Ts] *= alpha_radial
+    net["throat.thermal_conductance"][Ts] *= alpha_radial
     Ts = net.throats("spm_resistor", mode="not")
-    net["throat.conductance"][Ts] *= alpha_spiral
+    net["throat.thermal_conductance"][Ts] *= alpha_spiral
     # Free stream convective flux
     Ts = net.throats("free_stream")
-    net["throat.conductance"][Ts] = net["throat.area"][Ts] * hc
+    net["throat.thermal_conductance"][Ts] = net["throat.area"][Ts] * hc
 
     # print("Mean throat conductance", np.mean(phys["throat.conductance"]))
     # print("Mean throat conductance Boundary", np.mean(phys["throat.conductance"][Ts]))
@@ -210,11 +210,11 @@ def apply_heat_source(project, Q):
     # The SPMs are defined at the throat but the pores represent the
     # Actual electrode volume so need to interpolate for heat sources
     net = project.network
-    phys = project.physics()["phys_01"]
+    phase = project.phases[0]
     spm_Ts = net.throats("spm_resistor")
-    phys["throat.heat_source"] = 0.0
-    phys["throat.heat_source"][spm_Ts] = Q
-    phys.add_model(
+    phase["throat.heat_source"] = 0.0
+    phase["throat.heat_source"][spm_Ts] = Q
+    phase.add_model(
         propname="pore.heat_source",
         model=op.models.misc.from_neighbor_throats,
         prop="throat.heat_source",
@@ -225,9 +225,10 @@ def apply_heat_source(project, Q):
 def apply_heat_source_lp(project, Q):
     # The SPMs are defined at the throat but the pores represent the
     # Actual electrode volume so need to interpolate for heat sources
-    phys = project.physics()["phys_01"]
-    phys["throat.heat_source"] = Q
-    phys.add_model(
+    # net = project.network
+    phase = project.phases[0]
+    phase["throat.heat_source"] = Q
+    phase.add_model(
         propname="pore.heat_source",
         model=op.models.misc.from_neighbor_throats,
         prop="throat.heat_source",
@@ -238,10 +239,10 @@ def apply_heat_source_lp(project, Q):
 def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     # To Do - test whether this needs to be transient
     net = project.network
-    phase = project.phases()["phase_01"]
-    phys = project.physics()["phys_01"]
-    phys["pore.A1"] = 0.0
-    Q_spm = phys["pore.heat_source"] * net["pore.volume"]
+    phase = project.phases[0]
+    # phys = project.physics()["phys_01"]
+    # phase["pore.A1"] = 0.0
+    Q_spm = phase["pore.heat_source"] * phase["pore.volume"]
     # Q_cc = net["pore.cc_power_loss"]
     # print(
     #     "Q_spm",
@@ -254,35 +255,35 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     #     np.around(np.sum(Q_cc) / np.sum(Q_spm), 2),
     # )
     # phys["pore.A2"] = (Q_spm + Q_cc) / (cp * rho)
-    phys["pore.A2"] = (Q_spm) / (cp * rho)
+    # phase["pore.A2"] = (Q_spm) / (cp * rho)
     # Heat Source
     T0 = phase["pore.temperature"]
-    t_step = float(time_step / 10)
-    phys.add_model(
-        "pore.source",
-        model=linear,
-        X="pore.temperature",
-        A1="pore.A1",
-        A2="pore.A2",
-    )
+    # t_step = float(time_step / 10)
+    # phase.add_model(
+    #     "pore.source",
+    #     model=linear,
+    #     X="pore.temperature",
+    #     A1="pore.A1",
+    #     A2="pore.A2",
+    # )
     # Run Transient Heat Transport Algorithm
-    alg = op.algorithms.TransientReactiveTransport(network=net)
-    alg.setup(
-        phase=phase,
-        conductance="throat.conductance",
-        quantity="pore.temperature",
-        t_initial=0.0,
-        t_final=time_step,
-        t_step=t_step,
-        t_output=t_step,
-        t_tolerance=1e-9,
-        t_precision=12,
-        rxn_tolerance=1e-9,
-        t_scheme="implicit",
-    )
-    alg.set_IC(values=T0)
+    alg = op.algorithms.TransientFourierConduction(network=net, phase=phase)
+    # alg.setup(
+    #     phase=phase,
+    #     conductance="throat.conductance",
+    #     quantity="pore.temperature",
+    #     t_initial=0.0,
+    #     t_final=time_step,
+    #     t_step=t_step,
+    #     t_output=t_step,
+    #     t_tolerance=1e-9,
+    #     t_precision=12,
+    #     rxn_tolerance=1e-9,
+    #     t_scheme="implicit",
+    # )
+    # alg.set_IC(values=T0)
     bulk_Ps = net.pores("free_stream", mode="not")
-    alg.set_source("pore.source", bulk_Ps)
+    alg.set_source(bulk_Ps, "pore.source")
     if third:
         # To do - 12 only works if detheta is 10
         free_pores = net.pores("free_stream")
@@ -290,7 +291,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     else:
         Ps = net.pores("free_stream")
     alg.set_value_BC(Ps, values=BC_value)
-    alg.run()
+    alg.run(x0=T0, tspan=(0.0, time_step))
     # print(
     #     "Max Temp",
     #     np.around(alg["pore.temperature"].max(), 3),
@@ -298,7 +299,7 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     #     np.around(alg["pore.temperature"].min(), 3),
     # )
     phase["pore.temperature"] = alg["pore.temperature"]
-    project.purge_object(alg)
+    # project.purge_object(alg)
 
 
 def setup_pool(max_workers, pool_type="Process"):
