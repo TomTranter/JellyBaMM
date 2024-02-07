@@ -30,9 +30,11 @@ setup(
     packages=["ecm"],
     install_requires=[
         "numba",
-        "pybamm",
-        "openpnm",
-        "ffmpeg-python"
+        "liionpack==0.3.8",
+        "pybamm==23.9",
+        "openpnm==2.8.2",
+        "ffmpeg-python",
+        "ipywidgets"
     ],
     author="Tom Tranter",
     author_email="t.g.tranter@gmail.com",

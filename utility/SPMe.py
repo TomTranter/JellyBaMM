@@ -22,7 +22,7 @@ I_typical = 1.0
 param = model.default_parameter_values
 param.update(
     {
-        "Typical current [A]": I_typical,
+        # "Typical current [A]": I_typical,
         "Current function": current_function,
         "Current function [A]": I_typical,
         "Current": "[input]",

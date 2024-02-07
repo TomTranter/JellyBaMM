@@ -100,8 +100,8 @@ spm_ids = np.argwhere(sel < 37)
 #for _t in range(data_amalg)
 
 filtered_data = data_amalg[:-2, spm_ids]
-fmin = np.int(np.floor(filtered_data.min()))
-fmax = np.int(np.ceil(filtered_data.max()))
+fmin = int(np.floor(filtered_data.min()))
+fmax = int(np.ceil(filtered_data.max()))
 nbins = fmax - fmin
 data_2d = np.zeros([len(spm_ids), nbins], dtype=float)
 for i in range(len(spm_ids)):

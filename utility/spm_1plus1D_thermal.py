@@ -46,7 +46,7 @@ dr = (2 * t_neg_electrode + 2 * t_pos_electrode +
 inner_r = 185 * 1e-5
 length_3d = 80e-3
 dtheta = 10
-Narc = np.int(360 / dtheta)
+Narc = int(360 / dtheta)
 Narc = 36
 Nlayers = 40
 
@@ -72,7 +72,7 @@ cell_volume = np.pi * (rad[-1]**2) * length_3d
 
 param.update(
     {
-        "Typical current [A]": I_typical,
+        # "Typical current [A]": I_typical,
         "Current function [A]": I_app,
         "Initial temperature [K]": 298.15,
         "Electrode height [m]": e_height,

@@ -223,7 +223,7 @@ heat_layer_maps = []
 for ax, case in enumerate([1, 5]):
     heat_data = arrs[ax]
     nt, nspm = heat_data.shape
-    nbin = np.int(np.floor(nt / 10))
+    nbin = int(np.floor(nt / 10))
     heat_layer_map = np.zeros([spm_res_layer.max(), nbin])
 
     for t in range(nbin):

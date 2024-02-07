@@ -282,8 +282,8 @@ def chargeogram(data, case_list, amp_list, group="neg"):
             data_amalg /= mean
             data_amalg *= 100
             filtered_data = data_amalg[:, spm_ids]
-            fmin = np.int(np.floor(filtered_data.min())) - 1
-            fmax = np.int(np.ceil(filtered_data.max())) + 1
+            fmin = int(np.floor(filtered_data.min())) - 1
+            fmax = int(np.ceil(filtered_data.max())) + 1
             nbins = fmax - fmin
             data_2d = np.zeros([len(spm_ids), nbins], dtype=float)
             for i in range(len(spm_ids)):

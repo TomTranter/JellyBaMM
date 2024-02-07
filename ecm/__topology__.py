@@ -84,8 +84,8 @@ def make_spiral_net(
         DESCRIPTION.
 
     """
-    Narc = np.int(360 / dtheta)  # number of nodes in a wind/layer
-    Nunit = np.int(Nlayers * Narc)  # total number of unit cells
+    Narc = int(360 / dtheta)  # number of nodes in a wind/layer
+    Nunit = int(Nlayers * Narc)  # total number of unit cells
     N1d = 2
     # 2D assembly
     assembly = np.zeros([Nunit, N1d], dtype=int)
