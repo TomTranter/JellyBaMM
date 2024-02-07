@@ -69,7 +69,7 @@ def output_variables():
         "X-averaged battery concentration overpotential [V]",
         "X-averaged battery electrolyte ohmic losses [V]",
         "X-averaged battery solid phase ohmic losses [V]",
-        "Change in measured open circuit voltage [V]",
+        "Bulk open-circuit voltage [V]",
     ]
 
 

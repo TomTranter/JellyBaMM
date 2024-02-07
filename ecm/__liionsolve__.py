@@ -36,12 +36,14 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(parameter_values, experiment, initial_soc, project):
+def run_simulation_lp(parameter_values, experiment, initial_soc, project, integrator=None):
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
+    integrator = integrator or op.integrators.ScipyRadau()
     st = ticker.time()
     max_workers = int(os.cpu_count() / 2)
+    max_workers = 1
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
@@ -173,7 +175,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             Q[res_Ts] += Q_tot
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho)
+            ecm.run_step_transient(project, dim_time_step, T0, cp, rho,integrator=integrator)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("throat.temperature")[res_Ts]  #! maybe should be the throat temp
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
@@ -233,7 +235,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             Q[res_Ts] += Q_tot
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho)
+            ecm.run_step_transient(project, dim_time_step, T0, cp, rho,integrator=integrator)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("throat.temperature")[res_Ts]
             ###################################################################
