@@ -324,7 +324,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     coords_3d = np.vstack((new_coords[:, 0], new_coords[:, 1],
                            np.zeros(new_coords.shape[0]))).T
     new_conns = np.vstack((neg_conns, pos_conns, neg_inner_conns, pos_inner_conns))
-    net = op.network.GenericNetwork(conns=new_conns, coords=coords_3d)
+    net = op.network.Network(conns=new_conns, coords=coords_3d)
 
     Ps, counts = np.unique(np.hstack((net['throat.conns'][:, 0],
                                       net['throat.conns'][:, 1])), return_counts=True)
@@ -424,3 +424,4 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
         path = ecm.INPUT_DIR
     wrk.save_project(project=prj, filename=os.path.join(path, filename))
     return net
+

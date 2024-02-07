@@ -5,8 +5,8 @@
 import numpy as np
 import openpnm as op
 import openpnm.topotools as tt
-from openpnm.topotools import plot_connections as pconn
-from openpnm.topotools import plot_coordinates as pcoord
+from openpnm.visualization import plot_connections as pconn
+from openpnm.visualization import plot_coordinates as pcoord
 import os
 import matplotlib.pyplot as plt
 import ecm
@@ -153,9 +153,9 @@ def make_spiral_net(
             conns.append([Ps_neg_cc[i_left], Ps_pos_cc[i_right]])
     # Create new throats
     op.topotools.extend(network=net, throat_conns=conns, labels=["separator"])
-    h = net.check_network_health()
+    h = op.utils.check_network_health(net)
     if len(h["duplicate_throats"]) > 0:
-        trim_Ts = np.asarray(h["duplicate_throats"])[:, 1]
+        trim_Ts = np.asarray(h["duplicate_throats"])[1]
         op.topotools.trim(network=net, throats=trim_Ts)
     Ts = net.find_neighbor_throats(pores=net.pores("pos_cc"), mode="xor")
 
@@ -245,18 +245,19 @@ def make_spiral_net(
     del net["pore.right"]
     del net["pore.front"]
     del net["pore.back"]
-    del net["pore.internal"]
+    # del net["pore.internal"]
     del net["pore.surface"]
-    del net["throat.internal"]
+    # del net["throat.internal"]
     del net["throat.surface"]
 
     op.topotools.trim(network=net, throats=net.throats("trimmers"))
 
     # print("N SPM", net.num_throats("spm_resistor"))
-    geo = ecm.setup_geometry(net, dtheta, spacing, length_3d=length_3d)
+    net = ecm.setup_geometry(net, dtheta, spacing, length_3d=length_3d)
+    net['throat.radial_position'] = net.interpolate_data('throat.radial_position')
     net["throat.arc_length"] = np.deg2rad(dtheta) * net["throat.radial_position"]
-    phase = op.phases.GenericPhase(network=net)
-    op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
+    phase = op.phase.Phase(network=net)
+    # op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
     return prj, arc_edges
 
 
@@ -363,15 +364,14 @@ def make_1D_net(Nunit, spacing, pos_tabs, neg_tabs):
     del net["pore.front_boundary"]
     del net["pore.back"]
     del net["pore.back_boundary"]
-    del net["pore.internal"]
+    # del net["pore.internal"]
     del net["pore.surface"]
-    del net["throat.internal"]
+    # del net["throat.internal"]
     del net["throat.surface"]
 
-    phase = op.phases.GenericPhase(network=net)
-
-    geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
-    op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
+    phase = op.phase.Phase(network=net)
+    # geo = op.geometry.GenericGeometry(network=net, pores=net.Ps, throats=net.Ts)
+    # op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
 
     net["pore.radial_position"] = net["pore.coords"][:, 0]
     net["pore.arc_index"] = np.indices([Nunit + 2, 4, 1])[0].flatten()
@@ -539,3 +539,4 @@ def network_to_netlist(network, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
     # add internal resistors
     netlist = pd.DataFrame(netlist_data)
     return netlist
+

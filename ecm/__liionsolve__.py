@@ -36,21 +36,23 @@ def do_heating():
     pass
 
 
-def run_simulation_lp(parameter_values, experiment, initial_soc, project):
+def run_simulation_lp(parameter_values, experiment, initial_soc, project, integrator=None):
     ###########################################################################
     # Simulation information                                                  #
     ###########################################################################
+    integrator = integrator or op.integrators.ScipyRadau()
     st = ticker.time()
     max_workers = int(os.cpu_count() / 2)
+    max_workers = 1
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
-    # Nsteps = int(np.ceil(hours * 3600 / dt) + 1)
+    # Nsteps = np.int(np.ceil(hours * 3600 / dt) + 1)
     # except configparser.NoOptionError:
     # dt = 30
-    # Nsteps = int(hours * 60 * 2) + 1  # number of time steps
+    # Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
     net = project.network
-    phase = project.phases()["phase_01"]
+    phase = project["phase_01"]
     # The jellyroll layers are double sided around the cc except for the inner
     # and outer layers the number of spm models is the number of throat
     # connections between cc layers
@@ -173,9 +175,9 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             Q[res_Ts] += Q_tot
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            ecm.run_step_transient(project, dim_time_step, T0, cp, rho,integrator=integrator)
             # Interpolate the node temperatures for the SPMs
-            spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
+            spm_temperature = phase.interpolate_data("throat.temperature")[res_Ts]  #! maybe should be the throat temp
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
             ###################################################################
             step += 1
@@ -233,9 +235,9 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             Q[res_Ts] += Q_tot
             ecm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            ecm.run_step_transient(project, dim_time_step, T0, cp, rho,integrator=integrator)
             # Interpolate the node temperatures for the SPMs
-            spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
+            spm_temperature = phase.interpolate_data("throat.temperature")[res_Ts]
             ###################################################################
             step += 1
             pbar.update(1)
@@ -251,3 +253,4 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     print("ECM Sim time", ticker.time() - st)
     print("*" * 30)
     return project, manager.step_output()
+

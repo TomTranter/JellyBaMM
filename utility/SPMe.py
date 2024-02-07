@@ -22,7 +22,7 @@ I_typical = 1.0
 param = model.default_parameter_values
 param.update(
     {
-        # "Typical current [A]": I_typical,
+        "Typical current [A]": I_typical,
         "Current function": current_function,
         "Current function [A]": I_typical,
         "Current": "[input]",
@@ -41,11 +41,12 @@ dt = 100
 t_eval = np.arange(0, 3610, dt)
 
 overpotentials = {
-    "X-averaged reaction overpotential [V]": [],
-    "X-averaged concentration overpotential [V]": [],
-    "X-averaged electrolyte ohmic losses [V]": [],
-    "X-averaged solid phase ohmic losses [V]": [],
-    "Change in measured open circuit voltage [V]": [],
+    "Battery particle concentration overpotential [V]": [],
+    "X-averaged battery reaction overpotential [V]": [],
+    "X-averaged battery concentration overpotential [V]": [],
+    "X-averaged battery electrolyte ohmic losses [V]": [],
+    "X-averaged battery solid phase ohmic losses [V]": [],
+    # "Change in measured open circuit voltage [V]": [],
 }
 tot_R = []
 time = []
