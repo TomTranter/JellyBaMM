@@ -417,7 +417,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['pore.coords'][:, 0] -= mean
     net['pore.coords'][:, 1] -= mean
     net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
-    net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
+    net['throat.radial_position'] = net.interpolate_data('throat.radial_position')
     net['throat.arc_length'] = net['throat.radial_position'] * np.deg2rad(dtheta)
 
     if path is None:

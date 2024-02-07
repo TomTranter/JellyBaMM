@@ -232,7 +232,7 @@ def apply_heat_source_lp(project, Q):
         mode="mean",
     )
 
-default_int = rk45 = op.integrators.ScipyRadau(verbose=True)
+default_int = rk45 = op.integrators.ScipyRK45(verbose=True)
 
 
 def run_step_transient(project, time_step, BC_value, cp, rho, integrator = default_int, third=False):
