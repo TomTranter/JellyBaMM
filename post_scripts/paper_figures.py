@@ -5,7 +5,7 @@ Created on Thu Mar  5 08:14:54 2020
 @author: Tom
 """
 
-import ecm
+import jellybamm
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -39,9 +39,9 @@ tab_2_third = [15, 16, 17, 18, 19]
 tab_1_2 = [20, 21, 22, 23, 24]
 
 
-amps = ecm.get_amp_cases()
-d = ecm.load_all_data()
-cases = ecm.get_cases()
+amps = jellybamm.get_amp_cases()
+d = jellybamm.load_all_data()
+cases = jellybamm.get_cases()
 #soc_list=[[0.9, 0.8, 0.7],[0.6, 0.5, 0.4],[0.3, 0.2, 0.1]]
 #mini_soc_list=[[0.99, 0.98, 0.97],[0.96, 0.95, 0.94],[0.93, 0.92, 0.91]]
 soc_list = [[0.9, 0.5, 0.4],
@@ -142,23 +142,23 @@ def format_case(x, a, expanded=False, print_amps=True):
 
 def load_all_data():
     config = configparser.ConfigParser()
-    net = ecm.get_net()
-    weights = ecm.get_weights(net)
+    net = jellybamm.get_net()
+    weights = jellybamm.get_weights(net)
     cases = get_cases()
-    amps = ecm.get_amp_cases()
-    variables = ecm.get_saved_var_names()
+    amps = jellybamm.get_amp_cases()
+    variables = jellybamm.get_saved_var_names()
     data = {}
     for ci in range(len(cases.keys())):
         case_folder = os.path.join(root, cases[ci]['file'])
         data[ci] = {}
         config.read(os.path.join(case_folder, 'config.txt'))
-        data[ci]['config'] = ecm.config2dict(config)
+        data[ci]['config'] = jellybamm.config2dict(config)
         for amp in amps:
             amp_folder = os.path.join(case_folder, str(amp) + 'A')
             data[ci][amp] = {}
             for vi, v in enumerate(variables):
                 data[ci][amp][vi] = {}
-                temp = ecm.load_and_amalgamate(amp_folder, v)
+                temp = jellybamm.load_and_amalgamate(amp_folder, v)
                 if temp is not None:
                     if vi == 0:
                         check_nans = np.any(np.isnan(temp), axis=1)
@@ -169,7 +169,7 @@ def load_all_data():
                     data[ci][amp][vi]['data'] = temp
                     means = np.zeros(temp.shape[0])
                     for t in range(temp.shape[0]):
-                        (mean, std_dev) = ecm.weighted_avg_and_std(temp[t, :], weights)
+                        (mean, std_dev) = jellybamm.weighted_avg_and_std(temp[t, :], weights)
                         means[t] = mean
                     data[ci][amp][vi]['mean'] = means
                     data[ci][amp][vi]['min'] = np.min(temp, axis=1)
@@ -182,7 +182,7 @@ def load_all_data():
 
 
 def jellyroll_one_plot(data, title, dp=3):
-    input_dir = ecm.INPUT_DIR
+    input_dir = jellybamm.INPUT_DIR
     fig, ax = plt.subplots(figsize=(12, 12))
     spm_map = np.load(os.path.join(input_dir, 'im_spm_map.npz'))['arr_0']
     spm_map_copy = spm_map.copy()
@@ -276,73 +276,73 @@ def find_best_fit(y, report_results=False):
 
 
 # Base Case 5.25 Amps - HTC 28 - 1 Tab
-fig1 = ecm.jellyroll_subplot(d, 2, amps[-1], var=0,
+fig1 = jellybamm.jellyroll_subplot(d, 2, amps[-1], var=0,
                              soc_list=soc_list, global_range=False, dp=1)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig1.png'), dpi=600)
 # Base Case all Amps - HTC 28 - 2 Tabs
-fig2 = ecm.multi_var_subplot(d, [0], amps, [2, 0], landscape=False)
+fig2 = jellybamm.multi_var_subplot(d, [0], amps, [2, 0], landscape=False)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig2.png'), dpi=600)
 # All HTC cases - 1 tabs, 10 A
-fig3 = ecm.multi_var_subplot(d, tab_1, [amps[-1]], [0, 1])
+fig3 = jellybamm.multi_var_subplot(d, tab_1, [amps[-1]], [0, 1])
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig3.png'), dpi=600)
 # 2nd Case 5.25 Amps - HTC 100 - 2 Tab
-fig4 = ecm.jellyroll_subplot(d, 7, amps[-1], var=0,
+fig4 = jellybamm.jellyroll_subplot(d, 7, amps[-1], var=0,
                              soc_list=soc_list, global_range=False, dp=1)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig4.png'), dpi=600)
 # 3rd Case 5.25 Amps - HTC 100 - 5 Tab
-fig5 = ecm.jellyroll_subplot(d, 12, amps[-1],
+fig5 = jellybamm.jellyroll_subplot(d, 12, amps[-1],
                              var=0, soc_list=soc_list, global_range=False, dp=1)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig5.png'), dpi=600)
 # All Tabs, all currents HTC 5
-fig6 = ecm.spacetime(d, [0, 5, 10], amps, var=0, group=grp, normed=True)
+fig6 = jellybamm.spacetime(d, [0, 5, 10], amps, var=0, group=grp, normed=True)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig6.png'), dpi=600)
 # All Tabs, highest currents HTC 5
-fig7 = ecm.multi_var_subplot(d, [0, 5, 10], [amps[-1]], [0, 1])
+fig7 = jellybamm.multi_var_subplot(d, [0, 5, 10], [amps[-1]], [0, 1])
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig7.png'), dpi=600)
 # All Tabs, highest currents HTC 100
-fig8 = ecm.multi_var_subplot(d, [4, 9, 14], [amps[-1]], [0, 1])
+fig8 = jellybamm.multi_var_subplot(d, [4, 9, 14], [amps[-1]], [0, 1])
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig8.png'), dpi=600)
 # All Tabs, all currents HTC 5
-fig9a = ecm.spacetime(d, [0, 5, 10], amps, var=0, group=grp, normed=True)
+fig9a = jellybamm.spacetime(d, [0, 5, 10], amps, var=0, group=grp, normed=True)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig9a.png'), dpi=600)
-fig9b = ecm.chargeogram(d, [0, 5, 10], amps, group=grp)
+fig9b = jellybamm.chargeogram(d, [0, 5, 10], amps, group=grp)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig9b.png'), dpi=600)
 # All Tabs, all currents HTC 100
-fig10a = ecm.spacetime(d, [4, 9, 14], amps, var=0, group=grp, normed=True)
+fig10a = jellybamm.spacetime(d, [4, 9, 14], amps, var=0, group=grp, normed=True)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig10a.png'), dpi=600)
-fig10b = ecm.chargeogram(d, [4, 9, 14], amps, group=grp)
+fig10b = jellybamm.chargeogram(d, [4, 9, 14], amps, group=grp)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig10b.png'), dpi=600)
-fig11a = ecm.spacetime(d, [9, 17, 19], amps, var=0, group=grp, normed=True)
+fig11a = jellybamm.spacetime(d, [9, 17, 19], amps, var=0, group=grp, normed=True)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig11a.png'), dpi=600)
-fig11b = ecm.chargeogram(d, [9, 17, 19], amps, group=grp)
+fig11b = jellybamm.chargeogram(d, [9, 17, 19], amps, group=grp)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig11b.png'), dpi=600)
 # Third Heating
-fig12 = ecm.jellyroll_subplot(d, 19, 5.25, var=0, soc_list=soc_list, global_range=False)
+fig12 = jellybamm.jellyroll_subplot(d, 19, 5.25, var=0, soc_list=soc_list, global_range=False)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig12.png'), dpi=600)
 fig13 = jellyroll_one_plot(d[19][5.25][1]['data'][-1, :],
                            'Temperature [K] with uneven cooling\n' +
-                           ecm.format_case(19, 5.25, True))
+                           jellybamm.format_case(19, 5.25, True))
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig13.png'), dpi=600)
-fig14 = ecm.multi_var_subplot(d, [2, 4, 17, 19], [5.25], [0, 1])
+fig14 = jellybamm.multi_var_subplot(d, [2, 4, 17, 19], [5.25], [0, 1])
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig14.png'), dpi=600)
-exp_data = ecm.load_experimental()
+exp_data = jellybamm.load_experimental()
 #sim_data = [d[2][1.75], d[2][3.5], d[2][5.25]]
 fig, ax = plt.subplots()
 for i in range(3):
@@ -357,7 +357,7 @@ plt.legend()
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'figX.png'), dpi=600)
 
-figY = ecm.jellyroll_subplot(d, 19, 5.25, var=1, soc_list=[[0.9, 0.7], [0.5, 0.3]],
+figY = jellybamm.jellyroll_subplot(d, 19, 5.25, var=1, soc_list=[[0.9, 0.7], [0.5, 0.3]],
                              global_range=False, dp=1)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'figY.png'), dpi=600)

@@ -1,0 +1,5 @@
+numba
+pybamm
+liionpack
+openpnm==2.8.2
+ffmpeg-python

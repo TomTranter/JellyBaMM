@@ -4,7 +4,7 @@
 
 import openpnm as op
 import matplotlib.pyplot as plt
-import ecm
+import jellybamm
 import liionpack as lp
 import pybamm
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     )
 
     # OpenPNM project
-    project, arc_edges = ecm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
+    project, arc_edges = jellybamm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
 
     # Parameter set
     param = pybamm.ParameterValues("Chen2020")
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     initial_soc = None
 
     # Run simulation
-    project, output = ecm.run_simulation_lp(parameter_values=param,
+    project, output = jellybamm.run_simulation_lp(parameter_values=param,
                                             experiment=experiment,
                                             initial_soc=initial_soc,
                                             project=project)

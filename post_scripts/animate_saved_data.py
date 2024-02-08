@@ -8,7 +8,7 @@ Created on Thu Feb  6 08:46:59 2020
 import pybamm
 import openpnm as op
 import matplotlib.pyplot as plt
-import ecm
+import jellybamm
 import os
 from scipy import io
 import numpy as np
@@ -64,5 +64,5 @@ if __name__ == "__main__":
             variables[plot_time] = time_amalg
 
             save_path = os.path.join(save_root, 'Current collector current density')
-            ecm.animate_data4(project, variables, plot_left, plot_right, weights,
+            jellybamm.animate_data4(project, variables, plot_left, plot_right, weights,
                               filename=save_path)

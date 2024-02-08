@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import os
 from scipy import io
 import numpy as np
-import ecm
+import jellybamm
 from matplotlib import cm
 
 plt.style.use('default')
@@ -73,7 +73,7 @@ for si, sub in enumerate(subs):
     Iy_t = []
     for t in range(data_amalg.shape[0]):
         data_t = data_amalg[t, :]
-        mean, _ = ecm.weighted_avg_and_std(data_t, weights)
+        mean, _ = jellybamm.weighted_avg_and_std(data_t, weights)
         diff = (data_t - mean) * weights
         Iy = np.sum(weights * ((data_t - mean)**3) / 3)
         m_p = np.mean(diff[diff > 0]) / np.mean(weights[diff > 0])

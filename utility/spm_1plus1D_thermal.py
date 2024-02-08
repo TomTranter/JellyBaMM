@@ -10,7 +10,7 @@ import pybamm
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
-import ecm
+import jellybamm
 
 
 plt.close('all')
@@ -114,10 +114,10 @@ param.update(
 )
 
 
-param["Negative electrode OCP [V]"] = ecm.neg_OCP
-param["Positive electrode OCP [V]"] = ecm.pos_OCP
-param["Negative electrode OCP entropic change [V.K-1]"] = ecm.neg_dUdT
-param["Positive electrode OCP entropic change [V.K-1]"] = ecm.pos_dUdT
+param["Negative electrode OCP [V]"] = jellybamm.neg_OCP
+param["Positive electrode OCP [V]"] = jellybamm.pos_OCP
+param["Negative electrode OCP entropic change [V.K-1]"] = jellybamm.neg_dUdT
+param["Positive electrode OCP entropic change [V.K-1]"] = jellybamm.pos_dUdT
 
 
 e_width = param["Electrode width [m]"]

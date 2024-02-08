@@ -5,7 +5,7 @@ Created on Fri Mar 20 10:53:59 2020
 @author: Tom
 """
 
-import ecm
+import jellybamm
 import os
 from scipy import io
 import numpy as np
@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 root = 'D:\\pybamm_pnm_results\\Chen2020_v3'
-cases = ecm.get_cases()
-amps = ecm.get_amp_cases()
+cases = jellybamm.get_cases()
+amps = jellybamm.get_amp_cases()
 data_suff = ['mean', 'std', 'chi']
 d = {}
 for case in cases.keys():
@@ -66,7 +66,7 @@ def jellyroll_multiplot(data, cases=[0, 1, 2], amps=[1.75, 3.5, 5.25], var='std'
                 im = ax.imshow(arr, cmap=cm.inferno)
             ax.set_axis_off()
             plt.colorbar(im, ax=ax, format='%.' + str(dp) + 'f')
-            ax.set_title(ecm.format_case(case, amp, expanded=False))
+            ax.set_title(jellybamm.format_case(case, amp, expanded=False))
 
     return fig
 

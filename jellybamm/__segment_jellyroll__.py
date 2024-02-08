@@ -17,7 +17,7 @@ from skimage.segmentation import flood_fill
 import os
 import openpnm as op
 import openpnm.topotools as tt
-import ecm
+import jellybamm
 
 
 wrk = op.Workspace()
@@ -25,7 +25,7 @@ wrk = op.Workspace()
 
 def average_images(path=None):
     if path is None:
-        path = ecm.INPUT_DIR
+        path = jellybamm.INPUT_DIR
     # Get File list
     files = []
     for file in os.listdir(path):
@@ -117,9 +117,9 @@ def adjust_radial_average(im, step, deg, dt):
 
 def remove_beam_hardening(im, dt, step, deg):
     # Compute radial averages and adjustments for beam hardening - soften image
-    dat_im = ecm.get_radial_average(im, step, dt)
-    im_soft = ecm.adjust_radial_average(im, step, deg, dt)
-    dat_soft = ecm.get_radial_average(im_soft, step, dt)
+    dat_im = jellybamm.get_radial_average(im, step, dt)
+    im_soft = jellybamm.adjust_radial_average(im, step, deg, dt)
+    dat_soft = jellybamm.get_radial_average(im_soft, step, dt)
     fig, axes = plt.subplots(2, 1, figsize=(10, 10))
     axes[0].imshow(im_soft - im.astype(float))
     axes[1].plot(dat_im[:, 0], dat_im[:, 1])
@@ -375,9 +375,9 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     outer_pos = net['pore.coords'][net.pores('outer')]
     x = outer_pos[:, 0] - mhs
     y = outer_pos[:, 1] - mhs
-    r, t = ecm.polar_transform(x, y)
+    r, t = jellybamm.polar_transform(x, y)
     r_new = np.ones(num_free) * (r + 25)
-    new_x, new_y = ecm.cartesian_transform(r_new, t)
+    new_x, new_y = jellybamm.cartesian_transform(r_new, t)
     free_coords = outer_pos.copy()
     free_coords[:, 0] = new_x + mhs
     free_coords[:, 1] = new_y + mhs
@@ -395,9 +395,9 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     inner_pos = net['pore.coords'][net.pores('inner')]
     x = inner_pos[:, 0] - mhs
     y = inner_pos[:, 1] - mhs
-    r, t = ecm.polar_transform(x, y)
+    r, t = jellybamm.polar_transform(x, y)
     r_new = np.ones(num_inner) * (r - 25)
-    new_x, new_y = ecm.cartesian_transform(r_new, t)
+    new_x, new_y = jellybamm.cartesian_transform(r_new, t)
     inner_coords = inner_pos.copy()
     inner_coords[:, 0] = new_x + mhs
     inner_coords[:, 1] = new_y + mhs
@@ -421,6 +421,6 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     net['throat.arc_length'] = net['throat.radial_position'] * np.deg2rad(dtheta)
 
     if path is None:
-        path = ecm.INPUT_DIR
+        path = jellybamm.INPUT_DIR
     wrk.save_project(project=prj, filename=os.path.join(path, filename))
     return net

@@ -5,10 +5,10 @@ Created on Wed Oct 21 14:00:26 2020
 @author: tom
 """
 
-import ecm
+import jellybamm
 import os
 
-ROOT_DIR = os.path.dirname(os.path.abspath(ecm.__file__))
+ROOT_DIR = os.path.dirname(os.path.abspath(jellybamm.__file__))
 PARENT_DIR = os.path.dirname(ROOT_DIR)
 TESTS_DIR = os.path.join(PARENT_DIR, 'tests')
 FIXTURES_DIR = os.path.join(TESTS_DIR, 'fixtures')

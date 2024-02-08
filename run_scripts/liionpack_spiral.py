@@ -4,7 +4,7 @@
 
 import openpnm as op
 import matplotlib.pyplot as plt
-import ecm
+import jellybamm
 import configparser
 import os
 import liionpack as lp
@@ -20,15 +20,15 @@ wrk.clear()
 
 
 if __name__ == "__main__":
-    save_root = os.path.join(ecm.OUTPUT_DIR, "spiral")
+    save_root = os.path.join(jellybamm.OUTPUT_DIR, "spiral")
     print(save_root)
     config = configparser.ConfigParser()
     config.read(os.path.join(save_root, "config.txt"))
-    print(ecm.lump_thermal_props(config))
+    print(jellybamm.lump_thermal_props(config))
     I_apps = [config.get("RUN", key) for key in config["RUN"] if "i_app" in key]
-    prj, arc_edges = ecm.make_spiral_net(config)
+    prj, arc_edges = jellybamm.make_spiral_net(config)
     net = prj.network
-    ecm.plot_topology(net)
+    jellybamm.plot_topology(net)
 
     # Now make network into liionpack netlist
     Rbn = 1e-4
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     Ri = 60
     V = 3.6
     I_app = -5.0
-    netlist = ecm.network_to_netlist(net, Rbn, Rbp, Rs, Ri, V, I_app)
+    netlist = jellybamm.network_to_netlist(net, Rbn, Rbp, Rs, Ri, V, I_app)
     lp.power_loss(netlist, include_Ri=False)
     R_map = netlist["desc"].str.find("R") > -1
 

@@ -4,7 +4,7 @@
 
 import openpnm as op
 import matplotlib.pyplot as plt
-import ecm
+import jellybamm
 import liionpack as lp
 import pybamm
 
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     )
 
     # OpenPNM project
-    project, arc_edges = ecm.make_spiral_net(Nlayers,
+    project, arc_edges = jellybamm.make_spiral_net(Nlayers,
                                              dtheta,
                                              spacing,
                                              inner_r,
@@ -47,7 +47,7 @@ if __name__ == "__main__":
                                              neg_tabs,
                                              length_3d,
                                              tesla_tabs)
-    ecm.plot_topology(project.network)
+    jellybamm.plot_topology(project.network)
     # Parameter set
     param = pybamm.ParameterValues("Chen2020")
     # JellyBaMM discretises the spiral using the electrode height for spiral length
@@ -57,10 +57,10 @@ if __name__ == "__main__":
     # Passing None as initial_soc will take values from Parameter set and apply
     # uniformly everywhere
     initial_soc = None
-    thermal_props = print(ecm.lump_thermal_props(param))
+    thermal_props = print(jellybamm.lump_thermal_props(param))
 
     # Run simulation
-    project, output = ecm.run_simulation_lp(parameter_values=param,
+    project, output = jellybamm.run_simulation_lp(parameter_values=param,
                                             experiment=experiment,
                                             initial_soc=initial_soc,
                                             project=project)

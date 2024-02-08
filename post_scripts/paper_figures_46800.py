@@ -5,7 +5,7 @@ Created on Thu Mar  5 08:14:54 2020
 @author: Tom
 """
 
-import ecm
+import jellybamm
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -32,9 +32,9 @@ savefigs = True
 tab_1 = [0, 1, 2, 3, ]
 tab_tesla = [4, 5, 6, 7, ]
 
-amps = ecm.get_amp_cases()
-d = ecm.load_all_data()
-cases = ecm.get_cases()
+amps = jellybamm.get_amp_cases()
+d = jellybamm.load_all_data()
+cases = jellybamm.get_cases()
 soc_list = [[0.9, 0.8, 0.7],
             [0.6, 0.5, 0.4],
             [0.3, 0.2, 0.1]]
@@ -119,7 +119,7 @@ def find_best_fit(y, report_results=False):
             args, dist.mean(*args), dist.std(*args))
 
 
-input_dir = ecm.INPUT_DIR
+input_dir = jellybamm.INPUT_DIR
 
 
 def jellyroll_one_plot(data, title, dp=3):
@@ -140,7 +140,7 @@ def jellyroll_one_plot(data, title, dp=3):
 
 
 # Heat Data by Layer comparison
-net = ecm.get_net()
+net = jellybamm.get_net()
 abs_xcoords = np.abs(net['pore.coords'][:, 0])
 r_max = abs_xcoords.max()
 r_min = abs_xcoords.min()
@@ -170,7 +170,7 @@ for ax, case in enumerate([0, 4]):
     cols = cmap(np.linspace(0.1, 0.9, 4))
     labels = []
     for i in [18, 17, 16, 19]:
-        text = ecm.format_label(i).strip('X-averaged').strip('[W.m-3]')
+        text = jellybamm.format_label(i).strip('X-averaged').strip('[W.m-3]')
         labels.append(text.lstrip().rstrip().capitalize())
     for si, source in enumerate([sum_Q_rev, sum_Q_irr, sum_Q_ohm, sum_Q_ohm_cc]):
         axes[ax].fill_between(d[case][17.5][10]['mean'], base,
@@ -190,7 +190,7 @@ plt.tight_layout()
 
 fig, axes = plt.subplots(2, 1, sharex=False, sharey=True, figsize=(6, 8))
 for subi, case in enumerate([0, 4]):
-    ecm.stacked_variables(net, d, case, 17.5, [18, 17, 16, 19], axes[subi], subi)
+    jellybamm.stacked_variables(net, d, case, 17.5, [18, 17, 16, 19], axes[subi], subi)
 plt.tight_layout()
 plt.savefig(os.path.join(save_im_path, 'fig7.png'), dpi=600)
 spm_res = net['throat.spm_resistor']
@@ -239,15 +239,15 @@ plt.figure()
 plt.imshow(heat_layer_maps[0] - heat_layer_maps[1], cmap=cm.seismic)
 
 
-ecm.super_subplot(net, d, tab_1, tab_tesla, 17.5)
+jellybamm.super_subplot(net, d, tab_1, tab_tesla, 17.5)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig2.png'), dpi=600)
 # 2nd Case 5.25 Amps - HTC 100 - 2 Tab
-fig5 = ecm.jellyroll_subplot(d, 0, amps[-1], var=0,
+fig5 = jellybamm.jellyroll_subplot(d, 0, amps[-1], var=0,
                              soc_list=soc_list, global_range=True, dp=1)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig5.png'), dpi=600)
-fig6 = ecm.jellyroll_subplot(d, 4, amps[-1], var=0,
+fig6 = jellybamm.jellyroll_subplot(d, 4, amps[-1], var=0,
                              soc_list=soc_list, global_range=True, dp=1)
 if savefigs:
     plt.savefig(os.path.join(save_im_path, 'fig6.png'), dpi=600)

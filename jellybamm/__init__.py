@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-jellysim: a package for simulating Li-ion electrochemistry
-          on jellyroll structures
+JellyBaMM: a package for simulating Li-ion electrochemistry on jellyroll structures with PyBaMM
 """
 
 from .__funcs__ import *

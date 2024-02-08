@@ -4,7 +4,7 @@
 
 import openpnm as op
 import matplotlib.pyplot as plt
-import ecm
+import jellybamm
 import liionpack as lp
 import pybamm
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     )
 
     # OpenPNM project
-    project, arc_edges = ecm.make_tomo_net(tomo_pnm, dtheta, spacing,
+    project, arc_edges = jellybamm.make_tomo_net(tomo_pnm, dtheta, spacing,
                                            length_3d, pos_tabs, neg_tabs)
 
     # Parameter set
@@ -48,10 +48,10 @@ if __name__ == "__main__":
     # We want to swap this round
     param['Electrode width [m]'] = length_3d
     initial_soc = None
-    thermal_props = print(ecm.lump_thermal_props(param))
+    thermal_props = print(jellybamm.lump_thermal_props(param))
 
     # Run simulation
-    project, output = ecm.run_simulation_lp(parameter_values=param,
+    project, output = jellybamm.run_simulation_lp(parameter_values=param,
                                             experiment=experiment,
                                             initial_soc=initial_soc,
                                             project=project)

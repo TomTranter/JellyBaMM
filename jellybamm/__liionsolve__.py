@@ -3,7 +3,7 @@
 #
 import os
 import numpy as np
-import ecm
+import jellybamm
 import pybamm
 import time as ticker
 import openpnm as op
@@ -74,7 +74,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     ###########################################################################
     # Make the pybamm simulation - should be moved to a simfunc               #
     ###########################################################################
-    parameter_values = ecm.adjust_parameters(parameter_values, I_typical)
+    parameter_values = jellybamm.adjust_parameters(parameter_values, I_typical)
     # width = parameter_values["Electrode width [m]"]
     # t1 = parameter_values["Negative electrode thickness [m]"]
     # t2 = parameter_values["Positive electrode thickness [m]"]
@@ -89,12 +89,12 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     ###########################################################################
     # Output variables                                                        #
     ###########################################################################
-    output_variables = ecm.output_variables()
+    output_variables = jellybamm.output_variables()
     ###########################################################################
     # Thermal parameters                                                      #
     ###########################################################################
     T0 = parameter_values["Initial temperature [K]"]
-    lumpy_therm = ecm.lump_thermal_props(parameter_values)
+    lumpy_therm = jellybamm.lump_thermal_props(parameter_values)
     cp = lumpy_therm["lump_Cp"]
     rho = lumpy_therm["lump_rho"]
     ###########################################################################
@@ -103,7 +103,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # outer_step = 0
     # if config.getboolean("PHYSICS", "do_thermal"):
     # Always do thermal
-    ecm.setup_thermal(project, parameter_values)
+    jellybamm.setup_thermal(project, parameter_values)
     # try:
     #     thermal_third = config.getboolean("RUN", "third")
     # except KeyError:
@@ -112,12 +112,12 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # New Liionpack code                                                      #
     ###########################################################################
     dim_time_step = 10
-    neg_econd, pos_econd = ecm.cc_cond(project, parameter_values)
+    neg_econd, pos_econd = jellybamm.cc_cond(project, parameter_values)
     Rs = 1e-2  # series resistance
     Ri = 90  # initial guess for internal resistance
     V = 3.6  # initial guess for cell voltage
     # I_app = 0.5
-    netlist = ecm.network_to_netlist(net, Rs, Ri, V, I_app)
+    netlist = jellybamm.network_to_netlist(net, Rs, Ri, V, I_app)
     T0 = parameter_values["Initial temperature [K]"]
     e_heights = net["throat.electrode_height"][net.throats("throat.spm_resistor")]
     spm_temperature = np.ones(Nspm) * T0
@@ -171,9 +171,9 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             # key = "Volume-averaged Ohmic heating CC [W.m-3]"
             # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
             Q[res_Ts] += Q_tot
-            ecm.apply_heat_source_lp(project, Q)
+            jellybamm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            jellybamm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
@@ -231,9 +231,9 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             # key = "Volume-averaged Ohmic heating CC [W.m-3]"
             # vh[key][outer_step, :] = Q_ohm_cc[sorted_res_Ts]
             Q[res_Ts] += Q_tot
-            ecm.apply_heat_source_lp(project, Q)
+            jellybamm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            ecm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            jellybamm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             ###################################################################

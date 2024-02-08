@@ -9,7 +9,7 @@ from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
 import os
 import matplotlib.pyplot as plt
-import ecm
+import jellybamm
 import pandas as pd
 
 
@@ -23,8 +23,8 @@ def plot_topology(net, ax=None):
     c3 = np.array([[100 / 255, 100 / 255, 100 / 255, 1]])  # Granite Gray
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.neg_cc"), color=c1, ax=ax)
-    ax = ecm.plot_resistors(net, throats=net.throats("throat.pos_cc"), color=c2, ax=ax)
+    ax = jellybamm.plot_resistors(net, throats=net.throats("throat.neg_cc"), color=c1, ax=ax)
+    ax = jellybamm.plot_resistors(net, throats=net.throats("throat.pos_cc"), color=c2, ax=ax)
     ax = pcoord(net, pores=net.pores("neg_cc"), color=c1, s=25, ax=ax)
     ax = pcoord(net, pores=net.pores("pos_cc"), color=c2, s=25, ax=ax)
     ax = pcoord(net, pores=net["pore.neg_tab"], color=c1, s=75, ax=ax)
@@ -253,7 +253,7 @@ def make_spiral_net(
     op.topotools.trim(network=net, throats=net.throats("trimmers"))
 
     # print("N SPM", net.num_throats("spm_resistor"))
-    geo = ecm.setup_geometry(net, dtheta, spacing, length_3d=length_3d)
+    geo = jellybamm.setup_geometry(net, dtheta, spacing, length_3d=length_3d)
     net["throat.arc_length"] = np.deg2rad(dtheta) * net["throat.radial_position"]
     phase = op.phases.GenericPhase(network=net)
     op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
@@ -262,7 +262,7 @@ def make_spiral_net(
 
 def make_tomo_net(tomo_pnm, dtheta, spacing, length_3d, pos_tabs, neg_tabs):
     wrk = op.Workspace()
-    input_dir = ecm.INPUT_DIR
+    input_dir = jellybamm.INPUT_DIR
     wrk.load_project(os.path.join(input_dir, tomo_pnm))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
@@ -291,7 +291,7 @@ def make_tomo_net(tomo_pnm, dtheta, spacing, length_3d, pos_tabs, neg_tabs):
     # Add 1 more
     arc_edges.append(arc_edges[-1] + d)
     arc_edges = np.asarray(arc_edges)
-    geo = ecm.setup_geometry(net, dtheta, spacing, length_3d=length_3d)
+    geo = jellybamm.setup_geometry(net, dtheta, spacing, length_3d=length_3d)
     phase = op.phases.GenericPhase(network=net)
     op.physics.GenericPhysics(network=net, phase=phase, geometry=geo)
     return project, arc_edges

@@ -5,7 +5,7 @@ Created on Thu Mar 19 13:43:52 2020
 @author: Tom
 """
 
-import ecm
+import jellybamm
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -32,9 +32,9 @@ tab_5 = [10, 11, 12, 13, 14]
 tab_2_third = [15, 16, 17, 18, 19]
 tab_1_2 = [20, 21, 22, 23, 24]
 
-amps = ecm.get_amp_cases()
-d = ecm.load_all_data()
-cases = ecm.get_cases()
+amps = jellybamm.get_amp_cases()
+d = jellybamm.load_all_data()
+cases = jellybamm.get_cases()
 soc_list = [[0.9, 0.8, 0.7],
             [0.6, 0.5, 0.4],
             [0.3, 0.2, 0.1]]
@@ -148,9 +148,9 @@ def jellyroll_one_plot(data, title, dp=3):
     return fig
 
 
-cases = ecm.get_cases()
-amps = ecm.get_amp_cases()
-d = ecm.load_all_data()
+cases = jellybamm.get_cases()
+amps = jellybamm.get_amp_cases()
+d = jellybamm.load_all_data()
 for key in cases.keys():
     case_path = os.path.join(root, cases[key]['file'])
     for amp in amps:

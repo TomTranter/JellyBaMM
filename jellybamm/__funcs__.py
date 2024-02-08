@@ -131,7 +131,7 @@ def get_cc_heat(net, alg, V_terminal):
     )
 
 
-def run_ecm(net, alg, V_terminal, plot=False):
+def run_jellybamm(net, alg, V_terminal, plot=False):
     potential_pairs = net["throat.conns"][net.throats("spm_resistor")]
     P1 = potential_pairs[:, 0]
     P2 = potential_pairs[:, 1]
