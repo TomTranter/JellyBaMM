@@ -106,7 +106,7 @@ See also the list of [contributors](https://github.com/TomTranter/JellyBaMM/cont
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+This project is licensed under the BSD-3-Clause license - see the [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
