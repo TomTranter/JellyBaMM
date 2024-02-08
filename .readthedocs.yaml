@@ -12,8 +12,9 @@ build:
   tools:
     python: "3.10"
 
-# conda:
-#   environment: environment.yml
+python:
+  install:
+    - requirements: docs/requirements.txt
  
 mkdocs:
   configuration: mkdocs.yml
