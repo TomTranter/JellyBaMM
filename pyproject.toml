@@ -28,7 +28,17 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "pytest-cov"
+    "pytest-cov",
+    "nbconvert>=7.2.9,<8",
+    "mkdocs>=1.4.0,<2",
+    "mkdocs-material>9.0.0",
+    "jupytext>1.13.8,<2",
+    "Pygments>2.12.0",
+    "ipykernel<7.0.0,>6.0.0",
+    "pymdown-extensions",
+    "mkdocs-jupyter",
+    "mkdocstrings-python-legacy",
+    "mkdocs-material-extensions>=1.0"
 ]
 
 [tool.setuptools.packages.find]

@@ -12,11 +12,7 @@ build:
   tools:
     python: "3.10"
   commands:
-  - pip install .  # Install the package itself
-
-python:
-  install:
-    - requirements: docs/requirements.txt
+  - pip install .[dev]
  
 mkdocs:
   configuration: mkdocs.yml
