@@ -3,10 +3,7 @@ jellybamm/__pycache__/
 jellybamm.egg-info/
 *.pyc
 .coverage
-jellybamm/output/1d/
-jellybamm/output/spiral/1.5A/
-jellybamm/output/spiral_tesla/
-jellybamm/output/tomography/3.0A/
+jellybamm/output/
 build/
 dist/
 .virtual_documents/
