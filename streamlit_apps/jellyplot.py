@@ -49,6 +49,7 @@ with st.sidebar:
 
     dtheta = st.slider("dtheta [deg]", 1, 90, 10)
     # st.write('dtheta:', dtheta)
+    inner_r = st.slider("Inner rad [mm]", 1, 5, 1)
 
     tesla_tabs = st.checkbox("Tesla tabs")
     if not tesla_tabs:
@@ -71,7 +72,14 @@ length_3d = 0.08
 # OpenPNM project
 
 project, arc_edges = ecm.make_spiral_net(
-    Nlayers, dtheta, width * 1e-6, 15e-5, pos_tabs, neg_tabs, length_3d, tesla_tabs
+    Nlayers=Nlayers,
+    dtheta=dtheta,
+    spacing=width * 1e-6,
+    inner_r=inner_r*1e-3,
+    pos_tabs=pos_tabs,
+    neg_tabs=neg_tabs,
+    length_3d=length_3d,
+    tesla_tabs=tesla_tabs,
 )
 
 net = project.network
@@ -81,7 +89,6 @@ print("Num pos", Npcc, "Num neg", Nncc)
 if tesla_tabs:
     plot_topology(net)
 else:
-
     pos_tabs = [
         positive_offset + (tab_spacing * nodes_per_layer * i) for i in range(num_tabs)
     ]

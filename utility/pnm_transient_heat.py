@@ -14,7 +14,7 @@ plt.close('all')
 wrk = op.Workspace()
 spacing = 1e-5
 L = 9e-3
-Nx = np.int(L / spacing) + 1
+Nx = int(L / spacing) + 1
 net = op.network.Cubic(shape=[Nx, 1, 1], spacing=spacing)
 # translate to origin
 net['pore.coords'] -= np.array([spacing, spacing, spacing]) / 2

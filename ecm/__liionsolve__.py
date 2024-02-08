@@ -45,10 +45,10 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # hours = config.getfloat("RUN", "hours")
     # try:
     # dt = config.getfloat("RUN", "dt")
-    # Nsteps = np.int(np.ceil(hours * 3600 / dt) + 1)
+    # Nsteps = int(np.ceil(hours * 3600 / dt) + 1)
     # except configparser.NoOptionError:
     # dt = 30
-    # Nsteps = np.int(hours * 60 * 2) + 1  # number of time steps
+    # Nsteps = int(hours * 60 * 2) + 1  # number of time steps
     net = project.network
     phase = project.phases()["phase_01"]
     # The jellyroll layers are double sided around the cc except for the inner

@@ -29,10 +29,11 @@ dependencies:
   - absl-py
   - dask
   - hiredis
+  - ipywidgets
   - pip:
-    - pybamm
-    - liionpack
-    - openpnm
+    - pybamm==23.9
+    - liionpack==0.3.8
+    - openpnm==2.8.2
     - mkdocstrings-python-legacy
     - mkdocs-material
     - mkdocs-jupyter

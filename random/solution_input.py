@@ -24,7 +24,7 @@ geometry = model.default_geometry
 param = model.default_parameter_values
 param.update(
     {
-        "Typical current [A]": I_typical,
+        # "Typical current [A]": I_typical,
         "Current function [A]": current_function,
         "Current Density": "[input]",
         "Electrode width [m]": 1.0,

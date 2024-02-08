@@ -47,7 +47,7 @@ def adjust_parameters(parameter_values, I_typical):
 
     parameter_values.update(
         {
-            "Typical current [A]": I_typical,
+            # "Typical current [A]": I_typical,
             "Current function [A]": current_function,
             "Electrode height [m]": "[input]",
         }
@@ -69,7 +69,7 @@ def output_variables():
         "X-averaged battery concentration overpotential [V]",
         "X-averaged battery electrolyte ohmic losses [V]",
         "X-averaged battery solid phase ohmic losses [V]",
-        "Change in measured open circuit voltage [V]",
+        "Battery open-circuit voltage [V]",
     ]
 
 
@@ -312,7 +312,7 @@ def setup_pool(max_workers, pool_type="Process"):
 def _regroup_models(spm_models, max_workers):
     unpack = list(spm_models)
     num_models = len(unpack)
-    num_chunk = np.int(np.ceil(num_models / max_workers))
+    num_chunk = int(np.ceil(num_models / max_workers))
     split = []
     mod_num = 0
     for i in range(max_workers):
@@ -419,8 +419,8 @@ def interpolate_spm_number(project, x_len=2000, y_len=2000):
     myInterpolator = NearestNDInterpolator(points, all_data)
     f = 1.05
     grid_x, grid_y = np.mgrid[
-        x.min() * f : x.max() * f : np.complex(x_len, 0),
-        y.min() * f : y.max() * f : np.complex(y_len, 0),
+        x.min() * f : x.max() * f : complex(x_len, 0),
+        y.min() * f : y.max() * f : complex(y_len, 0),
     ]
     arr = myInterpolator(grid_x, grid_y, 0)
     # arr[arr == -1] = np.nan
@@ -483,8 +483,8 @@ def interpolate_spm_number_model(project, dim=1000):
     myInterpolator = NearestNDInterpolator(points, all_data)
     f = 1.05
     grid_x, grid_y = np.mgrid[
-        x.min() * f : x.max() * f : np.complex(x_len, 0),
-        y.min() * f : y.max() * f : np.complex(y_len, 0),
+        x.min() * f : x.max() * f : complex(x_len, 0),
+        y.min() * f : y.max() * f : complex(y_len, 0),
     ]
     arr = myInterpolator(grid_x, grid_y, 0)
     return arr
