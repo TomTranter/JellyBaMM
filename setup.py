@@ -1,47 +1,6 @@
-import os
-import sys
-from distutils.util import convert_path
-
-sys.path.append(os.getcwd())
-
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
 
-main_ = {}
-ver_path = convert_path("jellybamm/__init__.py")
-with open(ver_path) as f:
-    for line in f:
-        if line.startswith("__version__"):
-            exec(line, main_)
-
-setup(
-    name="jellybamm",
-    description="Jelly Roll Battery modelling using PyBaMM",
-    version=main_["__version__"],
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python",
-        "Topic :: Scientific/Engineering",
-        "Topic :: Scientific/Engineering :: Physics",
-    ],
-    packages=["jellybamm"],
-    install_requires=[
-        "numba",
-        "liionpack==0.3.8",
-        "pybamm==23.9",
-        "openpnm==2.8.2",
-        "ffmpeg-python",
-        "ipywidgets"
-    ],
-    author="Tom Tranter",
-    author_email="t.g.tranter@gmail.com",
-    url="https://jellybamm.readthedocs.io/en/latest/",
-    project_urls={
-        "Documentation": "https://jellybamm.readthedocs.io/en/latest/",
-        "Source": "https://github.com/TomTranter/pybamm_pnm",
-        "Tracker": "https://github.com/TomTranter/pybamm_pnm/issues",
-    },
-)
+setup()

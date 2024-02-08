@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 JellyBaMM: a package for simulating Li-ion electrochemistry on jellyroll structures with PyBaMM
 """
@@ -12,4 +10,4 @@ from .__utilities__ import *
 from .__topology__ import *
 from .__battery__ import *
 from .__liionsolve__ import *
-__version__ = "0.0.2"
+__version__ = "0.0.3"

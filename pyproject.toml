@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jellybamm"
+version = "0.0.3"
+description = "Jelly Roll Battery modelling using PyBaMM"
+authors = [{name = "Tom Tranter", email = "t.g.tranter@gmail.com"}]
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numba",
+    "liionpack==0.3.8",
+    "pybamm==23.9",
+    "openpnm==2.8.2",
+    "ffmpeg-python",
+    "ipywidgets"
+]
+
+[tool.setuptools.packages.find]
+include = ["jellybamm"]
