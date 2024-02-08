@@ -13,6 +13,7 @@ build:
     python: "3.10"
   commands:
   - pip install .[dev]
+  - mkdocs build --clean
  
 mkdocs:
   configuration: mkdocs.yml
