@@ -16,7 +16,7 @@ import matplotlib.animation as animation
 from matplotlib import gridspec
 import matplotlib.ticker as mtick
 from string import ascii_lowercase as abc
-import ecm
+import jellybamm
 
 
 prop_cycle = plt.rcParams["axes.prop_cycle"]
@@ -188,7 +188,7 @@ def load_data(filepath):
 
 def get_net(filepath=None, filename="spider_net.pnm"):
     if filepath is None:
-        filepath = ecm.INPUT_DIR
+        filepath = jellybamm.INPUT_DIR
     wrk.load_project(os.path.join(filepath, filename))
     sim_name = list(wrk.keys())[-1]
     project = wrk[sim_name]
@@ -592,7 +592,7 @@ def animate_data4(data, case, amp, variables=None, filename=None):
     net = data[case]["network"]
     weights = get_weights(net)
     project = net.project
-    im_spm_map = np.load(os.path.join(ecm.INPUT_DIR, "im_spm_map.npz"))["arr_0"]
+    im_spm_map = np.load(os.path.join(jellybamm.INPUT_DIR, "im_spm_map.npz"))["arr_0"]
     title = filename.split("\\")
     if len(title) == 1:
         title = title[0]
@@ -744,7 +744,7 @@ def jellyroll_subplot(
     soc_arr = np.asarray(soc_list)
     (nrows, ncols) = soc_arr.shape
     fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12), sharex=True, sharey=True)
-    spm_map = np.load(os.path.join(ecm.INPUT_DIR, "im_spm_map.npz"))["arr_0"]
+    spm_map = np.load(os.path.join(jellybamm.INPUT_DIR, "im_spm_map.npz"))["arr_0"]
     spm_map_copy = spm_map.copy()
     spm_map_copy[np.isnan(spm_map_copy)] = -1
     spm_map_copy = spm_map_copy.astype(int)

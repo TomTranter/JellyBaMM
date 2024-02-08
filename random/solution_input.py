@@ -7,8 +7,9 @@ Created on Thu Jan 23 17:09:33 2020
 import pybamm
 import numpy as np
 import matplotlib.pyplot as plt
-plt.close('all')
-pybamm.set_logging_level('INFO')
+
+plt.close("all")
+pybamm.set_logging_level("INFO")
 
 I_typical = 1.0
 e_height = 0.5
@@ -19,7 +20,7 @@ def current_function(t):
 
 
 increment_current = True
-model = pybamm.lithium_ion.DFN({'timescale': 1.0})
+model = pybamm.lithium_ion.DFN({"timescale": 1.0})
 geometry = model.default_geometry
 param = model.default_parameter_values
 param.update(
@@ -29,7 +30,8 @@ param.update(
         "Current Density": "[input]",
         "Electrode width [m]": 1.0,
         "Electrode height [m]": "[input]",
-    }, check_already_exists=False
+    },
+    check_already_exists=False,
 )
 param.process_model(model)
 param.process_geometry(geometry)
@@ -56,20 +58,24 @@ dt = np.diff(t_eval)
 currents = []
 for i, t in enumerate(dt):
     I_app = I_typical + (i / 100)
-    sim.step(dt=t, inputs={
-        "Current Density": I_app,
-        "Electrode height [m]": e_height,
-    }, save=True)
+    sim.step(
+        dt=t,
+        inputs={
+            "Current Density": I_app,
+            "Electrode height [m]": e_height,
+        },
+        save=True,
+    )
     currents.append(I_app)
 plt.figure()
 plt.plot(currents)
-plt.plot(sim.solution["Current collector current density [A.m-2]"].entries, 'r--')
+plt.plot(sim.solution["Current collector current density [A.m-2]"].entries, "r--")
 plt.figure()
 plt.plot(sim.solution["Measured open circuit voltage [V]"].entries)
 plt.figure()
-pos_conc = sim.solution["X-averaged positive particle surface" +
-                        " concentration [mol.m-3]"].entries
+pos_conc = sim.solution[
+    "X-averaged positive particle surface" + " concentration [mol.m-3]"
+].entries
 plt.plot(pos_conc)
 
 print(pos_conc[0])
-

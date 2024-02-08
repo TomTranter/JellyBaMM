@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import patches, path, pyplot as plt
-import ecm
+import jellybamm
 
 
 class RoundedPolygon(patches.PathPatch):
@@ -12,7 +12,6 @@ class RoundedPolygon(patches.PathPatch):
         n = len(xy)
 
         for i in range(0, n):
-
             x0, x1, x2 = np.atleast_1d(xy[i - 1], xy[i], xy[(i + 1) % n])
 
             d01, d12 = x1 - x0, x2 - x1
@@ -68,9 +67,9 @@ ntheta = 36 * 4
 n = 3
 
 
-(x1, y1, r1, pos1) = ecm.spiral(r, dr, ntheta, n)
-(x2, y2, r2, pos2) = ecm.spiral(r + dr / 2, dr, ntheta, n)
-(x3, y3, r3, pos3) = ecm.spiral(r + dr, dr, ntheta, n)
+(x1, y1, r1, pos1) = jellybamm.spiral(r, dr, ntheta, n)
+(x2, y2, r2, pos2) = jellybamm.spiral(r + dr / 2, dr, ntheta, n)
+(x3, y3, r3, pos3) = jellybamm.spiral(r + dr, dr, ntheta, n)
 
 xy12 = np.vstack((np.hstack((x1, x2[::-1])), np.hstack((y1, y2[::-1])))).T
 rp1 = RoundedPolygon(xy=xy12, pad=dr / 10, facecolor=c1, edgecolor=c1e, lw=1)
@@ -83,11 +82,11 @@ ax.add_patch(rp2)
 
 ax.set_aspect(1)
 ax.axis("off")
-l = x3.max() * 1.1
-ax.set_xlim(-l, l)
-ax.set_ylim(-l, l)
+limit = x3.max() * 1.1
+ax.set_xlim(-limit, limit)
+ax.set_ylim(-limit, limit)
 # OpenPNM project
-project, arc_edges = ecm.make_spiral_net(
+project, arc_edges = jellybamm.make_spiral_net(
     Nlayers=n,
     dtheta=10,
     spacing=dr / 2,
@@ -98,7 +97,7 @@ project, arc_edges = ecm.make_spiral_net(
     tesla_tabs=False,
 )
 net = project.network
-ecm.plot_topology(net, ax=ax)
+jellybamm.plot_topology(net, ax=ax)
 
 
 plt.tight_layout()

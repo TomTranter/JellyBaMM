@@ -44,7 +44,6 @@ def current_function(t):
 
 
 def adjust_parameters(parameter_values, I_typical):
-
     parameter_values.update(
         {
             # "Typical current [A]": I_typical,
@@ -57,7 +56,6 @@ def adjust_parameters(parameter_values, I_typical):
 
 
 def output_variables():
-
     return [
         "Terminal voltage [V]",
         "Volume-averaged cell temperature [K]",
@@ -131,7 +129,7 @@ def get_cc_heat(net, alg, V_terminal):
     )
 
 
-def run_ecm(net, alg, V_terminal, plot=False):
+def run_jellybamm(net, alg, V_terminal, plot=False):
     potential_pairs = net["throat.conns"][net.throats("spm_resistor")]
     P1 = potential_pairs[:, 0]
     P2 = potential_pairs[:, 1]
@@ -527,8 +525,8 @@ def lump_thermal_props(param):
     ]
     all_props = np.zeros([len(props), len(layers)])
     for i, prop in enumerate(props):
-        for j, l in enumerate(layers):
-            all_props[i][j] = param[l + " " + prop]
+        for j, layer in enumerate(layers):
+            all_props[i][j] = param[layer + " " + prop]
     # Break them up
     lens = all_props[:, 0]
     rhos = all_props[:, 1]

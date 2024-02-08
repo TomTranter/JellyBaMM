@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import streamlit as st
-import ecm
+import jellybamm
 from openpnm.topotools import plot_connections as pconn
 from openpnm.topotools import plot_coordinates as pcoord
 
@@ -71,11 +71,11 @@ length_3d = 0.08
 
 # OpenPNM project
 
-project, arc_edges = ecm.make_spiral_net(
+project, arc_edges = jellybamm.make_spiral_net(
     Nlayers=Nlayers,
     dtheta=dtheta,
     spacing=width * 1e-6,
-    inner_r=inner_r*1e-3,
+    inner_r=inner_r * 1e-3,
     pos_tabs=pos_tabs,
     neg_tabs=neg_tabs,
     length_3d=length_3d,
