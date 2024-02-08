@@ -11,6 +11,8 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.10"
+  commands:
+  - pip install .  # Install the package itself
 
 python:
   install:
