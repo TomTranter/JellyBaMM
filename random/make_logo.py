@@ -82,9 +82,9 @@ ax.add_patch(rp2)
 
 ax.set_aspect(1)
 ax.axis("off")
-l = x3.max() * 1.1
-ax.set_xlim(-l, l)
-ax.set_ylim(-l, l)
+limit = x3.max() * 1.1
+ax.set_xlim(-limit, limit)
+ax.set_ylim(-limit, limit)
 # OpenPNM project
 project, arc_edges = jellybamm.make_spiral_net(
     Nlayers=n,

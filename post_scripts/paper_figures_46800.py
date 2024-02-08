@@ -217,16 +217,16 @@ plt.savefig(os.path.join(save_im_path, "fig7.png"), dpi=600)
 spm_res = net["throat.spm_resistor"]
 spm_res_arc_index = net["pore.arc_index"][net["throat.conns"][spm_res]][:, 0]
 spm_res_layer = np.ones_like(spm_res_arc_index) * -1
-l = 0
+layer = 0
 nspm = len(spm_res_layer)
 for ires in range(nspm):
-    spm_res_layer[ires] = l
+    spm_res_layer[ires] = layer
     if ires == nspm - 1:
         pass
     elif spm_res_arc_index[ires + 1] < spm_res_arc_index[ires]:
-        l += 1
-    if l > 39:
-        l = 0
+        layer += 1
+    if layer > 39:
+        layer = 0
 dp = 2
 fig, axes = plt.subplots(2, 1)
 arrs = []

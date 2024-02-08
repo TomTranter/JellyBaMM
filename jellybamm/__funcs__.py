@@ -525,8 +525,8 @@ def lump_thermal_props(param):
     ]
     all_props = np.zeros([len(props), len(layers)])
     for i, prop in enumerate(props):
-        for j, l in enumerate(layers):
-            all_props[i][j] = param[l + " " + prop]
+        for j, layer in enumerate(layers):
+            all_props[i][j] = param[layer + " " + prop]
     # Break them up
     lens = all_props[:, 0]
     rhos = all_props[:, 1]
