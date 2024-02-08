@@ -1,4 +1,5 @@
 site_name: JellyBaMM
+site_dir: _readthedocs/html
 
 theme:
     name: material
