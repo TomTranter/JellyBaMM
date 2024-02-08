@@ -21,63 +21,67 @@ a_lic6 = 1.42e-3
 a_sep = 1.19e-3
 a_lico = 6.88e-4
 a_cu = 1.11e-1
-net['throat.thermal_diffusivity'] = 1e-12
-net['throat.thermal_diffusivity'][0] = a_al
-net['throat.thermal_diffusivity'][1:9] = a_lic6
-net['throat.thermal_diffusivity'][9:11] = a_sep
-net['throat.thermal_diffusivity'][11:18] = a_lico
-net['throat.thermal_diffusivity'][18] = a_cu
-diffs = net['throat.thermal_diffusivity'].copy()
-#print(diffs)
-net['throat.length'] = spacing
-net['throat.area'] = area
+net["throat.thermal_diffusivity"] = 1e-12
+net["throat.thermal_diffusivity"][0] = a_al
+net["throat.thermal_diffusivity"][1:9] = a_lic6
+net["throat.thermal_diffusivity"][9:11] = a_sep
+net["throat.thermal_diffusivity"][11:18] = a_lico
+net["throat.thermal_diffusivity"][18] = a_cu
+diffs = net["throat.thermal_diffusivity"].copy()
+# print(diffs)
+net["throat.length"] = spacing
+net["throat.area"] = area
 alg = op.algorithms.FickianDiffusion(network=net)
 phase = op.phases.GenericPhase(network=net)
-t_D = net['throat.thermal_diffusivity']
-t_A = net['throat.area']
-t_L = net['throat.length']
-phase['throat.diffusive_conductance'] = t_D * t_A / t_L
+t_D = net["throat.thermal_diffusivity"]
+t_A = net["throat.area"]
+t_L = net["throat.length"]
+phase["throat.diffusive_conductance"] = t_D * t_A / t_L
 alg.setup(phase=phase)
 alg.set_value_BC(pores=[0], values=1.0)
 alg.set_value_BC(pores=[-1], values=0.0)
 alg.run()
-a_series = alg.calc_effective_diffusivity(domain_area=area,
-                                          domain_length=spacing * net.Nt)
+a_series = alg.calc_effective_diffusivity(
+    domain_area=area, domain_length=spacing * net.Nt
+)
 print(a_series)
 
 Nparallel = 4
 net2 = op.network.Cubic([Nparallel, Nseries, 1], spacing=10.4e-6)
 rows = np.indices([Nparallel, Nseries])[0]
-net2['pore.row'] = rows.flatten()
-conns = net2['throat.conns']
-same_row = net2['pore.row'][conns[:, 0]] == net2['pore.row'][conns[:, 1]]
-net2['throat.thermal_diffusivity'] = 1.0
+net2["pore.row"] = rows.flatten()
+conns = net2["throat.conns"]
+same_row = net2["pore.row"][conns[:, 0]] == net2["pore.row"][conns[:, 1]]
+net2["throat.thermal_diffusivity"] = 1.0
 diffs2 = np.hstack((diffs, diffs, diffs))
-net2['throat.thermal_diffusivity'][~same_row] = diffs2
-net2['throat.length'] = spacing
-net2['throat.area'] = area
+net2["throat.thermal_diffusivity"][~same_row] = diffs2
+net2["throat.length"] = spacing
+net2["throat.area"] = area
 phase2 = op.phases.GenericPhase(network=net2)
-t_D = net2['throat.thermal_diffusivity']
-t_A = net2['throat.area']
-t_L = net2['throat.length']
-phase2['throat.diffusive_conductance'] = t_D * t_A / t_L
+t_D = net2["throat.thermal_diffusivity"]
+t_A = net2["throat.area"]
+t_L = net2["throat.length"]
+phase2["throat.diffusive_conductance"] = t_D * t_A / t_L
 alg2 = op.algorithms.FickianDiffusion(network=net2)
 alg2.setup(phase=phase)
-alg2.set_value_BC(pores=net2.pores()[net2['pore.row'] == 0], values=1.0)
-alg2.set_value_BC(pores=net2.pores()[net2['pore.row'] == 2], values=0.0)
+alg2.set_value_BC(pores=net2.pores()[net2["pore.row"] == 0], values=1.0)
+alg2.set_value_BC(pores=net2.pores()[net2["pore.row"] == 2], values=0.0)
 alg2.run()
-a_parallel = alg.calc_effective_diffusivity(domain_area=area * len(diffs),
-                                            domain_length=spacing * (Nparallel - 1))
+a_parallel = alg.calc_effective_diffusivity(
+    domain_area=area * len(diffs), domain_length=spacing * (Nparallel - 1)
+)
 print(a_parallel)
-fig = tt.plot_coordinates(net2, pores=net2.Ps, c=net2['pore.row'])
-col = phase2['throat.diffusive_conductance'][~same_row]
+fig = tt.plot_coordinates(net2, pores=net2.Ps, c=net2["pore.row"])
+col = phase2["throat.diffusive_conductance"][~same_row]
 for c in np.unique(col):
-    fig = tt.plot_connections(net2,
-                              throats=net2.throats()[~same_row][np.where(col == c)],
-                              fig=fig)
+    fig = tt.plot_connections(
+        net2, throats=net2.throats()[~same_row][np.where(col == c)], fig=fig
+    )
 ax = fig.gca()
-ax.set_xlim(net2['pore.coords'][:, 0].min() - spacing,
-            net2['pore.coords'][:, 0].max() + spacing)
-ax.set_ylim(net2['pore.coords'][:, 1].min() - spacing,
-            net2['pore.coords'][:, 1].max() + spacing)
+ax.set_xlim(
+    net2["pore.coords"][:, 0].min() - spacing, net2["pore.coords"][:, 0].max() + spacing
+)
+ax.set_ylim(
+    net2["pore.coords"][:, 1].min() - spacing, net2["pore.coords"][:, 1].max() + spacing
+)
 plt.show()

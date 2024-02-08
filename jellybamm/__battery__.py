@@ -52,10 +52,10 @@ def pos_OCP(sto):
     return (
         c[0]
         + c[1] * sto
-        + c[2] * sto ** 2
-        + c[3] * sto ** 3
-        + c[4] * sto ** 4
-        + c[5] * sto ** 5
+        + c[2] * sto**2
+        + c[3] * sto**3
+        + c[4] * sto**4
+        + c[5] * sto**5
     )
 
 
@@ -73,12 +73,12 @@ def neg_dUdT(sto):
     return (
         c[0]
         + c[1] * sto
-        + c[2] * sto ** 2
-        + c[3] * sto ** 3
-        + c[4] * sto ** 4
-        + c[5] * sto ** 5
-        + c[6] * sto ** 6
-        + c[7] * sto ** 7
+        + c[2] * sto**2
+        + c[3] * sto**3
+        + c[4] * sto**4
+        + c[5] * sto**5
+        + c[6] * sto**6
+        + c[7] * sto**7
     )
 
 
@@ -94,8 +94,8 @@ def pos_dUdT(sto):
     return (
         c[0]
         + c[1] * sto
-        + c[2] * sto ** 2
-        + c[3] * sto ** 3
-        + c[4] * sto ** 4
-        + c[5] * sto ** 5
+        + c[2] * sto**2
+        + c[3] * sto**3
+        + c[4] * sto**4
+        + c[5] * sto**5
     )

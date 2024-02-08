@@ -11,7 +11,7 @@ import pybamm
 
 plt.close("all")
 
-#pybamm.set_logging_level("INFO")
+# pybamm.set_logging_level("INFO")
 wrk = op.Workspace()
 wrk.clear()
 
@@ -44,12 +44,14 @@ if __name__ == "__main__":
     # JellyBaMM discretises the spiral using the electrode height for spiral length
     # This parameter set has the longer length set to the Electrode width
     # We want to swap this round
-    param['Electrode width [m]'] = length_3d
+    param["Electrode width [m]"] = length_3d
     initial_soc = None
 
     # Run simulation
-    project, output = jellybamm.run_simulation_lp(parameter_values=param,
-                                            experiment=experiment,
-                                            initial_soc=initial_soc,
-                                            project=project)
+    project, output = jellybamm.run_simulation_lp(
+        parameter_values=param,
+        experiment=experiment,
+        initial_soc=initial_soc,
+        project=project,
+    )
     lp.plot_output(output)

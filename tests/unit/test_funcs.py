@@ -60,8 +60,7 @@ class funcsTest(unittest.TestCase):
         tesla_tabs = False
         # OpenPNM project
         project, arc_edges = jellybamm.make_spiral_net(
-            Nlayers, dtheta, spacing, inner_r,
-            pos_tabs, neg_tabs, length_3d, tesla_tabs
+            Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs, length_3d, tesla_tabs
         )
         self._jellybamm_general(project)
 
@@ -77,8 +76,7 @@ class funcsTest(unittest.TestCase):
         tesla_tabs = True
         # OpenPNM project
         project, arc_edges = jellybamm.make_spiral_net(
-            Nlayers, dtheta, spacing, inner_r,
-            pos_tabs, neg_tabs, length_3d, tesla_tabs
+            Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs, length_3d, tesla_tabs
         )
         self._jellybamm_general(project)
 

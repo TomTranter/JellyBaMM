@@ -12,7 +12,6 @@ class RoundedPolygon(patches.PathPatch):
         n = len(xy)
 
         for i in range(0, n):
-
             x0, x1, x2 = np.atleast_1d(xy[i - 1], xy[i], xy[(i + 1) % n])
 
             d01, d12 = x1 - x0, x2 - x1

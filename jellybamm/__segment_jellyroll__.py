@@ -29,7 +29,7 @@ def average_images(path=None):
     # Get File list
     files = []
     for file in os.listdir(path):
-        if file.split('.')[-1] == 'tiff':
+        if file.split(".")[-1] == "tiff":
             files.append(file)
     # Load files
     ims = [io.imread(os.path.join(path, file)) for file in files]
@@ -71,7 +71,7 @@ def average_images(path=None):
     # Pick image - replace with average
     im = crops[0].copy()
     dt = np.ones(im.shape)
-    dt[mhs:mhs + 1, mhs:mhs + 1] = 0
+    dt[mhs : mhs + 1, mhs : mhs + 1] = 0
     dt = spim.distance_transform_edt(dt)
     return im, mhs, dt
 
@@ -194,8 +194,9 @@ def label_layers(im, dt, mhs, can_width=30, im_thresh=19000, small_feature_size=
     return im, cc_im
 
 
-def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
-                       path=None, filename='spider_net'):
+def spider_web_network(
+    im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6, path=None, filename="spider_net"
+):
     # Make spiderweb dividing lines
     (inds_x, inds_y) = np.indices(im_soft.shape)
     inds_x -= mhs
@@ -217,18 +218,20 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
         for l_int in np.arange(N):
             x, y = np.where(lab == l_int + 1)
             if len(x) > 0:
-                coords[l_int] = [int(np.around(np.mean(x), 0)),
-                                 int(np.around(np.mean(y), 0))]
+                coords[l_int] = [
+                    int(np.around(np.mean(x), 0)),
+                    int(np.around(np.mean(y), 0)),
+                ]
         cc_coords.append(coords)
     plt.figure()
     plt.imshow(cc_im)
-    plt.scatter(cc_coords[0][:, 1], cc_coords[0][:, 0], c='r', s=50)
-    plt.scatter(cc_coords[1][:, 1], cc_coords[1][:, 0], c='b', s=50)
+    plt.scatter(cc_coords[0][:, 1], cc_coords[0][:, 0], c="r", s=50)
+    plt.scatter(cc_coords[1][:, 1], cc_coords[1][:, 0], c="b", s=50)
     # Collect coords together
     coords = np.vstack((cc_coords[0], cc_coords[1]))
     # Record which belongs to same cc
     first_cc = np.zeros(len(coords), dtype=bool)
-    first_cc[:len(cc_coords[0])] = True
+    first_cc[: len(cc_coords[0])] = True
     # Find which theta bin coords are in
     point_thetas = theta[coords[:, 0], coords[:, 1]]
     bins = np.arange(-180, 180 + 2 * dtheta, dtheta) - dtheta / 2
@@ -249,7 +252,7 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
         group_rads = rads[Ps]
         sorted_rads = group_rads.argsort()
         sorted_Ps = Ps[sorted_rads]
-        sorted_groups[g, :len(sorted_Ps)] = sorted_Ps
+        sorted_groups[g, : len(sorted_Ps)] = sorted_Ps
     plt.figure()
     cc_groups = first_cc[sorted_groups].astype(int)
     cc_groups[sorted_groups == -1] = -1
@@ -262,8 +265,9 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     arc_indices = []
     cc_roll = [[], []]
     for cc_num, this_cc in enumerate([True, False]):
-        start_group = np.argwhere(np.logical_and(inner_cc == this_cc,
-                                                 change_cc)).flatten()[0]
+        start_group = np.argwhere(
+            np.logical_and(inner_cc == this_cc, change_cc)
+        ).flatten()[0]
         layer_group = np.arange(0, len(groups), 1)
         layer_group = np.roll(layer_group, -start_group)
         i = 0
@@ -291,11 +295,19 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     ordered_neg_Ps = np.asarray(cc_roll[0])
     ordered_pos_Ps = np.asarray(cc_roll[1])
     neg_coords = coords[ordered_neg_Ps]
-    neg_conns = np.vstack((np.arange(0, len(ordered_neg_Ps) - 1, 1),
-                           np.arange(0, len(ordered_neg_Ps) - 1, 1) + 1)).T
+    neg_conns = np.vstack(
+        (
+            np.arange(0, len(ordered_neg_Ps) - 1, 1),
+            np.arange(0, len(ordered_neg_Ps) - 1, 1) + 1,
+        )
+    ).T
     pos_coords = coords[ordered_pos_Ps]
-    pos_conns = np.vstack((np.arange(0, len(ordered_pos_Ps) - 1, 1),
-                           np.arange(0, len(ordered_pos_Ps) - 1, 1) + 1)).T
+    pos_conns = np.vstack(
+        (
+            np.arange(0, len(ordered_pos_Ps) - 1, 1),
+            np.arange(0, len(ordered_pos_Ps) - 1, 1) + 1,
+        )
+    ).T
     pos_conns += len(ordered_neg_Ps)
     neg_inner_conns = []
     for i, p_neg in enumerate(ordered_neg_Ps):
@@ -321,58 +333,61 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     pos_inner_conns = np.asarray(pos_inner_conns)
 
     new_coords = np.vstack((neg_coords, pos_coords))
-    coords_3d = np.vstack((new_coords[:, 0], new_coords[:, 1],
-                           np.zeros(new_coords.shape[0]))).T
+    coords_3d = np.vstack(
+        (new_coords[:, 0], new_coords[:, 1], np.zeros(new_coords.shape[0]))
+    ).T
     new_conns = np.vstack((neg_conns, pos_conns, neg_inner_conns, pos_inner_conns))
     net = op.network.GenericNetwork(conns=new_conns, coords=coords_3d)
 
-    Ps, counts = np.unique(np.hstack((net['throat.conns'][:, 0],
-                                      net['throat.conns'][:, 1])), return_counts=True)
-    net['pore.surface'] = False
-    net['pore.terminal'] = False
-    net['pore.neg_cc'] = False
-    net['pore.pos_cc'] = False
-    net['pore.inner'] = False
-    net['pore.outer'] = False
-    net['pore.surface'][Ps[counts < 4]] = True
-    net['pore.terminal'][Ps[counts == 2]] = True
-    net['pore.neg_cc'][:len(ordered_neg_Ps)] = True
-    net['pore.pos_cc'][len(ordered_neg_Ps):] = True
-    net['pore.cell_id'] = np.arange(0, net.Np, 1).astype(int)
-    net['pore.arc_index'] = np.asarray(arc_indices)
-    net['pore.radial_position'] = np.linalg.norm(new_coords - mhs, axis=1)
-    rad_pos = net['pore.radial_position']
-    inner_mask = np.logical_and(net['pore.surface'], rad_pos < mhs / 2)
-    outer_mask = np.logical_and(net['pore.surface'], rad_pos > mhs / 2)
-    net['pore.inner'][inner_mask] = True
-    net['pore.outer'][outer_mask] = True
-    net['throat.neg_cc'] = False
-    net['throat.pos_cc'] = False
+    Ps, counts = np.unique(
+        np.hstack((net["throat.conns"][:, 0], net["throat.conns"][:, 1])),
+        return_counts=True,
+    )
+    net["pore.surface"] = False
+    net["pore.terminal"] = False
+    net["pore.neg_cc"] = False
+    net["pore.pos_cc"] = False
+    net["pore.inner"] = False
+    net["pore.outer"] = False
+    net["pore.surface"][Ps[counts < 4]] = True
+    net["pore.terminal"][Ps[counts == 2]] = True
+    net["pore.neg_cc"][: len(ordered_neg_Ps)] = True
+    net["pore.pos_cc"][len(ordered_neg_Ps) :] = True
+    net["pore.cell_id"] = np.arange(0, net.Np, 1).astype(int)
+    net["pore.arc_index"] = np.asarray(arc_indices)
+    net["pore.radial_position"] = np.linalg.norm(new_coords - mhs, axis=1)
+    rad_pos = net["pore.radial_position"]
+    inner_mask = np.logical_and(net["pore.surface"], rad_pos < mhs / 2)
+    outer_mask = np.logical_and(net["pore.surface"], rad_pos > mhs / 2)
+    net["pore.inner"][inner_mask] = True
+    net["pore.outer"][outer_mask] = True
+    net["throat.neg_cc"] = False
+    net["throat.pos_cc"] = False
 
-    net['throat.spm_resistor'] = True
+    net["throat.spm_resistor"] = True
     pos_cc_Ts = net.find_neighbor_throats(net.pores("pos_cc"), mode="xnor")
     neg_cc_Ts = net.find_neighbor_throats(net.pores("neg_cc"), mode="xnor")
-    net['throat.neg_cc'][neg_cc_Ts] = True
-    net['throat.pos_cc'][pos_cc_Ts] = True
-    net['throat.spm_resistor'][neg_cc_Ts] = False
-    net['throat.spm_resistor'][pos_cc_Ts] = False
-    net['throat.spm_resistor_order'] = -1
-    spm_res = net['throat.spm_resistor']
+    net["throat.neg_cc"][neg_cc_Ts] = True
+    net["throat.pos_cc"][pos_cc_Ts] = True
+    net["throat.spm_resistor"][neg_cc_Ts] = False
+    net["throat.spm_resistor"][pos_cc_Ts] = False
+    net["throat.spm_resistor_order"] = -1
+    spm_res = net["throat.spm_resistor"]
     n_spm = np.sum(spm_res)
-    net['throat.spm_resistor_order'][spm_res] = np.arange(0, n_spm, 1, dtype=int)
-    net['throat.spm_neg_inner'] = False
-    net['throat.spm_pos_inner'] = False
-    res_order = net['throat.spm_resistor_order']
-    net['throat.spm_neg_inner'][spm_res * (res_order < len(neg_inner_conns))] = True
-    net['throat.spm_pos_inner'][spm_res * (res_order >= len(neg_inner_conns))] = True
-    net['pore.neg_tab'] = False
-    net['pore.pos_tab'] = False
-    net['pore.neg_tab'][net.pores(['inner', 'neg_cc', 'terminal'], mode='and')] = True
-    net['pore.pos_tab'][net.pores(['outer', 'pos_cc', 'terminal'], mode='and')] = True
+    net["throat.spm_resistor_order"][spm_res] = np.arange(0, n_spm, 1, dtype=int)
+    net["throat.spm_neg_inner"] = False
+    net["throat.spm_pos_inner"] = False
+    res_order = net["throat.spm_resistor_order"]
+    net["throat.spm_neg_inner"][spm_res * (res_order < len(neg_inner_conns))] = True
+    net["throat.spm_pos_inner"][spm_res * (res_order >= len(neg_inner_conns))] = True
+    net["pore.neg_tab"] = False
+    net["pore.pos_tab"] = False
+    net["pore.neg_tab"][net.pores(["inner", "neg_cc", "terminal"], mode="and")] = True
+    net["pore.pos_tab"][net.pores(["outer", "pos_cc", "terminal"], mode="and")] = True
 
     # Add Free Stream Pores
-    num_free = net.num_pores('outer')
-    outer_pos = net['pore.coords'][net.pores('outer')]
+    num_free = net.num_pores("outer")
+    outer_pos = net["pore.coords"][net.pores("outer")]
     x = outer_pos[:, 0] - mhs
     y = outer_pos[:, 1] - mhs
     r, t = jellybamm.polar_transform(x, y)
@@ -381,18 +396,18 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     free_coords = outer_pos.copy()
     free_coords[:, 0] = new_x + mhs
     free_coords[:, 1] = new_y + mhs
-    free_conns = np.vstack((net.pores('outer'),
-                            np.arange(0, num_free, 1) + net.Np)).T
-    tt.extend(net, pore_coords=free_coords,
-              throat_conns=free_conns, labels=['free_stream'])
-    free_Ps = net['pore.free_stream']
-    net['pore.arc_index'][free_Ps] = net['pore.arc_index'][net['pore.outer']]
-    net['pore.cell_id'][net.pores('free_stream')] = -1
-    net['pore.cell_id'] = net['pore.cell_id'].astype(int)
+    free_conns = np.vstack((net.pores("outer"), np.arange(0, num_free, 1) + net.Np)).T
+    tt.extend(
+        net, pore_coords=free_coords, throat_conns=free_conns, labels=["free_stream"]
+    )
+    free_Ps = net["pore.free_stream"]
+    net["pore.arc_index"][free_Ps] = net["pore.arc_index"][net["pore.outer"]]
+    net["pore.cell_id"][net.pores("free_stream")] = -1
+    net["pore.cell_id"] = net["pore.cell_id"].astype(int)
 
     # Add Inner Boundary Pores
-    num_inner = net.num_pores('inner')
-    inner_pos = net['pore.coords'][net.pores('inner')]
+    num_inner = net.num_pores("inner")
+    inner_pos = net["pore.coords"][net.pores("inner")]
     x = inner_pos[:, 0] - mhs
     y = inner_pos[:, 1] - mhs
     r, t = jellybamm.polar_transform(x, y)
@@ -401,24 +416,27 @@ def spider_web_network(im_soft, mhs, cc_im, dtheta=10, pixel_size=10.4e-6,
     inner_coords = inner_pos.copy()
     inner_coords[:, 0] = new_x + mhs
     inner_coords[:, 1] = new_y + mhs
-    inner_conns = np.vstack((net.pores('inner'),
-                             np.arange(0, num_inner, 1) + net.Np)).T
-    tt.extend(net, pore_coords=inner_coords,
-              throat_conns=inner_conns, labels=['inner_boundary'])
-    inner_Ps = net['pore.inner_boundary']
-    net['pore.arc_index'][inner_Ps] = net['pore.arc_index'][net['pore.inner']]
-    net['pore.cell_id'][net.pores('inner_boundary')] = -1
-    net['pore.cell_id'] = net['pore.cell_id'].astype(int)
+    inner_conns = np.vstack((net.pores("inner"), np.arange(0, num_inner, 1) + net.Np)).T
+    tt.extend(
+        net,
+        pore_coords=inner_coords,
+        throat_conns=inner_conns,
+        labels=["inner_boundary"],
+    )
+    inner_Ps = net["pore.inner_boundary"]
+    net["pore.arc_index"][inner_Ps] = net["pore.arc_index"][net["pore.inner"]]
+    net["pore.cell_id"][net.pores("inner_boundary")] = -1
+    net["pore.cell_id"] = net["pore.cell_id"].astype(int)
 
     # Scale and save net
-    prj = wrk['proj_01']
-    net['pore.coords'] *= pixel_size
+    prj = wrk["proj_01"]
+    net["pore.coords"] *= pixel_size
     mean = mhs * pixel_size
-    net['pore.coords'][:, 0] -= mean
-    net['pore.coords'][:, 1] -= mean
-    net['pore.radial_position'] = np.linalg.norm(net['pore.coords'], axis=1)
-    net['throat.radial_position'] = net.interpolate_data('pore.radial_position')
-    net['throat.arc_length'] = net['throat.radial_position'] * np.deg2rad(dtheta)
+    net["pore.coords"][:, 0] -= mean
+    net["pore.coords"][:, 1] -= mean
+    net["pore.radial_position"] = np.linalg.norm(net["pore.coords"], axis=1)
+    net["throat.radial_position"] = net.interpolate_data("pore.radial_position")
+    net["throat.arc_length"] = net["throat.radial_position"] * np.deg2rad(dtheta)
 
     if path is None:
         path = jellybamm.INPUT_DIR

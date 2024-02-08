@@ -44,7 +44,6 @@ def current_function(t):
 
 
 def adjust_parameters(parameter_values, I_typical):
-
     parameter_values.update(
         {
             # "Typical current [A]": I_typical,
@@ -57,7 +56,6 @@ def adjust_parameters(parameter_values, I_typical):
 
 
 def output_variables():
-
     return [
         "Terminal voltage [V]",
         "Volume-averaged cell temperature [K]",

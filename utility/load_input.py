@@ -10,10 +10,11 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline
 import numpy as np
 import os
-plt.close('all')
+
+plt.close("all")
 
 cwd = os.getcwd()
-input_dir = os.path.join(cwd, 'data')
+input_dir = os.path.join(cwd, "data")
 files = os.listdir(input_dir)
 data = {}
 interp_ocv = {}
@@ -28,13 +29,13 @@ for filename in files:
     x = cap / cap[-1]
     ocv = data[filename][:, 1]
     ent = data[filename][:, 3]
-    ax1.plot(x, ocv, label=filename.split('.')[0])
-    ax2.plot(x, ent, label=filename.split('.')[0])
+    ax1.plot(x, ocv, label=filename.split(".")[0])
+    ax2.plot(x, ent, label=filename.split(".")[0])
     interp_ocv[filename] = CubicSpline(x, ocv)
     interp_docv[filename] = interp_ocv[filename].derivative()
     interp_ent[filename] = CubicSpline(x, ent)
 
 plt.figure()
-plt.plot(x, ocv, 'b')
+plt.plot(x, ocv, "b")
 xlin = np.linspace(0, 1, 101)
-plt.plot(xlin, interp_ocv[filename](xlin), 'r--')
+plt.plot(xlin, interp_ocv[filename](xlin), "r--")

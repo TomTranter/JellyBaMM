@@ -8,7 +8,7 @@ Created on Tue Feb 18 13:18:00 2020
 import pybamm
 import matplotlib.pyplot as plt
 
-pybamm.set_logging_level('INFO')
+pybamm.set_logging_level("INFO")
 
 e_height = 0.25
 plt.figure()
@@ -16,19 +16,22 @@ model_options = {
     "thermal": "x-lumped",
     "external submodels": ["thermal"],
 }
-models = [pybamm.lithium_ion.SPM(model_options),
-          pybamm.lithium_ion.SPMe(model_options),
-          pybamm.lithium_ion.DFN(),
-          ]
+models = [
+    pybamm.lithium_ion.SPM(model_options),
+    pybamm.lithium_ion.SPMe(model_options),
+    pybamm.lithium_ion.DFN(),
+]
 voltages = []
 external_variables = {"Volume-averaged cell temperature": 300.0}
 for model in models:
     geometry = model.default_geometry
     param = model.default_parameter_values
-    param.update({
-        "Current function [A]": 1.0,
-        "Electrode height [m]": "[input]",
-    })
+    param.update(
+        {
+            "Current function [A]": 1.0,
+            "Electrode height [m]": "[input]",
+        }
+    )
     param.process_model(model)
     param.process_geometry(geometry)
     inputs = {
@@ -52,9 +55,8 @@ for model in models:
 
     for i in range(360):
         sim.step(dt=10, external_variables=external_variables, inputs=inputs)
-    tv = sim.solution['Terminal voltage [V]']
-    time = sim.solution['Time [min]']
+    tv = sim.solution["Terminal voltage [V]"]
+    time = sim.solution["Time [min]"]
     voltages.append(tv.entries)
-    plt.plot(time.entries, tv.entries,
-             label=model.__class__.__name__)
+    plt.plot(time.entries, tv.entries, label=model.__class__.__name__)
 plt.legend()

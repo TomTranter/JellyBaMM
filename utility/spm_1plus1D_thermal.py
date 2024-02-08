@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import jellybamm
 
 
-plt.close('all')
+plt.close("all")
 
 Nspm = 20
 
@@ -41,8 +41,9 @@ t_pos_cc = 2.0
 t_sep = 2.0
 
 
-dr = (2 * t_neg_electrode + 2 * t_pos_electrode +
-      t_neg_cc + t_pos_cc + 2 * t_sep) * pixel_size
+dr = (
+    2 * t_neg_electrode + 2 * t_pos_electrode + t_neg_cc + t_pos_cc + 2 * t_sep
+) * pixel_size
 inner_r = 185 * 1e-5
 length_3d = 80e-3
 dtheta = 10
@@ -53,7 +54,7 @@ Nlayers = 40
 
 def spiral(r, dr, ntheta=36, n=10):
     theta = np.linspace(0, n * (2 * np.pi), (n * ntheta) + 1)
-    pos = (np.linspace(0, n * ntheta, (n * ntheta) + 1) % ntheta)
+    pos = np.linspace(0, n * ntheta, (n * ntheta) + 1) % ntheta
     pos = pos.astype(int)
     rad = r + np.linspace(0, n * dr, (n * ntheta) + 1)
     x = rad * np.cos(theta)
@@ -61,14 +62,12 @@ def spiral(r, dr, ntheta=36, n=10):
     return (x, y, rad, pos)
 
 
-(x, y, rad, pos) = spiral(
-    5 * dr, dr, ntheta=Narc, n=Nlayers
-)
+(x, y, rad, pos) = spiral(5 * dr, dr, ntheta=Narc, n=Nlayers)
 arc_edges = np.cumsum(np.deg2rad(dtheta) * rad)
 arc_edges -= arc_edges[0]
 e_height = arc_edges[-1]
 cooled_surface_area = 2 * np.pi * (rad[-1] * 2) * length_3d
-cell_volume = np.pi * (rad[-1]**2) * length_3d
+cell_volume = np.pi * (rad[-1] ** 2) * length_3d
 
 param.update(
     {
@@ -110,7 +109,8 @@ param.update(
         "Separator thermal conductivity [W.m-1.K-1]": 0.334,
         "Lower voltage cut-off [V]": 3.0,
         "Upper voltage cut-off [V]": 4.7,
-    }, check_already_exists=False
+    },
+    check_already_exists=False,
 )
 
 
@@ -145,33 +145,39 @@ submesh_types["current collector"] = pybamm.MeshGenerator(
     pybamm.UserSupplied1DSubMesh, submesh_params={"edges": pts}
 )
 
-solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8, mode='fast')
+solver = pybamm.CasadiSolver(atol=1e-8, rtol=1e-8, mode="fast")
 
 solver = pybamm.CasadiSolver()
-sim = pybamm.Simulation(model=model,
-                        geometry=geometry,
-                        parameter_values=param,
-                        submesh_types=submesh_types,
-                        var_pts=var_pts,
-                        spatial_methods=model.default_spatial_methods,
-                        solver=solver)
+sim = pybamm.Simulation(
+    model=model,
+    geometry=geometry,
+    parameter_values=param,
+    submesh_types=submesh_types,
+    var_pts=var_pts,
+    spatial_methods=model.default_spatial_methods,
+    solver=solver,
+)
 
 t_eval = np.linspace(0, 3600, 101)
 sim.solve(t_eval)
 
 show_x = False
 if show_x:
-    output_variables = ['Terminal voltage [V]',
-                        'Cell temperature [K]',
-                        'X-averaged Ohmic heating [W.m-3]',
-                        'X-averaged irreversible electrochemical heating [W.m-3]',
-                        'X-averaged reversible heating [W.m-3]',
-                        'X-averaged total heating [W.m-3]']
+    output_variables = [
+        "Terminal voltage [V]",
+        "Cell temperature [K]",
+        "X-averaged Ohmic heating [W.m-3]",
+        "X-averaged irreversible electrochemical heating [W.m-3]",
+        "X-averaged reversible heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
+    ]
 else:
-    output_variables = ['Terminal voltage [V]',
-                        'Volume-averaged cell temperature [K]',
-                        'Volume-averaged Ohmic heating [W.m-3]',
-                        'Volume-averaged irreversible electrochemical heating [W.m-3]',
-                        'Volume-averaged reversible heating [W.m-3]',
-                        'Volume-averaged total heating [W.m-3]']
+    output_variables = [
+        "Terminal voltage [V]",
+        "Volume-averaged cell temperature [K]",
+        "Volume-averaged Ohmic heating [W.m-3]",
+        "Volume-averaged irreversible electrochemical heating [W.m-3]",
+        "Volume-averaged reversible heating [W.m-3]",
+        "Volume-averaged total heating [W.m-3]",
+    ]
 sim.plot(output_variables)

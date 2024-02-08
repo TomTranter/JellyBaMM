@@ -39,29 +39,26 @@ if __name__ == "__main__":
     )
 
     # OpenPNM project
-    project, arc_edges = jellybamm.make_spiral_net(Nlayers,
-                                             dtheta,
-                                             spacing,
-                                             inner_r,
-                                             pos_tabs,
-                                             neg_tabs,
-                                             length_3d,
-                                             tesla_tabs)
+    project, arc_edges = jellybamm.make_spiral_net(
+        Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs, length_3d, tesla_tabs
+    )
     jellybamm.plot_topology(project.network)
     # Parameter set
     param = pybamm.ParameterValues("Chen2020")
     # JellyBaMM discretises the spiral using the electrode height for spiral length
     # This parameter set has the longer length set to the Electrode width
     # We want to swap this round
-    param['Electrode width [m]'] = length_3d
+    param["Electrode width [m]"] = length_3d
     # Passing None as initial_soc will take values from Parameter set and apply
     # uniformly everywhere
     initial_soc = None
     thermal_props = print(jellybamm.lump_thermal_props(param))
 
     # Run simulation
-    project, output = jellybamm.run_simulation_lp(parameter_values=param,
-                                            experiment=experiment,
-                                            initial_soc=initial_soc,
-                                            project=project)
+    project, output = jellybamm.run_simulation_lp(
+        parameter_values=param,
+        experiment=experiment,
+        initial_soc=initial_soc,
+        project=project,
+    )
     lp.plot_output(output)

@@ -124,7 +124,7 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
     # e_heights.fill(np.mean(e_heights))
     inputs = {
         "Electrode height [m]": e_heights,
-        "Input temperature [K]": spm_temperature
+        "Input temperature [K]": spm_temperature,
     }
     ###########################################################################
     # Initialisation
@@ -173,7 +173,9 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             Q[res_Ts] += Q_tot
             jellybamm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            jellybamm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            jellybamm.run_step_transient(
+                project, dim_time_step, T0, cp, rho, thermal_third
+            )
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             # T_non_dim_spm = fT_non_dim(parameter_values, spm_temperature)
@@ -233,7 +235,9 @@ def run_simulation_lp(parameter_values, experiment, initial_soc, project):
             Q[res_Ts] += Q_tot
             jellybamm.apply_heat_source_lp(project, Q)
             # Calculate Global Temperature
-            jellybamm.run_step_transient(project, dim_time_step, T0, cp, rho, thermal_third)
+            jellybamm.run_step_transient(
+                project, dim_time_step, T0, cp, rho, thermal_third
+            )
             # Interpolate the node temperatures for the SPMs
             spm_temperature = phase.interpolate_data("pore.temperature")[res_Ts]
             ###################################################################
