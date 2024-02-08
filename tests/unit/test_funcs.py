@@ -2,7 +2,7 @@
 # Unit test for funcs
 #
 
-import ecm
+import jellybamm
 import openpnm as op
 import pybamm
 import unittest
@@ -16,7 +16,7 @@ class funcsTest(unittest.TestCase):
         # Delete Data files
         pass
 
-    def _ecm_general(self, project):
+    def _jellybamm_general(self, project):
         # Experiment
         I_app = 0.35
         dt = 5
@@ -40,7 +40,7 @@ class funcsTest(unittest.TestCase):
         initial_soc = None
 
         # Run simulation
-        project, output = ecm.run_simulation_lp(
+        project, output = jellybamm.run_simulation_lp(
             parameter_values=param,
             experiment=experiment,
             initial_soc=initial_soc,
@@ -48,7 +48,7 @@ class funcsTest(unittest.TestCase):
         )
         assert output is not None
 
-    def test_ecm_spiral(self):
+    def test_jellybamm_spiral(self):
         wrk.clear()
         Nlayers = 2
         dtheta = 10
@@ -59,13 +59,12 @@ class funcsTest(unittest.TestCase):
         length_3d = 0.08
         tesla_tabs = False
         # OpenPNM project
-        project, arc_edges = ecm.make_spiral_net(
-            Nlayers, dtheta, spacing, inner_r,
-            pos_tabs, neg_tabs, length_3d, tesla_tabs
+        project, arc_edges = jellybamm.make_spiral_net(
+            Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs, length_3d, tesla_tabs
         )
-        self._ecm_general(project)
+        self._jellybamm_general(project)
 
-    def test_ecm_spiral_tesla(self):
+    def test_jellybamm_spiral_tesla(self):
         wrk.clear()
         Nlayers = 2
         dtheta = 10
@@ -76,13 +75,12 @@ class funcsTest(unittest.TestCase):
         length_3d = 0.08
         tesla_tabs = True
         # OpenPNM project
-        project, arc_edges = ecm.make_spiral_net(
-            Nlayers, dtheta, spacing, inner_r,
-            pos_tabs, neg_tabs, length_3d, tesla_tabs
+        project, arc_edges = jellybamm.make_spiral_net(
+            Nlayers, dtheta, spacing, inner_r, pos_tabs, neg_tabs, length_3d, tesla_tabs
         )
-        self._ecm_general(project)
+        self._jellybamm_general(project)
 
-    def test_ecm_tomo(self):
+    def test_jellybamm_tomo(self):
         wrk.clear()
         # Geometry of spiral
         tomo_pnm = "spider_net.pnm"
@@ -92,12 +90,12 @@ class funcsTest(unittest.TestCase):
         pos_tabs = [-1]
         neg_tabs = [0]
         # OpenPNM project
-        project, arc_edges = ecm.make_tomo_net(
+        project, arc_edges = jellybamm.make_tomo_net(
             tomo_pnm, dtheta, spacing, length_3d, pos_tabs, neg_tabs
         )
-        self._ecm_general(project)
+        self._jellybamm_general(project)
 
-    def test_ecm_1d(self):
+    def test_jellybamm_1d(self):
         wrk.clear()
         # Geometry of 1D mesh
         Nunit = 100
@@ -105,8 +103,8 @@ class funcsTest(unittest.TestCase):
         pos_tabs = [-1]
         neg_tabs = [0]
         # OpenPNM project
-        project, arc_edges = ecm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
-        self._ecm_general(project)
+        project, arc_edges = jellybamm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
+        self._jellybamm_general(project)
 
 
 if __name__ == "__main__":

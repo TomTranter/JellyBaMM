@@ -4,14 +4,14 @@
 
 import openpnm as op
 import matplotlib.pyplot as plt
-import ecm
+import jellybamm
 import liionpack as lp
 import pybamm
 
 
 plt.close("all")
 
-#pybamm.set_logging_level("INFO")
+# pybamm.set_logging_level("INFO")
 wrk = op.Workspace()
 wrk.clear()
 
@@ -37,19 +37,21 @@ if __name__ == "__main__":
     )
 
     # OpenPNM project
-    project, arc_edges = ecm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
+    project, arc_edges = jellybamm.make_1D_net(Nunit, spacing, pos_tabs, neg_tabs)
 
     # Parameter set
     param = pybamm.ParameterValues("Chen2020")
     # JellyBaMM discretises the spiral using the electrode height for spiral length
     # This parameter set has the longer length set to the Electrode width
     # We want to swap this round
-    param['Electrode width [m]'] = length_3d
+    param["Electrode width [m]"] = length_3d
     initial_soc = None
 
     # Run simulation
-    project, output = ecm.run_simulation_lp(parameter_values=param,
-                                            experiment=experiment,
-                                            initial_soc=initial_soc,
-                                            project=project)
+    project, output = jellybamm.run_simulation_lp(
+        parameter_values=param,
+        experiment=experiment,
+        initial_soc=initial_soc,
+        project=project,
+    )
     lp.plot_output(output)

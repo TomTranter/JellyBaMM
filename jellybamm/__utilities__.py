@@ -2,19 +2,19 @@
 # Utilities
 #
 
-import ecm
+import jellybamm
 import os
 import numpy as np
 from scipy.interpolate import NearestNDInterpolator
 
 
 def interpolate_timeseries(project, data):
-    im_soft = np.load(os.path.join(ecm.INPUT_DIR, 'im_soft.npz'))['arr_0']
+    im_soft = np.load(os.path.join(jellybamm.INPUT_DIR, "im_soft.npz"))["arr_0"]
     x_len, y_len = im_soft.shape
     net = project.network
-    res_Ts = net.throats('spm_resistor')
-    sorted_res_Ts = net['throat.spm_resistor_order'][res_Ts].argsort()
-    res_pores = net['pore.coords'][net['throat.conns'][res_Ts[sorted_res_Ts]]]
+    res_Ts = net.throats("spm_resistor")
+    sorted_res_Ts = net["throat.spm_resistor_order"][res_Ts].argsort()
+    res_pores = net["pore.coords"][net["throat.conns"][res_Ts[sorted_res_Ts]]]
     res_Ts_coords = np.mean(res_pores, axis=1)
     x = res_Ts_coords[:, 0]
     y = res_Ts_coords[:, 1]

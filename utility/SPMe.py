@@ -27,16 +27,12 @@ param.update(
         "Current function [A]": I_typical,
         "Current": "[input]",
         "Lower voltage cut-off [V]": 3.5,
-    }, check_already_exists=False
+    },
+    check_already_exists=False,
 )
 
 solver = pybamm.CasadiSolver()
-sim = pybamm.Simulation(
-    model=model,
-    parameter_values=param,
-    solver=solver
-
-)
+sim = pybamm.Simulation(model=model, parameter_values=param, solver=solver)
 dt = 100
 t_eval = np.arange(0, 3610, dt)
 
@@ -54,7 +50,7 @@ time = []
 def calc_R(sim, current):
     # initial_ocv = 3.8518206633137266
     totdV = 0.0
-    t = evaluate(sim, 'Time [h]', current)
+    t = evaluate(sim, "Time [h]", current)
     for key in overpotentials.keys():
         eta = evaluate(sim, key, current)[0][0]
         overpotentials[key].append(eta)
@@ -77,7 +73,7 @@ terminated = False
 for i in range(len(t_eval)):
     sim.step(dt=dt, inputs={"Current": I_typical}, save=True)
     calc_R(sim, I_typical)
-    if sim.solution.termination != 'final time':
+    if sim.solution.termination != "final time":
         terminated = True
 # plot
 plt.figure()
