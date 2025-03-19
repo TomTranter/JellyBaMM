@@ -390,7 +390,7 @@ def make_1D_net(Nunit, spacing, pos_tabs, neg_tabs):
     return net.project, np.cumsum(net["throat.arc_length"])
 
 
-def network_to_netlist(network, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
+def network_to_netlist(network, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0, Re_cc_pos=1.213e-05, Re_cc_neg=9.649e-06):
     r"""
     Make a liionpack netlist from a network
 
@@ -517,6 +517,34 @@ def network_to_netlist(network, Rs=1e-5, Ri=60, V=3.6, I_app=-5.0):
             Tid.append(t)
 
     # Terminals
+    n1 = network.pores('pos_cc')[-1]
+    for i, p in enumerate(network.pores('pos_tab')):
+        n2 = network.pores('pos_tab')[i]
+        if n1 != n2:
+            desc.append("Rtp" + str(n2))
+            node1.append(n1)
+            node2.append(n2)
+            value.append(Re_cc_pos)
+            node1_x.append(xs[n1])
+            node1_y.append(ys[n1])
+            node2_x.append(xs[n2])
+            node2_y.append(ys[n2])
+            Tid.append(-1)
+    n1 = network.pores('neg_cc')[0]
+    for i, p in enumerate(network.pores('neg_tab')):
+        n2 = p
+        if n1 != n2:
+            desc.append("Rtn" + str(n2))
+            node1.append(n1)
+            node2.append(n2)
+            value.append(Re_cc_neg)
+            node1_x.append(xs[n1])
+            node1_y.append(ys[n1])
+            node2_x.append(xs[n2])
+            node2_y.append(ys[n2])
+            Tid.append(-1)
+            
+
     n1 = network.pores("pos_cc")[-1]
     n2 = network.pores("neg_cc")[0]
     desc.append("I0")

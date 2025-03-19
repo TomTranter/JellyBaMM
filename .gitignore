@@ -7,4 +7,9 @@ jellybamm/output/
 build/
 dist/
 .virtual_documents/
+.vscode/
+
+**.png
+**.gif
+**.npz
 

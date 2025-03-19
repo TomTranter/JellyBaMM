@@ -1,6 +1,9 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = [
+    "hatch-vcs",
+    "hatchling",
+]
+build-backend = "hatchling.build"
 
 [project]
 name = "jellybamm"
@@ -18,8 +21,8 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "numba",
-    "liionpack==0.3.8",
-    "pybamm==23.9",
+    #"liionpack>=0.3.11",
+    "pybamm==25.1",
     "openpnm==2.8.2",
     "ffmpeg-python",
     "ipywidgets"
@@ -41,5 +44,5 @@ dev = [
     "mkdocs-material-extensions>=1.0"
 ]
 
-[tool.setuptools.packages.find]
-include = ["jellybamm"]
+#[tool.setuptools.packages.find]
+#include = ["jellybamm", "jellybamm.*"]

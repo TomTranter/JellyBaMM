@@ -59,7 +59,10 @@ def output_variables():
     return [
         "Terminal voltage [V]",
         "Volume-averaged cell temperature [K]",
+        "X-averaged cell temperature [K]",
         "Current collector current density [A.m-2]",
+        "Positive electrode stoichiometry",
+        "Negative electrode stoichiometry",
         "X-averaged negative electrode extent of lithiation",
         "X-averaged positive electrode extent of lithiation",
         "Volume-averaged total heating [W.m-3]",
@@ -67,7 +70,27 @@ def output_variables():
         "X-averaged battery concentration overpotential [V]",
         "X-averaged battery electrolyte ohmic losses [V]",
         "X-averaged battery solid phase ohmic losses [V]",
+        "X-averaged negative particle surface concentration [mol.m-3]",
+        "X-averaged positive particle surface concentration [mol.m-3]",
         "Battery open-circuit voltage [V]",
+        "Volume-averaged irreversible electrochemical heating [W.m-3]",
+        "X-averaged irreversible electrochemical heating [W.m-3]",
+        "X-averaged reversible heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
+        "Volume-averaged reversible heating [W.m-3]",
+        'X-averaged Ohmic heating [W.m-3]',
+        'Volume-averaged Ohmic heating [W.m-3]',
+        'Negative current collector temperature [C]',
+        'Positive current collector temperature [C]',
+        'X-averaged cell temperature [C]',
+        'Volume-averaged cell temperature [C]',
+        'X-averaged negative electrode temperature [C]',
+        'X-averaged separator temperature [C]',
+        'X-averaged positive electrode temperature [C]',
+        "Total heating [W]",
+        "Total heating per unit electrode-pair area [W.m-2]",
+        "Volume-averaged total heating [W.m-3]",
+        "X-averaged total heating [W.m-3]",
     ]
 
 
@@ -168,6 +191,7 @@ def setup_geometry(net, dtheta, spacing, length_3d):
     rPs = geo["pore.arc_index"][net["throat.conns"]]
     sameR = rPs[:, 0] == rPs[:, 1]
     geo["throat.area"] = spacing * length_3d
+    geo['throat.xarea'] = length_3d * geo['throat.radial_position'] * drad
     geo["throat.electrode_height"] = geo["throat.radial_position"] * drad
     geo["throat.area"][sameR] = geo["throat.electrode_height"][sameR] * length_3d
     geo["throat.volume"] = 0.0
@@ -233,13 +257,13 @@ def apply_heat_source_lp(project, Q):
     )
 
 
-def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
+def run_step_transient(project, time_step, BC_value, cp, rho, third=False, **kwargs):
     # To Do - test whether this needs to be transient
     net = project.network
     phase = project.phases()["phase_01"]
     phys = project.physics()["phys_01"]
     phys["pore.A1"] = 0.0
-    Q_spm = phys["pore.heat_source"] * net["pore.volume"]
+    Q_spm = phys["pore.heat_source"] #* net["pore.volume"]
     # Q_cc = net["pore.cc_power_loss"]
     # print(
     #     "Q_spm",
@@ -255,7 +279,8 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
     phys["pore.A2"] = (Q_spm) / (cp * rho)
     # Heat Source
     T0 = phase["pore.temperature"]
-    t_step = float(time_step / 10)
+    # print(T0.max(), T0.min())
+    t_step = float(time_step / kwargs.get('t_slice',10))
     phys.add_model(
         "pore.source",
         model=linear,
@@ -269,15 +294,18 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
         phase=phase,
         conductance="throat.conductance",
         quantity="pore.temperature",
+        pore_volume="pore.volume",
         t_initial=0.0,
         t_final=time_step,
         t_step=t_step,
-        t_output=t_step,
+        t_output=time_step,
         t_tolerance=1e-9,
-        t_precision=12,
+        t_precision=kwargs.get('t_precision',12),
         rxn_tolerance=1e-9,
         t_scheme="implicit",
     )
+    alg.settings['cache_A'] = False
+    # print(phase['throat.conductance'].max(),phase['throat.conductance'].min())
     alg.set_IC(values=T0)
     bulk_Ps = net.pores("free_stream", mode="not")
     alg.set_source("pore.source", bulk_Ps)
@@ -289,6 +317,9 @@ def run_step_transient(project, time_step, BC_value, cp, rho, third=False):
         Ps = net.pores("free_stream")
     alg.set_value_BC(Ps, values=BC_value)
     alg.run()
+
+    # plt.plot(alg["pore.temperature"])
+    # plt.show()
     # print(
     #     "Max Temp",
     #     np.around(alg["pore.temperature"].max(), 3),
@@ -385,7 +416,7 @@ def cartesian_transform(r, t):
     return x, y
 
 
-def interpolate_spm_number(project, x_len=2000, y_len=2000):
+def interpolate_spm_number(project, x_len=2000, y_len=2000,plot=False):
     net = project.network
     all_x = []
     all_y = []
@@ -422,8 +453,9 @@ def interpolate_spm_number(project, x_len=2000, y_len=2000):
     ]
     arr = myInterpolator(grid_x, grid_y, 0)
     # arr[arr == -1] = np.nan
-    fig, (ax1) = plt.subplots(1, 1)
-    ax1.imshow(arr)
+    if plot:
+        fig, (ax1) = plt.subplots(1, 1)
+        ax1.imshow(arr)
     return arr
 
 
@@ -548,3 +580,25 @@ def lump_thermal_props(param):
         "lump_Cp": Cp_lump,
     }
     return out
+
+
+def plot_cell_id_location(cell_id, im_spm_map, output, var_name=None):
+    if not isinstance(cell_id, list):
+        cell_id = [cell_id]
+    time = output['Time [s]']
+    yvar = var_name or 'Volume-averaged cell temperature [K]'
+    fig, (ax1, ax2) = plt.subplots(1,2, figsize=(20,10))
+    for idx in cell_id:
+        print(idx)
+        ts = output[yvar][:,idx]
+        ax2.plot(time,ts, marker='.',label=idx)
+
+    ax2.legend(title='cell_id')
+    arr = im_spm_map.copy().astype(float)
+    mask = im_spm_map == any(cell_id)
+    mask = np.isin(im_spm_map, cell_id)
+    arr[mask] = 2 * im_spm_map.max()
+    ax1.imshow(arr)
+
+    ax2.set_xlabel('Time [s]')
+    ax2.set_ylabel(yvar)
